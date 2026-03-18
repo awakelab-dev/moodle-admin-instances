@@ -1,0 +1,194 @@
+[
+  {
+    "name": "Catalejo Digital",
+    "url": "https://catalejodigital.com",
+    "token": "802d7a7ef433da958c67c6ee9a57622b",
+    "monthlyCharge": 45,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Aula Activa - Grupoaspasia",
+    "url": "https://plataforma-aulaactiva.grupoaspasia.com",
+    "token": "7ab5314e13fb54d448a710a431673507",
+    "monthlyCharge": 18,
+    "currency": "USD",
+    "isActive": true
+  },
+  {
+    "name": "Campo Alegre - Grupoaspasia",
+    "url": "https://plataforma-campoalegre.grupoaspasia.com",
+    "token": "56a5e6b134f678b279ac949b05403492",
+    "monthlyCharge": 4,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Insem - Grupoaspasia",
+    "url": "https://plataforma-insem.grupoaspasia.com",
+    "token": "21606d49d941559ce2e9fa02beaefe3c",
+    "monthlyCharge": 8,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Instituto Europa - Grupoaspasia",
+    "url": "https://plataforma-institutoeuropa.grupoaspasia.com",
+    "token": "3ad5b017f005947ed021b43ab1a0150f",
+    "monthlyCharge": 12,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Rja - Grupoaspasia",
+    "url": "https://plataforma-rja.grupoaspasia.com",
+    "token": "7ee9aad28a97ea917a51beff2ed0a926",
+    "monthlyCharge": 7,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Santa Marta - Grupoaspasia",
+    "url": "https://plataforma-santamarta.grupoaspasia.com",
+    "token": "ed89878bea3cbeebfd8a3c6d5389c39a",
+    "monthlyCharge": 14,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Ufej - Grupoaspasia",
+    "url": "https://plataforma-ufej.grupoaspasia.com",
+    "token": "86d882d6f2982d254bb2a052cc183660",
+    "monthlyCharge": 6,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Tadel - Grupoaspasia",
+    "url": "https://plataforma-tadel.grupoaspasia.com",
+    "token": "07508b0dc0f0bac48f274e14633e74bf",
+    "monthlyCharge": 3,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Rueda - Grupoaspasia",
+    "url": "https://plataforma-rueda.grupoaspasia.com",
+    "token": "40d7aad91562b8e52145836238eeb36e",
+    "monthlyCharge": 5,
+    "currency": "USD",
+    "isActive": true
+  },
+  {
+    "name": "Ibecon - Grupoaspasia",
+    "url": "https://plataforma-ibecon.grupoaspasia.com",
+    "token": "09028bd1a1b6d8382bd51b32dbc15e8b",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Formad - Grupoaspasia",
+    "url": "https://plataforma-formad.grupoaspasia.com",
+    "token": "d13bf31cfd8c5e410e5de917a4cee2ef",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Fatinafar - Grupoaspasia",
+    "url": "https://plataforma-fatinafar.grupoaspasia.com",
+    "token": "80a34bacecce07c4ddd2a84e12c9f6dc",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Codice - Grupoaspasia",
+    "url": "https://plataforma-codice.grupoaspasia.com",
+    "token": "a7e2a543d401a85c121ae883446fec12",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Adalid - Grupoaspasia",
+    "url": "https://plataforma-adalid.grupoaspasia.com",
+    "token": "106447205bc62af1d26108300add07b2",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Acredita2 - Grupoaspasia",
+    "url": "https://plataforma-acredita2.grupoaspasia.com",
+    "token": "863ce279b50d67d74d994172bea21fda",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Tedisa - Grupoaspasia",
+    "url": "https://plataforma-tedisa.grupoaspasia.com",
+    "token": "4a0345fd5e435c1e295a7e1c8ea0f12d",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Sanase - Grupoaspasia",
+    "url": "https://plataforma-sanase.grupoaspasia.com",
+    "token": "ba80a06d045b1d0cfabb2c0d1abd4522",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Institut - Grupoaspasia",
+    "url": "https://plataforma-institut.grupoaspasia.com",
+    "token": "d8bbf4a7b8a0240e597db79bb3a1e0ed",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Incuem - Grupoaspasia",
+    "url": "https://plataforma-incuem.grupoaspasia.com",
+    "token": "7611d9afb5e4d0508df8a27682a0f944",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Formatecyl - Grupoaspasia",
+    "url": "https://plataforma-formatecyl.grupoaspasia.com",
+    "token": "9636e71bb2c5002476d64dcdde0907ac",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Formatec - Grupoaspasia",
+    "url": "https://plataforma-formatec.grupoaspasia.com",
+    "token": "8918294dbc0b1dff2698f31c2b495eb2",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Estrategia4 - Grupoaspasia",
+    "url": "https://plataforma-estrategia4.grupoaspasia.com",
+    "token": "d01355fdd3958389a9f721586560c41d",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  },
+  {
+    "name": "Cetesol - Grupoaspasia",
+    "url": "https://plataforma-cetesol.grupoaspasia.com",
+    "token": "eff392fcf55f64d1e343a0dc44d41be1",
+    "monthlyCharge": null,
+    "currency": "USD",
+    "isActive": false
+  }
+]

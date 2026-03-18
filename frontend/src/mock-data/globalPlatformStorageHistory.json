@@ -1,0 +1,48 @@
+{
+  "unit": "GB",
+  "period": {
+    "startMonth": "2025-04",
+    "endMonth": "2026-03",
+    "months": 12
+  },
+  "platforms": [
+    {
+      "id": "catalejo-digital",
+      "name": "Catalejo Digital",
+      "source": "https://catalejodigital.com",
+      "history": [
+        { "month": "2025-04", "storageGb": 118.4 },
+        { "month": "2025-05", "storageGb": 121.9 },
+        { "month": "2025-06", "storageGb": 126.7 },
+        { "month": "2025-07", "storageGb": 130.8 },
+        { "month": "2025-08", "storageGb": 134.2 },
+        { "month": "2025-09", "storageGb": 141.6 },
+        { "month": "2025-10", "storageGb": 149.1 },
+        { "month": "2025-11", "storageGb": 153.8 },
+        { "month": "2025-12", "storageGb": 160.3 },
+        { "month": "2026-01", "storageGb": 166.9 },
+        { "month": "2026-02", "storageGb": 172.5 },
+        { "month": "2026-03", "storageGb": 179.4 }
+      ]
+    },
+    {
+      "id": "plataforma-aulaactiva-grupoaspasia",
+      "name": "plataforma-aulaactiva.grupoaspasia",
+      "source": "https://plataforma-aulaactiva.grupoaspasia.com",
+      "history": [
+        { "month": "2025-04", "storageGb": 76.1 },
+        { "month": "2025-05", "storageGb": 78.5 },
+        { "month": "2025-06", "storageGb": 81.7 },
+        { "month": "2025-07", "storageGb": 84.4 },
+        { "month": "2025-08", "storageGb": 88.9 },
+        { "month": "2025-09", "storageGb": 93.2 },
+        { "month": "2025-10", "storageGb": 97.5 },
+        { "month": "2025-11", "storageGb": 101.8 },
+        { "month": "2025-12", "storageGb": 106.4 },
+        { "month": "2026-01", "storageGb": 110.7 },
+        { "month": "2026-02", "storageGb": 115.6 },
+        { "month": "2026-03", "storageGb": 121.2 }
+      ]
+    }
+  ]
+}
