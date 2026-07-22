@@ -896,8 +896,8 @@ input:focus-visible {
 }
 
 .tab {
-  border: 1px solid var(--color-brand);
-  background: var(--color-brand);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
   color: #ffffff;
   padding: 0.55rem 0.95rem;
   font-size: 0.8rem;

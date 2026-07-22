@@ -11,7 +11,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api');
 
-  const port = process.env.NEST_PORT || 5002;
+  const port = process.env.PORT || process.env.NEST_PORT || 5001;
   await app.listen(port);
   console.log(`✓ NestJS backend running on http://localhost:${port}/api`);
 }
