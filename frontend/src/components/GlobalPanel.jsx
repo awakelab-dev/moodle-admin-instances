@@ -26,18 +26,18 @@ ChartJS.register(
 
 const CHART_FONT_FAMILY = "'Segoe UI', sans-serif";
 const PLATFORM_COLORS = [
-  '#35B3BA',
-  '#1877D3',
-  '#EF7F33',
-  '#9D28AD',
-  '#294560',
-  '#2C7D31',
-  '#A12727',
-  '#C27B16',
-  '#6D4C41',
-  '#5C6BC0',
-  '#00897B',
-  '#D81B60',
+  '#19F7F1',
+  '#0FCED3',
+  '#0ABCC9',
+  '#0B93AA',
+  '#01264C',
+  '#4E7EA5',
+  '#34547A',
+  '#72A3C4',
+  '#3B6996',
+  '#11EAEA',
+  '#D9FBFF',
+  '#27334F',
 ];
 const STORAGE_FILTER_OPTIONS = [
   { value: '5', label: 'Top 5' },
@@ -396,7 +396,7 @@ function getPlatformColor(index) {
 }
 
 function getMarginColor(value) {
-  return value < 0 ? '#A12727' : '#2C7D31';
+  return value < 0 ? '#34547A' : '#19F7F1';
 }
 
 export default function GlobalPanel({
@@ -888,7 +888,7 @@ export default function GlobalPanel({
               plugins: {
                 legend: { display: false },
                 tooltip: {
-                  backgroundColor: '#294560',
+                  backgroundColor: '#01264C',
                   titleColor: '#FFFFFF',
                   bodyColor: '#FFFFFF',
                   padding: 12,
@@ -901,12 +901,12 @@ export default function GlobalPanel({
                 x: {
                   beginAtZero: true,
                   ticks: {
-                    color: '#2F455E',
+                    color: '#C9D6EA',
                     font: { size: 11, family: CHART_FONT_FAMILY },
                     callback: (value) => formatGigabytes(Number(value)),
                   },
                   grid: {
-                    color: 'rgba(47, 69, 94, 0.10)',
+                    color: 'rgba(240, 243, 252, 0.10)',
                   },
                   border: {
                     display: false,
@@ -914,7 +914,7 @@ export default function GlobalPanel({
                 },
                 y: {
                   ticks: {
-                    color: '#2F455E',
+                    color: '#C9D6EA',
                     font: { size: 11, family: CHART_FONT_FAMILY },
                   },
                   grid: {
@@ -1050,12 +1050,12 @@ export default function GlobalPanel({
                       boxWidth: 8,
                       boxHeight: 8,
                       padding: 14,
-                      color: '#2F455E',
+                      color: '#C9D6EA',
                       font: { size: 11, family: CHART_FONT_FAMILY },
                     },
                   },
                   tooltip: {
-                    backgroundColor: '#294560',
+                    backgroundColor: '#01264C',
                     titleColor: '#FFFFFF',
                     bodyColor: '#FFFFFF',
                     padding: 12,
@@ -1079,7 +1079,7 @@ export default function GlobalPanel({
                 scales: {
                   x: {
                     ticks: {
-                      color: '#2F455E',
+                      color: '#C9D6EA',
                       font: { size: 11, family: CHART_FONT_FAMILY },
                     },
                     grid: {
@@ -1092,12 +1092,12 @@ export default function GlobalPanel({
                   y: {
                     beginAtZero: true,
                     ticks: {
-                      color: '#2F455E',
+                      color: '#C9D6EA',
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       callback: (value) => formatGigabytes(Number(value)),
                     },
                     grid: {
-                      color: 'rgba(47, 69, 94, 0.10)',
+                      color: 'rgba(240, 243, 252, 0.10)',
                     },
                     border: {
                       display: false,
@@ -1187,7 +1187,7 @@ export default function GlobalPanel({
                   plugins: {
                     legend: { display: false },
                     tooltip: {
-                      backgroundColor: '#294560',
+                      backgroundColor: '#01264C',
                       titleColor: '#FFFFFF',
                       bodyColor: '#FFFFFF',
                       padding: 12,
@@ -1219,13 +1219,13 @@ export default function GlobalPanel({
                     x: {
                       beginAtZero: true,
                       ticks: {
-                        color: '#2F455E',
+                        color: '#C9D6EA',
                         font: { size: 11, family: CHART_FONT_FAMILY },
                         callback: (value) =>
                           formatCurrencyCompact(value, sharedMarginCurrency),
                       },
                       grid: {
-                        color: 'rgba(47, 69, 94, 0.10)',
+                        color: 'rgba(240, 243, 252, 0.10)',
                       },
                       border: {
                         display: false,
@@ -1233,7 +1233,7 @@ export default function GlobalPanel({
                     },
                     y: {
                       ticks: {
-                        color: '#2F455E',
+                        color: '#C9D6EA',
                         font: { size: 11, family: CHART_FONT_FAMILY },
                       },
                       grid: {

@@ -132,7 +132,7 @@ function formatCurrencyCompact(value, currency = 'CLP') {
 }
 
 function getMarginColor(value) {
-  return value < 0 ? '#A12727' : '#2C7D31';
+  return value < 0 ? '#34547A' : '#4E7EA5';
 }
 
 function hasMarginData(point) {
@@ -381,9 +381,9 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
         {
           label: 'Almacenamiento total',
           data: filteredPoints.map((point) => point.totalGb),
-          borderColor: '#35B3BA',
-          backgroundColor: '#35B3BA',
-          pointBackgroundColor: '#35B3BA',
+          borderColor: '#19F7F1',
+          backgroundColor: '#19F7F1',
+          pointBackgroundColor: '#19F7F1',
           pointBorderColor: '#FFFFFF',
           pointBorderWidth: 2,
           pointHoverRadius: 6,
@@ -586,7 +586,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                   plugins: {
                     legend: { display: false },
                     tooltip: {
-                      backgroundColor: '#294560',
+                      backgroundColor: '#01264C',
                       titleColor: '#FFFFFF',
                       bodyColor: '#FFFFFF',
                       padding: 12,
@@ -598,7 +598,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                   scales: {
                     x: {
                       ticks: {
-                        color: '#2F455E',
+                        color: '#C9D6EA',
                         font: { size: 11, family: CHART_FONT_FAMILY },
                       },
                       grid: {
@@ -611,12 +611,12 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                     y: {
                       beginAtZero: true,
                       ticks: {
-                        color: '#2F455E',
+                        color: '#C9D6EA',
                         font: { size: 11, family: CHART_FONT_FAMILY },
                         callback: (value) => formatGigabytes(Number(value)),
                       },
                       grid: {
-                        color: 'rgba(47, 69, 94, 0.10)',
+                        color: 'rgba(240, 243, 252, 0.10)',
                       },
                       border: {
                         display: false,
@@ -647,7 +647,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                     plugins: {
                       legend: { display: false },
                       tooltip: {
-                        backgroundColor: '#294560',
+                        backgroundColor: '#01264C',
                         titleColor: '#FFFFFF',
                         bodyColor: '#FFFFFF',
                         padding: 12,
@@ -692,7 +692,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                     scales: {
                       x: {
                         ticks: {
-                          color: '#2F455E',
+                          color: '#C9D6EA',
                           font: { size: 11, family: CHART_FONT_FAMILY },
                         },
                         grid: {
@@ -705,13 +705,13 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                       y: {
                         beginAtZero: true,
                         ticks: {
-                          color: '#2F455E',
+                          color: '#C9D6EA',
                           font: { size: 11, family: CHART_FONT_FAMILY },
                           callback: (value) =>
                             formatCurrencyCompact(value, effectiveCurrency),
                         },
                         grid: {
-                          color: 'rgba(47, 69, 94, 0.10)',
+                          color: 'rgba(240, 243, 252, 0.10)',
                         },
                         border: {
                           display: false,

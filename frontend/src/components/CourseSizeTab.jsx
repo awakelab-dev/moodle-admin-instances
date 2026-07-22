@@ -14,11 +14,11 @@ import { getCourseBreakdown, getCourses } from '../api';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const STORAGE_COLORS = {
-  content: '#35B3BA',
-  assignments: '#1877D3',
-  forum: '#EF7F33',
-  backup: '#9D28AD',
-  total: '#2F455E',
+  content: '#19F7F1',
+  assignments: '#0FCED3',
+  forum: '#0ABCC9',
+  backup: '#0B93AA',
+  total: '#C9D6EA',
 };
 
 const CHART_FONT_FAMILY = "'Segoe UI', sans-serif";
@@ -368,7 +368,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     },
                   },
                   tooltip: {
-                    backgroundColor: '#294560',
+                    backgroundColor: '#01264C',
                     titleColor: '#FFFFFF',
                     bodyColor: '#FFFFFF',
                     padding: 12,
@@ -386,7 +386,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       callback: (value) => formatBytes(Number(value)),
                     },
-                    grid: { color: 'rgba(47, 69, 94, 0.10)' },
+                    grid: { color: 'rgba(240, 243, 252, 0.10)' },
                     border: { display: false },
                   },
                   y: {

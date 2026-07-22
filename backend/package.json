@@ -6,17 +6,38 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed:history": "node scripts/seedPlatformHistory.js"
+    "dev:nest": "ts-node -r tsconfig-paths/register src-nest/main.ts",
+    "seed:history": "node scripts/seedPlatformHistory.js",
+    "db:start": "\"C:\\Users\\PabloPlazaTravieso\\postgresql-local\\pgsql\\bin\\pg_ctl.exe\" -D \"C:\\Users\\PabloPlazaTravieso\\postgresql-local\\data\" -l \"C:\\Users\\PabloPlazaTravieso\\postgresql-local\\logfile.txt\" -o \"-p 5432\" start",
+    "db:stop": "\"C:\\Users\\PabloPlazaTravieso\\postgresql-local\\pgsql\\bin\\pg_ctl.exe\" -D \"C:\\Users\\PabloPlazaTravieso\\postgresql-local\\data\" stop"
   },
   "dependencies": {
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/mapped-types": "^2.1.1",
+    "@nestjs/platform-express": "^11.1.28",
+    "@prisma/client": "^6.19.3",
     "axios": "^1.7.0",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
     "mongoose": "^8.8.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "nodemon": "^3.1.0",
+    "prisma": "^6.19.3",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3"
   }
 }

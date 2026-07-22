@@ -14,8 +14,8 @@ import { getTopUsers } from '../api';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const CHART_FONT_FAMILY = "'Segoe UI', sans-serif";
-const USER_BAR_COLOR = '#35B3BA';
-const USER_BORDER_COLOR = '#294560';
+const USER_BAR_COLOR = '#19F7F1';
+const USER_BORDER_COLOR = '#01264C';
 
 function truncateLabel(value, maxLength = 26) {
   if (!value) return '';
@@ -119,7 +119,7 @@ export default function TopUsersTab({ moodleSource, platformName }) {
             plugins: {
               legend: { display: false },
               tooltip: {
-                backgroundColor: '#294560',
+                backgroundColor: '#01264C',
                 titleColor: '#FFFFFF',
                 bodyColor: '#FFFFFF',
                 padding: 12,
@@ -131,16 +131,16 @@ export default function TopUsersTab({ moodleSource, platformName }) {
             scales: {
               x: {
                 ticks: {
-                  color: '#2F455E',
+                  color: '#C9D6EA',
                   font: { size: 11, family: CHART_FONT_FAMILY },
                   callback: (v) => formatBytes(Number(v)),
                 },
-                grid: { color: 'rgba(47, 69, 94, 0.10)' },
+                grid: { color: 'rgba(240, 243, 252, 0.10)' },
                 border: { display: false },
               },
               y: {
                 ticks: {
-                  color: '#2F455E',
+                  color: '#C9D6EA',
                   font: { size: 12, family: CHART_FONT_FAMILY },
                 },
                 grid: { display: false },

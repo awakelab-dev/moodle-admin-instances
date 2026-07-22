@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Currency {
+  USD
+}
+
+enum AuthRole {
+  admin
+  limited
+}
+
+enum SyncStatus {
+  running
+  completed
+  failed
+}
+
+model Platform {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  url           String
+  token         String
+  monthlyCharge Decimal? @map("monthly_charge") @db.Decimal(12, 2)
+  currency      Currency @default(USD)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  courses   Course[]
+  users     MoodleUser[]
+  snapshots PlatformSnapshot[]
+
+  @@map("platforms")
+}
+
+model Course {
+  id         String   @id @default(uuid())
+  platformId String   @map("platform_id")
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  moodleName   String @map("moodle_name")
+  courseId     Int    @map("course_id")
+  courseName   String @map("course_name")
+  shortname    String @default("")
+  categoryId   Int    @map("category_id")
+  categoryName String @default("Sin categoría") @map("category_name")
+
+  sizeBytes           BigInt @default(0) @map("size_bytes")
+  backupSizeBytes     BigInt @default(0) @map("backup_size_bytes")
+  assignmentSizeBytes BigInt @default(0) @map("assignment_size_bytes")
+  forumSizeBytes      BigInt @default(0) @map("forum_size_bytes")
+
+  detailedSizeBytes           BigInt    @default(0) @map("detailed_size_bytes")
+  detailedBackupSizeBytes     BigInt    @default(0) @map("detailed_backup_size_bytes")
+  detailedAssignmentSizeBytes BigInt    @default(0) @map("detailed_assignment_size_bytes")
+  detailedForumSizeBytes      BigInt    @default(0) @map("detailed_forum_size_bytes")
+  detailedTotalBytes          BigInt    @default(0) @map("detailed_total_bytes")
+  detailedCalculatedAt        DateTime? @map("detailed_calculated_at")
+
+  storageBreakdown         Json @default("[]") @map("storage_breakdown")
+  detailedStorageBreakdown Json @default("[]") @map("detailed_storage_breakdown")
+
+  syncedAt  DateTime @default(now()) @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([platformId, courseId], name: "platform_course_unique")
+  @@index([categoryId])
+  @@map("courses")
+}
+
+model MoodleUser {
+  id         String   @id @default(uuid())
+  platformId String   @map("platform_id")
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  moodleName     String @map("moodle_name")
+  userId         Int    @map("user_id")
+  username       String
+  fullname       String @default("")
+  totalSizeBytes BigInt @default(0) @map("total_size_bytes")
+
+  syncedAt  DateTime @default(now()) @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([platformId, userId], name: "platform_user_unique")
+  @@map("moodle_users")
+}
+
+model PlatformSnapshot {
+  id         String   @id @default(uuid())
+  platformId String   @map("platform_id")
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  moodleName    String   @map("moodle_name")
+  month         String
+  totalBytes    BigInt   @default(0) @map("total_bytes")
+  monthlyCharge Decimal? @map("monthly_charge") @db.Decimal(12, 2)
+  costPerGb     Decimal? @map("cost_per_gb") @db.Decimal(12, 4)
+  currency      Currency @default(USD)
+  income        Decimal? @db.Decimal(12, 2)
+  cost          Decimal? @db.Decimal(12, 2)
+  margin        Decimal? @db.Decimal(12, 2)
+
+  syncedAt  DateTime @default(now()) @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([platformId, month], name: "platform_month_unique")
+  @@map("platform_snapshots")
+}
+
+model SyncLog {
+  id              String     @id @default(uuid())
+  startedAt       DateTime   @default(now()) @map("started_at")
+  completedAt     DateTime?  @map("completed_at")
+  status          SyncStatus @default(running)
+  platformsTotal  Int        @default(0) @map("platforms_total")
+  platformsSynced Int        @default(0) @map("platforms_synced")
+  currentPlatform String     @default("") @map("current_platform")
+  syncErrors      String[]   @default([]) @map("sync_errors")
+
+  @@map("sync_logs")
+}
+
+model AuthUser {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  displayName  String   @map("display_name")
+  role         AuthRole @default(limited)
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("auth_users")
+}

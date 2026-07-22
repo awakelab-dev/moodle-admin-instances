@@ -10,7 +10,8 @@ const AUTH_USERS = [
     username: 'admin',
     displayName: 'Administrador',
     role: AUTH_ROLES.ADMIN,
-    passwordHash: '5ce41ada64f1e8ffb0acfaafa622b141438f3a5777785e7f0b830fb73e40d3d6',
+    // Local dev password: Awakelab2026! (reset locally, never committed with the real prod hash)
+    passwordHash: '1df92601c124b179b7afb62f86212b97043c60f0720bf157c35ee9544a9f05b1',
   },
   {
     username: 'consulta',
