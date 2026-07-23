@@ -1,4 +1,4 @@
-const BASE = '/api';
+const BASE = `${import.meta.env.VITE_API_URL || ''}/api`;
 const AUTH_STORAGE_KEY = 'moodle-admin-session';
 
 function buildPath(path, params = {}) {
