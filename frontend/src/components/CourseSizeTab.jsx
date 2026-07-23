@@ -24,7 +24,7 @@ const STORAGE_COLORS = {
   total: '#C9D6EA',
 };
 
-const CHART_FONT_FAMILY = "'Segoe UI', sans-serif";
+const CHART_FONT_FAMILY = "'Poppins', sans-serif";
 
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';

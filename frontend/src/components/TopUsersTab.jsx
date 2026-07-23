@@ -14,7 +14,7 @@ import { Card } from '@/components/ui/card';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const CHART_FONT_FAMILY = "'Segoe UI', sans-serif";
+const CHART_FONT_FAMILY = "'Poppins', sans-serif";
 const USER_BAR_COLOR = '#19F7F1';
 const USER_BORDER_COLOR = '#01264C';
 

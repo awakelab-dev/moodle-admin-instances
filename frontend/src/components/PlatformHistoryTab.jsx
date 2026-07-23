@@ -26,7 +26,7 @@ ChartJS.register(
   Legend
 );
 
-const CHART_FONT_FAMILY = "'Segoe UI', sans-serif";
+const CHART_FONT_FAMILY = "'Poppins', sans-serif";
 const GROUP_BY_OPTIONS = [
   { value: 'month', label: 'Mes' },
   { value: 'quarter', label: 'Trimestre' },

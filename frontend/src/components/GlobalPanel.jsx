@@ -26,7 +26,7 @@ ChartJS.register(
   Legend
 );
 
-const CHART_FONT_FAMILY = "'Segoe UI', sans-serif";
+const CHART_FONT_FAMILY = "'Poppins', sans-serif";
 const PLATFORM_COLORS = [
   '#19F7F1',
   '#0FCED3',
