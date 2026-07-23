@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const INITIAL_FORM = {
   username: '',
@@ -9,6 +14,7 @@ export default function LoginPage({ onLogin, notice = null }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -34,11 +40,7 @@ export default function LoginPage({ onLogin, notice = null }) {
   }
 
   const bannerMessage = error || notice;
-  const bannerClass = error
-    ? 'login-banner login-banner-error'
-    : notice
-      ? 'login-banner login-banner-info'
-      : '';
+  const bannerVariant = error ? 'destructive' : notice ? 'default' : null;
 
   return (
     <div className="login-screen">
@@ -51,23 +53,23 @@ export default function LoginPage({ onLogin, notice = null }) {
           />
 
           {bannerMessage && (
-            <div className={bannerClass} role="alert">
-              {bannerMessage}
-            </div>
+            <Alert variant={bannerVariant} className="mb-4">
+              <AlertDescription>{bannerMessage}</AlertDescription>
+            </Alert>
           )}
 
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-username">
+          <form className="grid gap-4" onSubmit={handleSubmit}>
+            <div className="grid gap-1.5">
+              <Label htmlFor="login-username" className="text-white">
                 Nombre Usuario
-              </label>
-              <input
+              </Label>
+              <Input
                 id="login-username"
                 name="username"
-                className="login-input"
                 type="text"
                 placeholder="User name"
                 autoComplete="username"
+                spellCheck={false}
                 value={form.username}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, username: event.target.value }))
@@ -75,28 +77,40 @@ export default function LoginPage({ onLogin, notice = null }) {
               />
             </div>
 
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-password">
+            <div className="grid gap-1.5">
+              <Label htmlFor="login-password" className="text-white">
                 Contraseña
-              </label>
-              <input
-                id="login-password"
-                name="password"
-                className="login-input"
-                type="password"
-                placeholder="Password"
-                autoComplete="current-password"
-                value={form.password}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, password: event.target.value }))
-                }
-              />
+              </Label>
+              <div className="relative">
+                <Input
+                  id="login-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  spellCheck={false}
+                  className="pr-10"
+                  value={form.password}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, password: event.target.value }))
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
-            <button type="submit" className="login-submit" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting}>
               {submitting && <span className="spinner" />}
               {submitting ? 'Ingresando…' : 'Iniciar sesión'}
-            </button>
+            </Button>
           </form>
 
           <div className="login-divider" />

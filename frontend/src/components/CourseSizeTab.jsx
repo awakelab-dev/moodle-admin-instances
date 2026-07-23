@@ -10,6 +10,9 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { getCourseBreakdown, getCourses } from '../api';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -336,7 +339,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
         </div>
       </div>
 
-      <div className="card detail-chart-card">
+      <Card className="p-4 detail-chart-card">
         <div className="panel-header panel-header-compact">
           <div>
             <p className="eyebrow">Cursos</p>
@@ -403,9 +406,9 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
             />
           )}
         </div>
-      </div>
+      </Card>
 
-      <div className="card detail-table-card">
+      <Card className="p-4 detail-table-card">
         <div className="table-header-row">
           <div>
             <p className="eyebrow">Inventario</p>
@@ -416,7 +419,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
               El detalle tipo Moodle por componente y filearea se sincroniza manualmente por curso.
             </p>
           </div>
-          <input
+          <Input
             type="text"
             className="table-search"
             placeholder="Buscar curso o categoría"
@@ -600,9 +603,9 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
               <p className="course-breakdown-warning">
                 Advertencia: este detalle se sincroniza solo para el curso seleccionado y puede demorar algunos minutos en generarse.
               </p>
-              <button
+              <Button
                 type="button"
-                className="sync-btn sync-btn-compact course-breakdown-sync-btn"
+                className="course-breakdown-sync-btn"
                 onClick={() => handleLoadBreakdown({ refresh: hasLoadedBreakdownForSelectedCourse })}
                 disabled={breakdownLoading}
               >
@@ -611,7 +614,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                   : hasLoadedBreakdownForSelectedCourse
                     ? 'Actualizar detalle del curso'
                     : 'Cargar detalle del curso'}
-              </button>
+              </Button>
             </div>
           )}
           {hasLoadedBreakdownForSelectedCourse && (
@@ -669,7 +672,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
             </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

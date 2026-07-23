@@ -2,6 +2,7 @@ import { useState } from 'react';
 import CourseSizeTab from './CourseSizeTab';
 import PlatformHistoryTab from './PlatformHistoryTab';
 import TopUsersTab from './TopUsersTab';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function Dashboard({ selectedPlatform, userRole }) {
   const [tab, setTab] = useState('courses');
@@ -16,45 +17,32 @@ export default function Dashboard({ selectedPlatform, userRole }) {
 
   return (
     <div className="section-stack detail-section">
-      <div className="tabs-shell detail-tabs-shell">
-        <div className="tabs" role="tablist" aria-label="Secciones del dashboard">
-          <button
-            className={`tab ${tab === 'courses' ? 'active' : ''}`}
-            onClick={() => setTab('courses')}
-          >
-            Tamaño del curso
-          </button>
-          <button
-            className={`tab ${tab === 'users' ? 'active' : ''}`}
-            onClick={() => setTab('users')}
-          >
-            Usuarios (top 10)
-          </button>
-          <button
-            className={`tab ${tab === 'history' ? 'active' : ''}`}
-            onClick={() => setTab('history')}
-          >
-            Histórico
-          </button>
-        </div>
-      </div>
-      {tab === 'courses' ? (
-        <CourseSizeTab
-          moodleSource={selectedPlatform.source}
-          platformName={selectedPlatform.name}
-        />
-      ) : tab === 'users' ? (
-        <TopUsersTab
-          moodleSource={selectedPlatform.source}
-          platformName={selectedPlatform.name}
-        />
-      ) : (
-        <PlatformHistoryTab
-          moodleSource={selectedPlatform.source}
-          platformName={selectedPlatform.name}
-          userRole={userRole}
-        />
-      )}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList aria-label="Secciones del dashboard">
+          <TabsTrigger value="courses">Tamaño del curso</TabsTrigger>
+          <TabsTrigger value="users">Usuarios (top 10)</TabsTrigger>
+          <TabsTrigger value="history">Histórico</TabsTrigger>
+        </TabsList>
+        <TabsContent value="courses">
+          <CourseSizeTab
+            moodleSource={selectedPlatform.source}
+            platformName={selectedPlatform.name}
+          />
+        </TabsContent>
+        <TabsContent value="users">
+          <TopUsersTab
+            moodleSource={selectedPlatform.source}
+            platformName={selectedPlatform.name}
+          />
+        </TabsContent>
+        <TabsContent value="history">
+          <PlatformHistoryTab
+            moodleSource={selectedPlatform.source}
+            platformName={selectedPlatform.name}
+            userRole={userRole}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

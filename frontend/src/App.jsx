@@ -11,6 +11,8 @@ import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import GlobalPanel from './components/GlobalPanel';
 import ConfigPage from './components/ConfigPage';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 const ROLE_LABELS = {
   admin: 'Acceso total',
   limited: 'Sin sincronización',
@@ -203,45 +205,38 @@ export default function App() {
                     <circle cx="11" cy="11" r="8" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                   </svg>
-                  <input
+                  <Input
                     type="text"
-                    className="table-search nav-search-input"
+                    className="nav-search-input pl-8"
                     placeholder="Buscar empresa"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <button
-                  type="button"
-                  className="nav-btn nav-btn-search"
-                  onClick={handleSearchClick}
-                >
+                <Button type="button" onClick={handleSearchClick}>
                   Buscar
-                </button>
+                </Button>
               </>
             )}
             {showGlobalPanelButton && (
-              <button
-                className="nav-btn nav-btn-global"
-                onClick={() => setView('global')}
-              >
+              <Button variant="outline" onClick={() => setView('global')}>
                 Panel global
-              </button>
+              </Button>
             )}
             {canAccessSync && (
-              <button
-                className={`nav-btn ${resolvedView === 'sync' ? 'active' : ''}`}
+              <Button
+                variant={resolvedView === 'sync' ? 'default' : 'outline'}
                 onClick={() => setView('sync')}
               >
                 Sincronización
-              </button>
+              </Button>
             )}
-            <button
-              className={`nav-btn ${resolvedView === 'config' ? 'active' : ''}`}
+            <Button
+              variant={resolvedView === 'config' ? 'default' : 'outline'}
               onClick={() => setView('config')}
             >
               Configuración
-            </button>
+            </Button>
           </nav>
           <div className="session-box">
             <div className="session-copy">
@@ -252,13 +247,9 @@ export default function App() {
                 {ROLE_LABELS[currentUser.role] || currentUser.role}
               </span>
             </div>
-            <button
-              type="button"
-              className="session-logout"
-              onClick={handleLogout}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={handleLogout}>
               Cerrar sesión
-            </button>
+            </Button>
           </div>
         </div>
       </header>

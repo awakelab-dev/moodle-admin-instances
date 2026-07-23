@@ -10,6 +10,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { getTopUsers } from '../api';
+import { Card } from '@/components/ui/card';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -99,7 +100,7 @@ export default function TopUsersTab({ moodleSource, platformName }) {
     );
 
   return (
-    <div className="card detail-chart-card detail-users-card">
+    <Card className="p-4 detail-chart-card detail-users-card">
       <div className="panel-header panel-header-compact">
         <div>
           <p className="eyebrow">Usuarios</p>
@@ -150,6 +151,6 @@ export default function TopUsersTab({ moodleSource, platformName }) {
           }}
         />
       </div>
-    </div>
+    </Card>
   );
 }

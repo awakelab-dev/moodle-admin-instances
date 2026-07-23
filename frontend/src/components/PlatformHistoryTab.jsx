@@ -12,6 +12,8 @@ import {
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
 import { getPlatformHistory, getPlatformStorageSummary } from '../api';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 ChartJS.register(
   CategoryScale,
@@ -437,67 +439,72 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
           <div className="history-filter-panel">
             <div className="history-filter-group">
               <span className="chart-filter-label">Vista</span>
-              <div
-                className="filter-chip-group"
-                role="tablist"
+              <ToggleGroup
+                type="single"
+                value={groupBy}
+                onValueChange={(value) => value && setGroupBy(value)}
                 aria-label="Granularidad histórica"
               >
                 {GROUP_BY_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`filter-chip ${groupBy === option.value ? 'active' : ''}`}
-                    onClick={() => setGroupBy(option.value)}
-                  >
+                  <ToggleGroupItem key={option.value} value={option.value}>
                     {option.label}
-                  </button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
             <label className="history-filter-select-group">
               <span className="chart-filter-label">Desde</span>
-              <select
-                className="form-input history-filter-select"
+              <Select
                 value={rangeStartKey}
-                onChange={(event) => setRangeStartKey(event.target.value)}
+                onValueChange={setRangeStartKey}
                 disabled={!periodOptions.length}
               >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="history-filter-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="history-filter-select-group">
               <span className="chart-filter-label">Hasta</span>
-              <select
-                className="form-input history-filter-select"
+              <Select
                 value={rangeEndKey}
-                onChange={(event) => setRangeEndKey(event.target.value)}
+                onValueChange={setRangeEndKey}
                 disabled={!periodOptions.length}
               >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="history-filter-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <div className="history-filter-group history-filter-action">
               <span className="chart-filter-label">Rango</span>
-              <button
-                type="button"
-                className={`filter-chip ${isFullRangeSelected ? 'active' : ''}`}
-                onClick={() => {
+              <ToggleGroup
+                type="single"
+                value={isFullRangeSelected ? 'full' : ''}
+                onValueChange={() => {
                   if (!groupedPoints.length) return;
                   setRangeStartKey(groupedPoints[0].key);
                   setRangeEndKey(groupedPoints[groupedPoints.length - 1].key);
                 }}
-                disabled={!groupedPoints.length}
               >
-                Todo
-              </button>
+                <ToggleGroupItem value="full" disabled={!groupedPoints.length}>
+                  Todo
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
         </div>

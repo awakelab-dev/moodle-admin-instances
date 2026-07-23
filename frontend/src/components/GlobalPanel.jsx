@@ -12,6 +12,8 @@ import {
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
 import { getGlobalStorageHistory, getPlatformStorageSummary } from '../api';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 ChartJS.register(
   CategoryScale,
@@ -855,18 +857,18 @@ export default function GlobalPanel({
             </p>
             <div className="chart-filter-row">
               <span className="chart-filter-label">Mostrar:</span>
-              <div className="filter-chip-group" role="tablist" aria-label="Filtro gráfico almacenamiento">
+              <ToggleGroup
+                type="single"
+                value={storageFilter}
+                onValueChange={(value) => value && setStorageFilter(value)}
+                aria-label="Filtro gráfico almacenamiento"
+              >
                 {STORAGE_FILTER_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`filter-chip ${storageFilter === option.value ? 'active' : ''}`}
-                    onClick={() => setStorageFilter(option.value)}
-                  >
+                  <ToggleGroupItem key={option.value} value={option.value}>
                     {option.label}
-                  </button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
           </div>
           <div className="global-panel-badge">
@@ -943,61 +945,63 @@ export default function GlobalPanel({
           <div className="history-filter-panel">
             <div className="history-filter-group">
               <span className="chart-filter-label">Vista</span>
-              <div
-                className="filter-chip-group"
-                role="tablist"
+              <ToggleGroup
+                type="single"
+                value={storageHistoryGroupBy}
+                onValueChange={(value) => value && setStorageHistoryGroupBy(value)}
                 aria-label="Granularidad histórico global"
               >
                 {GLOBAL_HISTORY_GROUP_BY_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`filter-chip ${
-                      storageHistoryGroupBy === option.value ? 'active' : ''
-                    }`}
-                    onClick={() => setStorageHistoryGroupBy(option.value)}
-                  >
+                  <ToggleGroupItem key={option.value} value={option.value}>
                     {option.label}
-                  </button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
             <label className="history-filter-select-group">
               <span className="chart-filter-label">Desde</span>
-              <select
-                className="form-input history-filter-select"
+              <Select
                 value={storageHistoryRangeStartKey}
-                onChange={(event) => setStorageHistoryRangeStartKey(event.target.value)}
+                onValueChange={setStorageHistoryRangeStartKey}
                 disabled={!globalStorageHistoryPeriodOptions.length}
               >
-                {globalStorageHistoryPeriodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="history-filter-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {globalStorageHistoryPeriodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="history-filter-select-group">
               <span className="chart-filter-label">Hasta</span>
-              <select
-                className="form-input history-filter-select"
+              <Select
                 value={storageHistoryRangeEndKey}
-                onChange={(event) => setStorageHistoryRangeEndKey(event.target.value)}
+                onValueChange={setStorageHistoryRangeEndKey}
                 disabled={!globalStorageHistoryPeriodOptions.length}
               >
-                {globalStorageHistoryPeriodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="history-filter-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {globalStorageHistoryPeriodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <div className="history-filter-group history-filter-action">
               <span className="chart-filter-label">Rango</span>
-              <button
-                type="button"
-                className={`filter-chip ${isGlobalHistoryFullRangeSelected ? 'active' : ''}`}
-                onClick={() => {
+              <ToggleGroup
+                type="single"
+                value={isGlobalHistoryFullRangeSelected ? 'full' : ''}
+                onValueChange={() => {
                   if (!globalStorageHistoryGroupedPoints.length) return;
                   setStorageHistoryRangeStartKey(globalStorageHistoryGroupedPoints[0].key);
                   setStorageHistoryRangeEndKey(
@@ -1006,10 +1010,11 @@ export default function GlobalPanel({
                     ].key
                   );
                 }}
-                disabled={!globalStorageHistoryGroupedPoints.length}
               >
-                Todo
-              </button>
+                <ToggleGroupItem value="full" disabled={!globalStorageHistoryGroupedPoints.length}>
+                  Todo
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
         </div>
@@ -1118,18 +1123,18 @@ export default function GlobalPanel({
             <p className="panel-description">{globalMarginDescription}</p>
             <div className="chart-filter-row">
               <span className="chart-filter-label">Ver:</span>
-              <div className="filter-chip-group" role="tablist" aria-label="Filtro gráfico margen">
+              <ToggleGroup
+                type="single"
+                value={marginFilter}
+                onValueChange={(value) => value && setMarginFilter(value)}
+                aria-label="Filtro gráfico margen"
+              >
                 {MARGIN_FILTER_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`filter-chip ${marginFilter === option.value ? 'active' : ''}`}
-                    onClick={() => setMarginFilter(option.value)}
-                  >
+                  <ToggleGroupItem key={option.value} value={option.value}>
                     {option.label}
-                  </button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
           </div>
         </div>

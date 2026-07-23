@@ -12,6 +12,7 @@ un dashboard centralizado, sincronizando datos vía Web Services REST de cada Mo
 guardándolos en su propia base de datos (no consulta Moodle en vivo desde el dashboard).
 
 Repo: https://github.com/awakelab-dev/moodle-admin-instances.git (clonado en esta carpeta).
+Rama de trabajo de la migración: `migracion-pablo` (ya subida al remoto).
 
 ## Encargo del instructor (Leonardo Barreto, leonardo.barreto@awakelab.dev)
 
@@ -24,76 +25,74 @@ oscuro) y de estructura de dashboard (stat cards, tabla de cursos, gráficos top
 
 Son 3 pasos:
 
-1. **Correr la app en local** — ✅ HECHO (ver estado actual abajo).
-2. **Migración de stack tecnológico + estética**, manteniendo monorepo:
-   - Backend: Express+Mongoose → **NestJS**
-   - BD: MongoDB → **PostgreSQL + Prisma**
-   - Frontend: seguir en React+Vite pero migrar CSS plano → **Tailwind + shadcn/ui**,
-     replicando el look & feel de la app de referencia (staging.apps.awakelab.world/moodle-insights)
-   - Este es el paso pendiente — **aún no se ha empezado la migración de código**, solo se
-     hizo la investigación/reconocimiento (ver "Plan pendiente" abajo).
-3. **Probar las conexiones con las plataformas Moodle reales** (tokens ya disponibles, ver
-   "Credenciales y datos sensibles" abajo) — pendiente, viene después del paso 2.
+1. **Correr la app en local** — ✅ HECHO.
+2. **Migración de stack tecnológico + estética**, manteniendo monorepo — ✅ **COMPLETADA**:
+   - Backend: Express+Mongoose → **NestJS** ✅
+   - BD: MongoDB → **PostgreSQL + Prisma** ✅ (datos reales migrados y verificados)
+   - Frontend: sigue en React+Vite, CSS plano → **Tailwind + shadcn/ui** ✅ (los 9
+     componentes migrados: SyncPanel, GlobalPanel, PlatformHistoryTab, LoginPage,
+     ConfigPage, CourseSizeTab, TopUsersTab, Dashboard, App.jsx), replicando el look & feel
+     de la app de referencia (tema oscuro azul marino/cian, Poppins).
+3. **Probar las conexiones con las plataformas Moodle reales** — parcialmente en curso: el
+   test de conexión desde Configuración ya funciona contra plataformas reales (algunas dan
+   timeout/permisos faltantes según el token, comportamiento esperado, no es un bug).
 
-## Estado actual del entorno local (ya hecho, no repetir)
+Detalle completo del plan y de las decisiones técnicas en `MIGRATION_PLAN.md` (raíz del repo).
 
-- **MongoDB** corriendo como binario portable (sin instalar, sin admin) en
-  `C:\Users\PabloPlazaTravieso\mongodb-local\mongodb-win32-x86_64-windows-8.0.15\bin\mongod.exe`,
-  con datos en `C:\Users\PabloPlazaTravieso\mongodb-local\data`, escuchando en
-  `127.0.0.1:27017`. Herramientas (`mongorestore`, `mongoexport`) en
-  `C:\Users\PabloPlazaTravieso\mongodb-local\mongodb-database-tools-windows-x86_64-100.17.0\bin`.
-- Dump restaurado desde
-  `C:\Users\PabloPlazaTravieso\OneDrive - Ibecon 2003 S.L\Escritorio\dump-moodle\dump-moodle\`
-  en la base `moodle-admin-instances`: colecciones `courses` (4381 docs), `users` (41770),
-  `platformsnapshots` (371), `synclogs` (34). Sin fallos de restauración.
-- `backend/.env` creado desde `.env.example` (MONGODB_URI ya apuntaba correcto, no hubo que
-  cambiar nada ahí).
-- Backend (Express) corriendo con `npm run dev` en `http://localhost:5001`.
-- Frontend (Vite) corriendo con `npm run dev` en `http://localhost:5173`.
-- Login local funcional: usuario `admin` / contraseña `Awakelab2026!` (contraseña reseteada
-  localmente por Claude, solo para poder entrar a probar; el hash real de producción en
-  `authUsers.js` se sobreescribió — si hace falta el original habría que pedírselo al
-  instructor, no se puede revertir el hash).
-- Si los procesos ya no están corriendo (reinicio de sesión, etc.), basta con:
-  ```
-  # Mongo
-  "C:\Users\PabloPlazaTravieso\mongodb-local\mongodb-win32-x86_64-windows-8.0.15\bin\mongod.exe" --dbpath "C:\Users\PabloPlazaTravieso\mongodb-local\data" --port 27017
-  # Backend
-  cd backend && npm run dev
-  # Frontend
-  cd frontend && npm run dev
-  ```
+## Estado actual del entorno local
+
+Todo el stack corre localmente sin permisos de administrador (binarios portables):
+
+- **PostgreSQL** portable en `C:\Users\PabloPlazaTravieso\postgresql-local\`, datos en
+  `...\postgresql-local\data`, escuchando en `127.0.0.1:5432`. Base de datos: `moodle_admin`.
+- **Backend NestJS** en `backend/src-nest/` (el código Express viejo en `backend/src/`
+  fue eliminado; solo quedan `backend/src/config/*.js` y `backend/scripts/*.js` como
+  referencia histórica de la migración de datos, ya no se ejecutan en producción).
+- **Frontend Vite** sin cambios de framework, con Tailwind+shadcn/ui añadido.
+- **DBeaver** portable instalado (acceso directo en el escritorio) para inspeccionar
+  Postgres/Mongo visualmente.
+- Login: usuario `admin` / contraseña `Awakelab2026!` (bcrypt en la tabla `auth_users` de
+  Postgres). El usuario `consulta` no se migró — no se conocía su contraseña real en texto
+  plano (SHA-256 no es reversible a bcrypt sin ella).
+
+**Para arrancar todo con un doble clic**: acceso directo "Aulacloner - Iniciar" en el
+escritorio (ejecuta `start-app.bat` en la raíz del repo — levanta Postgres + backend + frontend,
+cada uno en su propia ventana de consola). Para pararlo: `stop-app.bat` (detiene Postgres; el
+backend/frontend se cierran con Ctrl+C en sus ventanas).
+
+Comandos manuales si hace falta:
+```
+# Postgres
+"C:\Users\PabloPlazaTravieso\postgresql-local\pgsql\bin\pg_ctl.exe" -D "C:\Users\PabloPlazaTravieso\postgresql-local\data" -l "C:\Users\PabloPlazaTravieso\postgresql-local\logfile.txt" -o "-p 5432" start
+# Backend (NestJS)
+cd backend && npx ts-node -r tsconfig-paths/register src-nest/main.ts
+# Frontend
+cd frontend && npm run dev
+```
+
+MongoDB (el motor viejo) ya no se usa — se mantuvo corriendo solo como respaldo de lectura
+durante la migración, no hace falta arrancarlo para trabajar en el proyecto.
 
 ## Credenciales y datos sensibles (NO subir a git nunca)
 
 - `C:\Users\PabloPlazaTravieso\OneDrive - Ibecon 2003 S.L\Escritorio\servicios y tokens admin-instance (1)\`
   contiene tokens de Web Service reales de ~20 plataformas Moodle de producción (Grupo Aspasia,
-  Catalejo Digital, etc.) y la lista de funciones WS a habilitar por token. Esto es para el
-  paso 3 (probar conexiones), todavía no usado.
+  Catalejo Digital, etc.). Ya migrados a la tabla `platforms` de Postgres.
 - El repo tenía archivos vacíos `contraseña.txt`, `usuarios.txt`, `token web .txt`,
-  `servicios agregar.txt`, `ultimo commit.txt` en la raíz (placeholders sin rellenar,
-  aparentemente el instructor los dejó vacíos a propósito o se le olvidó).
+  `servicios agregar.txt`, `ultimo commit.txt` en la raíz (placeholders sin rellenar).
 
-## Plan pendiente (aún no ejecutado)
+## Pendiente (menor, no bloqueante)
 
-Antes de la interrupción para este resumen, se estaba explorando el código actual del backend
-(modelos Mongoose: `Course`, `User`, `SyncLog`, `PlatformSnapshot`; rutas `auth`, `sync`,
-`dashboard`, `platforms`; servicio grande `syncService.js` de ~1067 líneas que hace el scraping
-multi-plataforma vía Web Services) para diseñar la migración a NestJS + Prisma + Postgres, y el
-frontend (`App.jsx`, `Dashboard.jsx`, `CourseSizeTab.jsx`, `TopUsersTab.jsx`,
-`PlatformHistoryTab.jsx`, `SyncPanel.jsx`, `ConfigPage.jsx`, `LoginPage.jsx`) para diseñar la
-migración de estilos a Tailwind+shadcn. Aún no se ha escrito ningún plan formal ni tocado
-código de la migración — el siguiente paso lógico es retomar el diseño de esa migración
-(esquema Prisma equivalente a los 4 modelos Mongoose, estructura de módulos NestJS, y mapeo de
-componentes React a Tailwind/shadcn con la paleta de marca Awakelab ya usada en el proyecto
-`moodle-platform-manager`).
+- Migrar los cursos/tabla de `CourseSizeTab.jsx` y las tablas de `PlatformHistoryTab.jsx`
+  al primitivo `Table` de shadcn (hoy siguen con el markup HTML original con clases CSS
+  propias — visualmente correctas, pero no usan el componente shadcn puro). Bajo riesgo,
+  cosmético únicamente.
+- Seguir probando conexiones reales con el resto de plataformas Moodle (paso 3 del encargo).
+- Revisar con el instructor si el usuario `consulta` necesita contraseña nueva.
 
-## Notas de estilo (paleta de referencia observada en staging)
+## Notas de estilo (paleta de marca, ya aplicada en todo el frontend)
 
-Fondo/sidebar azul marino casi negro (~#011932), acentos cian brillante (~#19F7F1 / #11EAEA),
-texto blanco/cian claro, tipografía bold sans-serif (Poppins), tarjetas de stats redondeadas
-con icono+label+número grande, sidebar con secciones colapsables y ítem activo resaltado en
-cian. Coincide con la guía de marca Awakelab 2026 ya aplicada en `moodle-platform-manager`
-(mismo proyecto de Pablo, gestor de plataformas Moodle vía Web Services — un proyecto distinto,
-más simple, que puede servir de referencia de implementación Next.js/Tailwind aunque esta app
-use Vite en vez de Next.js).
+Fondo `#011932`, superficie `#01264c`/`#012142`, acento cian `#11eaea` (variantes `#19F7F1`,
+`#0FCED3`, `#0ABCC9`, `#0B93AA` para gráficos), texto `#f0f3fc`, tipografía Poppins. Definido
+como variables CSS en `frontend/src/App.css` y replicado en `frontend/tailwind.config.js`
+para que los componentes shadcn lo hereden automáticamente.

@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { triggerSync, getSyncStatus, getLastSync } from '../api';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 function formatLastSync(lastSync) {
   if (!lastSync?.completed_at) return 'Sin registros aún';
@@ -158,49 +163,47 @@ export default function SyncPanel({ onSyncComplete }) {
         ? 'Sincronización exitosa'
         : 'Listo para sincronizar';
 
-  const statusClass = syncing
-    ? 'status-chip-running'
+  const statusVariant = syncing
+    ? 'default'
     : error || progress?.status === 'failed'
-      ? 'status-chip-error'
+      ? 'destructive'
       : progress?.status === 'completed'
-        ? 'status-chip-success'
-        : 'status-chip-idle';
+        ? 'success'
+        : 'secondary';
 
   return (
-    <div className="sync-panel card">
-      <div className="panel-header">
+    <Card className="mx-auto max-w-[860px] p-4">
+      <div className="mb-3.5 flex items-start justify-between gap-3">
         <div>
-          <p className="eyebrow">Proceso</p>
-          <h2 className="card-title">Panel de sincronización</h2>
-          <p className="panel-description">
+          <p className="text-[0.63rem] font-bold uppercase tracking-[0.1em] text-accent">Proceso</p>
+          <h2 className="mt-0.5 text-lg font-bold text-white">Panel de sincronización</h2>
+          <p className="mt-1 max-w-[760px] text-sm text-muted-foreground">
             Ejecuta la actualización general y controla el avance de cada plataforma
             desde un bloque principal de acción.
           </p>
         </div>
-        <span className={`status-chip ${statusClass}`}>{statusText}</span>
+        <Badge variant={statusVariant} className="whitespace-nowrap">{statusText}</Badge>
       </div>
 
-      <div className="sync-action-row">
-        <button className="sync-btn" onClick={handleSync} disabled={syncing}>
+      <div className="mb-3 flex flex-wrap items-stretch gap-3">
+        <Button onClick={handleSync} disabled={syncing}>
           {syncing && <span className="spinner" />}
           {syncing ? 'Sincronizando…' : 'Actualizar datos'}
-        </button>
-        <div className="sync-meta-card">
-          <span className="sync-meta-label">Última actualización</span>
-          <strong className="sync-meta-value">{formatLastSync(lastSync)}</strong>
+        </Button>
+        <div className="flex flex-1 min-w-[220px] flex-col justify-center gap-1 rounded-card border border-border-soft bg-surface-muted px-3.5 py-3">
+          <span className="text-[0.67rem] font-bold uppercase tracking-[0.08em] text-brand-strong">Última actualización</span>
+          <strong className="text-sm text-white">{formatLastSync(lastSync)}</strong>
         </div>
-        <div className="sync-meta-card">
-          <span className="sync-meta-label">{timerLabel}</span>
-          <strong className="sync-meta-value">{timerValue}</strong>
+        <div className="flex flex-1 min-w-[220px] flex-col justify-center gap-1 rounded-card border border-border-soft bg-surface-muted px-3.5 py-3">
+          <span className="text-[0.67rem] font-bold uppercase tracking-[0.08em] text-brand-strong">{timerLabel}</span>
+          <strong className="text-sm text-white">{timerValue}</strong>
         </div>
       </div>
 
       {syncing && progress && (
-        <div className="progress-area">
-          <div className="progress-bar-track">
-            <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="progress-text">
+        <div className="mt-3 rounded-card border border-border-soft bg-surface-muted p-3.5">
+          <Progress value={pct} className="my-2.5" />
+          <p className="text-sm text-brand-strong">
             {activeCount > 0
               ? `Activas ahora (${activeCount}${maxParallel ? `/${maxParallel}` : ''}): ${activePlatforms.join(', ')}`
               : progress.current_platform
@@ -208,39 +211,49 @@ export default function SyncPanel({ onSyncComplete }) {
                 : 'Iniciando…'}{' '}
             — completadas {progress.platforms_synced}/{progress.platforms_total} plataformas
           </p>
-          <p className="progress-text">
+          <p className="text-sm text-brand-strong">
             {maxParallel > 0
               ? `Concurrencia máxima: ${maxParallel}. En espera: ${queuedCount}`
               : 'Preparando cola de sincronización…'}
           </p>
-          <p className="progress-text">
+          <p className="text-sm text-brand-strong">
             Tiempo transcurrido: <strong>{formatDuration(currentDurationMs)}</strong>
           </p>
         </div>
       )}
 
       {!syncing && progress && progress.status === 'completed' && (
-        <div className="status-banner status-banner-success">
-          Sincronización completada correctamente
-          {completionDurationText ? ` en ${completionDurationText}.` : '.'}
-        </div>
+        <Alert variant="success" className="mt-3">
+          <AlertDescription>
+            Sincronización completada correctamente
+            {completionDurationText ? ` en ${completionDurationText}.` : '.'}
+          </AlertDescription>
+        </Alert>
       )}
 
       {!syncing && progress && progress.status === 'failed' && (
-        <div className="status-banner status-banner-error">
-          La sincronización finalizó con errores
-          {completionDurationText ? ` tras ${completionDurationText}.` : '.'}
-        </div>
+        <Alert variant="destructive" className="mt-3">
+          <AlertDescription>
+            La sincronización finalizó con errores
+            {completionDurationText ? ` tras ${completionDurationText}.` : '.'}
+          </AlertDescription>
+        </Alert>
       )}
 
       {progressErrors.length > 0 && (
-        <ul className="error-list">
+        <ul className="mt-3 grid gap-1.5 text-sm">
           {progressErrors.map((e, i) => (
-            <li key={i}>{e}</li>
+            <li key={i} className="rounded-control border border-destructive/20 bg-destructive/10 px-3 py-2 text-destructive">
+              {e}
+            </li>
           ))}
         </ul>
       )}
-      {error && <div className="status-banner status-banner-error">{error}</div>}
-    </div>
+      {error && (
+        <Alert variant="destructive" className="mt-3">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+    </Card>
   );
 }

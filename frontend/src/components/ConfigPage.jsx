@@ -6,6 +6,12 @@ import {
   deletePlatform,
   testPlatform,
 } from '../api';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const EMPTY_FORM = {
   name: '',
@@ -217,19 +223,17 @@ export default function ConfigPage() {
             Costo global aplicado automáticamente: <strong>USD 1 por GB</strong>.
           </p>
         </div>
-        <button className="btn-add" onClick={openAdd}>
-          + Agregar plataforma
-        </button>
+        <Button onClick={openAdd}>+ Agregar plataforma</Button>
       </div>
 
       {msg && (
-        <div className={`config-msg ${msg.type}`}>
-          {msg.text}
-        </div>
+        <Alert variant={msg.type === 'error' ? 'destructive' : 'success'}>
+          <AlertDescription>{msg.text}</AlertDescription>
+        </Alert>
       )}
 
       {showForm && (
-        <div className="card config-form-card">
+        <Card className="p-4 pt-4">
           <div className="panel-header panel-header-compact">
             <div>
               <p className="eyebrow">
@@ -240,77 +244,72 @@ export default function ConfigPage() {
               </h3>
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="config-form">
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Nombre</label>
-                <input
-                  className="form-input"
+          <form onSubmit={handleSubmit} className="grid gap-3.5">
+            <div className="grid grid-cols-2 gap-3.5 max-[720px]:grid-cols-1">
+              <div className="grid gap-1.5">
+                <Label>Nombre</Label>
+                <Input
                   type="text"
                   placeholder="Ej: Moodle Producción"
+                  autoComplete="off"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">URL</label>
-                <input
-                  className="form-input"
+              <div className="grid gap-1.5">
+                <Label>URL</Label>
+                <Input
                   type="url"
                   placeholder="https://moodle.ejemplo.com"
+                  autoComplete="off"
                   value={form.url}
                   onChange={(e) => setForm({ ...form, url: e.target.value })}
                 />
               </div>
-              <div className="form-group form-group-full">
-                <label className="form-label">
+              <div className="grid gap-1.5 col-span-2 max-[720px]:col-span-1">
+                <Label>
                   Token WS
                   {editingId !== null && (
                     <span className="form-hint"> (dejar vacío para mantener el actual)</span>
                   )}
-                </label>
-                <input
-                  className="form-input"
+                </Label>
+                <Input
                   type="password"
                   placeholder="abc123def456..."
+                  autoComplete="new-password"
                   value={form.token}
                   onChange={(e) => setForm({ ...form, token: e.target.value })}
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">Monto mensual cobrado</label>
-                <input
-                  className="form-input"
+              <div className="grid gap-1.5">
+                <Label>Monto mensual cobrado</Label>
+                <Input
                   type="number"
                   min="0"
                   step="0.01"
                   placeholder="Ej: 120"
+                  autoComplete="off"
                   value={form.monthlyCharge}
                   onChange={(e) =>
                     setForm({ ...form, monthlyCharge: e.target.value })
                   }
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">Costo global por GB</label>
-                <input
-                  className="form-input"
-                  type="text"
-                  value="USD 1.00"
-                  disabled
-                />
+              <div className="grid gap-1.5">
+                <Label>Costo global por GB</Label>
+                <Input type="text" value="USD 1.00" disabled />
               </div>
             </div>
-            <div className="form-actions">
-              <button type="submit" className="sync-btn sync-btn-compact">
+            <div className="flex flex-wrap justify-end gap-2.5">
+              <Button type="submit">
                 {editingId !== null ? 'Guardar cambios' : 'Agregar'}
-              </button>
-              <button type="button" className="btn-cancel" onClick={closeForm}>
+              </Button>
+              <Button type="button" variant="outline" onClick={closeForm}>
                 Cancelar
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
+        </Card>
       )}
 
       {platforms.length === 0 ? (
@@ -320,25 +319,21 @@ export default function ConfigPage() {
       ) : (
         <div className="platform-list">
           {platforms.map((p) => (
-            <div key={p.id} className="card platform-card">
+            <Card key={p.id} className="platform-card p-4">
               <div className="platform-info">
                 <div className="platform-name">{p.name}</div>
                 <div className="platform-url">{p.url}</div>
                 <div className="platform-token">Token: {p.token}</div>
-                <div className="platform-toggle-row">
-                  <label className="platform-toggle" htmlFor={`platform-active-${p.id}`}>
-                    <input
-                      id={`platform-active-${p.id}`}
-                      type="checkbox"
-                      checked={!!p.isActive}
-                      onChange={() => handleToggleActive(p)}
-                      disabled={!!toggleLoading[p.id]}
-                    />
-                    <span className="platform-toggle-slider" aria-hidden="true" />
-                    <span className="platform-toggle-label">
-                      {p.isActive ? 'Activa en métricas' : 'Inactiva en métricas'}
-                    </span>
-                  </label>
+                <div className="platform-toggle-row flex items-center gap-2.5">
+                  <Switch
+                    id={`platform-active-${p.id}`}
+                    checked={!!p.isActive}
+                    onCheckedChange={() => handleToggleActive(p)}
+                    disabled={!!toggleLoading[p.id]}
+                  />
+                  <Label htmlFor={`platform-active-${p.id}`} className="platform-toggle-label cursor-pointer">
+                    {p.isActive ? 'Activa en métricas' : 'Inactiva en métricas'}
+                  </Label>
                 </div>
                 <div className="platform-financial">
                   <div className="platform-financial-grid">
@@ -363,28 +358,30 @@ export default function ConfigPage() {
                 </div>
               </div>
               <div className="platform-actions">
-                <button
-                  className="btn-sm btn-test"
+                <Button
+                  size="sm"
                   onClick={() => handleTest(p)}
                   disabled={testResults[p.id]?.loading || !!toggleLoading[p.id]}
                 >
                   {testResults[p.id]?.loading && <span className="spinner spinner-sm" />}
                   {testResults[p.id]?.loading ? 'Probando…' : 'Probar'}
-                </button>
-                <button
-                  className="btn-sm btn-edit"
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-[#3b6996] border-[#3b6996] text-white hover:bg-[#4e7ea5] hover:border-[#4e7ea5]"
                   onClick={() => openEdit(p)}
                   disabled={!!toggleLoading[p.id]}
                 >
                   Editar
-                </button>
-                <button
-                  className="btn-sm btn-delete"
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => handleDelete(p)}
                   disabled={!!toggleLoading[p.id]}
                 >
                   Eliminar
-                </button>
+                </Button>
               </div>
               {testResults[p.id] && !testResults[p.id].loading && (
                 <div
@@ -400,7 +397,7 @@ export default function ConfigPage() {
                   {renderCheckList('Permisos opcionales', testResults[p.id].optional_checks)}
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}
