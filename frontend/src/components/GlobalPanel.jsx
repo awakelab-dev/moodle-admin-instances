@@ -1055,8 +1055,9 @@ export default function GlobalPanel({
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: {
-                  mode: 'index',
-                  intersect: false,
+                  mode: 'nearest',
+                  axis: 'xy',
+                  intersect: true,
                 },
                 plugins: {
                   legend: {
@@ -1079,17 +1080,6 @@ export default function GlobalPanel({
                     callbacks: {
                       label: (context) =>
                         `${context.dataset.label}: ${formatGigabytes(context.raw)}`,
-                      footer: (items) => {
-                        const point = globalStorageHistoryPoints[items[0]?.dataIndex];
-                        if (!point) return [];
-
-                        return [
-                          `Total global: ${formatGigabytes(point.totalGb)}`,
-                          point.platformCount
-                            ? `Plataformas incluidas: ${point.platformCount}`
-                            : null,
-                        ].filter(Boolean);
-                      },
                     },
                   },
                 },
