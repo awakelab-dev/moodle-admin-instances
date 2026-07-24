@@ -730,10 +730,17 @@ export default function GlobalPanel({
     [marginChartPlatforms]
   );
 
+  const storageHistoryChartPlatforms = useMemo(() => {
+    if (storageFilter === 'all') return storageHistoryPlatforms;
+
+    const allowedSources = new Set(storageChartPlatforms.map((platform) => platform.source));
+    return storageHistoryPlatforms.filter((platform) => allowedSources.has(platform.source));
+  }, [storageHistoryPlatforms, storageChartPlatforms, storageFilter]);
+
   const globalStorageHistoryDatasets = useMemo(() => {
     if (!selectedGlobalHistoryKeys.length) return [];
 
-    return storageHistoryPlatforms
+    return storageHistoryChartPlatforms
       .map((platform, index) => {
         const groupedPoints = buildGroupedPlatformStoragePoints(
           Array.isArray(platform.points) ? platform.points : [],
@@ -767,7 +774,7 @@ export default function GlobalPanel({
         };
       })
       .filter(Boolean);
-  }, [selectedGlobalHistoryKeys, storageHistoryPlatforms, storageHistoryGroupBy]);
+  }, [selectedGlobalHistoryKeys, storageHistoryChartPlatforms, storageHistoryGroupBy]);
 
   const globalStorageHistoryData = useMemo(
     () => ({
