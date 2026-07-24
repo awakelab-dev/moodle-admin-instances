@@ -56,23 +56,19 @@ const PLATFORM_COLORS = [
 ];
 const LINE_CATEGORICAL_COLORS = [
   '#19F7F1',
-  '#F76C6C',
-  '#F7C948',
-  '#7ED957',
-  '#B084F7',
-  '#F78CC4',
-  '#5AA9E6',
-  '#F79D5C',
-  '#4EE0C1',
-  '#C9D6EA',
+  '#FF6B6B',
+  '#FFD93D',
+  '#6BCB77',
+  '#9B72F2',
+  '#FF8FD8',
+  '#4D96FF',
+  '#FF9F45',
+  '#2FE3C0',
+  '#D6D9E8',
 ];
 
 function getLineColor(index) {
   return LINE_CATEGORICAL_COLORS[index % LINE_CATEGORICAL_COLORS.length];
-}
-
-function getLineDash(index) {
-  return index % 2 === 1 ? [6, 4] : [];
 }
 
 const STORAGE_FILTER_OPTIONS = [
@@ -802,6 +798,9 @@ export default function GlobalPanel({
   const globalStorageHistoryDatasets = useMemo(() => {
     if (!selectedGlobalHistoryKeys.length) return [];
 
+    let solidColorCounter = 0;
+    let dashedColorCounter = 0;
+
     return storageHistoryChartPlatforms
       .map((platform, index) => {
         const groupedPoints = buildGroupedPlatformStoragePoints(
@@ -817,7 +816,12 @@ export default function GlobalPanel({
 
         if (data.every((value) => value === null)) return null;
 
-        const color = getLineColor(index);
+        const isDashed = index % 2 === 1;
+        // Colores separados por estilo de línea: un color solo se repite entre una
+        // línea sólida y una discontinua, nunca entre dos líneas del mismo estilo.
+        const color = isDashed
+          ? getLineColor(dashedColorCounter++)
+          : getLineColor(solidColorCounter++);
         const isClickIsolated = Boolean(isolatedHistorySource);
         const isHoverFocused = !isClickIsolated && Boolean(hoveredHistorySource);
         const isFocused =
@@ -832,7 +836,7 @@ export default function GlobalPanel({
           data,
           borderColor: isHidden ? 'transparent' : isDimmed ? 'rgba(201, 214, 234, 0.15)' : color,
           backgroundColor: color,
-          borderDash: getLineDash(index),
+          borderDash: isDashed ? [6, 4] : [],
           pointBackgroundColor: isHidden
             ? 'transparent'
             : isDimmed
