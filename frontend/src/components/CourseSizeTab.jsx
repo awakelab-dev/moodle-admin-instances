@@ -10,6 +10,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { getCourseBreakdown, getCourses } from '../api';
+import { formatPlatformDisplayName } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -272,12 +273,15 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     setSelectedCourseId(courseId);
   }
 
+  const displayPlatformName =
+    formatPlatformDisplayName(data?.platformName) || platformName;
+
   if (loading) return <p className="empty">Cargando datos…</p>;
   if (error) return <p className="empty error">{error}</p>;
   if (!data || !data.categories?.length) {
     return (
       <p className="empty">
-        No hay datos de cursos para {platformName || 'la plataforma seleccionada'}.
+        No hay datos de cursos para {displayPlatformName || 'la plataforma seleccionada'}.
         Sincroniza primero esa instancia.
       </p>
     );
@@ -288,8 +292,8 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
       <div className="stats-grid">
         <div className="stat-box stat-box-total">
           <div className="stat-label">Total plataforma</div>
-          {(data.platformName || platformName) && (
-            <div className="stat-platform-name">{data.platformName || platformName}</div>
+          {displayPlatformName && (
+            <div className="stat-platform-name">{displayPlatformName}</div>
           )}
           <div className="stat-value">{formatBytes(data.totalBytes)}</div>
         </div>
@@ -344,11 +348,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
           <div>
             <p className="eyebrow">Cursos</p>
             <h3 className="card-title">
-              Top 10 cursos más pesados de {data.platformName || platformName || 'la plataforma seleccionada'}
+              Top 10 cursos más pesados de {displayPlatformName || 'la plataforma seleccionada'}
             </h3>
             <p className="panel-description">
               Desglose por tipo de almacenamiento para identificar rápidamente los
-              cursos de mayor impacto en {data.platformName || platformName || 'la plataforma seleccionada'}.
+              cursos de mayor impacto en {displayPlatformName || 'la plataforma seleccionada'}.
             </p>
           </div>
         </div>
@@ -413,7 +417,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
           <div>
             <p className="eyebrow">Inventario</p>
             <h3 className="card-title table-title">
-              Todos los cursos de {data.platformName || platformName || 'la plataforma seleccionada'} ({tableCourses.length})
+              Todos los cursos de {displayPlatformName || 'la plataforma seleccionada'} ({tableCourses.length})
             </h3>
             <p className="panel-description">
               El detalle tipo Moodle por componente y filearea se sincroniza manualmente por curso.

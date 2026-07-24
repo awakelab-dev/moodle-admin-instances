@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
 import { getPlatformHistory, getPlatformStorageSummary } from '../api';
+import { formatPlatformDisplayName } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -421,6 +422,9 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
     [filteredPoints, marginDatasetLabel]
   );
 
+  const displayPlatformName =
+    formatPlatformDisplayName(history?.platformName) || platformName;
+
   if (loading) return <p className="empty">Cargando histórico…</p>;
   if (error) return <p className="empty error">{error}</p>;
 
@@ -433,7 +437,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
             <h3 className="card-title">Almacenamiento y margen por período</h3>
             <p className="panel-description">
               {historyDescription} de la plataforma{' '}
-              {history?.platformName || platformName || 'seleccionada'}.
+              {displayPlatformName || 'seleccionada'}.
             </p>
           </div>
           <div className="history-filter-panel">
@@ -567,7 +571,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
       {allPoints.length === 0 ? (
         <p className="empty">
           Aún no hay snapshots mensuales para{' '}
-          {history?.platformName || platformName || 'la plataforma seleccionada'}.
+          {displayPlatformName || 'la plataforma seleccionada'}.
           Ejecuta una sincronización para generar el primer histórico.
         </p>
       ) : (

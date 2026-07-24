@@ -11,7 +11,8 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
-import { getGlobalStorageHistory, getPlatformStorageSummary } from '../api';
+import { getGlobalStorageHistory, getPlatformStorageSummary, getLastSync } from '../api';
+import { formatPlatformDisplayName } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -53,11 +54,49 @@ const PLATFORM_COLORS = [
   '#1BA8B8',
   '#2F76AE',
 ];
+const LINE_CATEGORICAL_COLORS = [
+  '#19F7F1',
+  '#F76C6C',
+  '#F7C948',
+  '#7ED957',
+  '#B084F7',
+  '#F78CC4',
+  '#5AA9E6',
+  '#F79D5C',
+  '#4EE0C1',
+  '#C9D6EA',
+];
+
+function getLineColor(index) {
+  return LINE_CATEGORICAL_COLORS[index % LINE_CATEGORICAL_COLORS.length];
+}
+
+function getLineDash(index) {
+  return index % 2 === 1 ? [6, 4] : [];
+}
+
 const STORAGE_FILTER_OPTIONS = [
   { value: '5', label: 'Top 5' },
   { value: '10', label: 'Top 10' },
   { value: 'all', label: 'Todas' },
 ];
+
+function formatRelativeSync(completedAt) {
+  if (!completedAt) return 'Sin sincronizar aún';
+
+  const diffMs = Date.now() - new Date(completedAt).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return 'Actualizado justo ahora';
+
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Actualizado hace instantes';
+  if (minutes < 60) return `Actualizado hace ${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Actualizado hace ${hours} h`;
+
+  const days = Math.floor(hours / 24);
+  return `Actualizado hace ${days} d`;
+}
 
 function parseMonthKey(month) {
   const date = new Date(`${month}-01T00:00:00`);
@@ -429,6 +468,29 @@ export default function GlobalPanel({
   const [storageHistoryRangeStartKey, setStorageHistoryRangeStartKey] = useState('');
   const [storageHistoryRangeEndKey, setStorageHistoryRangeEndKey] = useState('');
   const [marginFilter, setMarginFilter] = useState('all');
+  const [lastSyncLabel, setLastSyncLabel] = useState('Sin sincronizar aún');
+  const [isolatedHistorySource, setIsolatedHistorySource] = useState(null);
+  const [hoveredHistorySource, setHoveredHistorySource] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    function refreshLastSyncLabel() {
+      getLastSync()
+        .then((data) => {
+          if (isMounted) setLastSyncLabel(formatRelativeSync(data?.completed_at));
+        })
+        .catch(() => {});
+    }
+
+    refreshLastSyncLabel();
+    const intervalId = setInterval(refreshLastSyncLabel, 60000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [refreshKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -695,7 +757,7 @@ export default function GlobalPanel({
 
   const currentComparisonData = useMemo(
     () => ({
-      labels: storageChartPlatforms.map((platform) => platform.name),
+      labels: storageChartPlatforms.map((platform) => formatPlatformDisplayName(platform.name)),
       datasets: [
         {
           label: 'Contenido total actual',
@@ -711,7 +773,7 @@ export default function GlobalPanel({
 
   const marginComparisonData = useMemo(
     () => ({
-      labels: marginChartPlatforms.map((platform) => platform.name),
+      labels: marginChartPlatforms.map((platform) => formatPlatformDisplayName(platform.name)),
       datasets: [
         {
           label: 'Margen del rango seleccionado',
@@ -755,26 +817,47 @@ export default function GlobalPanel({
 
         if (data.every((value) => value === null)) return null;
 
-        const color = platform.color || getPlatformColor(index);
+        const color = getLineColor(index);
+        const isClickIsolated = Boolean(isolatedHistorySource);
+        const isHoverFocused = !isClickIsolated && Boolean(hoveredHistorySource);
+        const isFocused =
+          (isClickIsolated && platform.source === isolatedHistorySource) ||
+          (isHoverFocused && platform.source === hoveredHistorySource);
+        const isDimmed = (isClickIsolated || isHoverFocused) && !isFocused;
+        const isHidden = isClickIsolated && !isFocused;
 
         return {
-          label: platform.name,
+          label: formatPlatformDisplayName(platform.name),
+          source: platform.source,
           data,
-          borderColor: color,
+          borderColor: isHidden ? 'transparent' : isDimmed ? 'rgba(201, 214, 234, 0.15)' : color,
           backgroundColor: color,
-          pointBackgroundColor: color,
-          pointBorderColor: '#FFFFFF',
+          borderDash: getLineDash(index),
+          pointBackgroundColor: isHidden
+            ? 'transparent'
+            : isDimmed
+              ? 'rgba(201, 214, 234, 0.15)'
+              : color,
+          pointBorderColor: isHidden ? 'transparent' : '#FFFFFF',
           pointBorderWidth: 1.5,
-          pointHoverRadius: 5,
-          pointRadius: 3,
-          borderWidth: 2,
+          pointHoverRadius: 6,
+          pointHitRadius: 12,
+          pointRadius: isHidden ? 0 : 3,
+          borderWidth: isHidden ? 0 : isFocused ? 3 : isDimmed ? 1 : 2,
           tension: 0.28,
           fill: false,
           spanGaps: true,
+          order: isFocused ? 0 : 1,
         };
       })
       .filter(Boolean);
-  }, [selectedGlobalHistoryKeys, storageHistoryChartPlatforms, storageHistoryGroupBy]);
+  }, [
+    selectedGlobalHistoryKeys,
+    storageHistoryChartPlatforms,
+    storageHistoryGroupBy,
+    isolatedHistorySource,
+    hoveredHistorySource,
+  ]);
 
   const globalStorageHistoryData = useMemo(
     () => ({
@@ -842,6 +925,7 @@ export default function GlobalPanel({
 
   return (
     <div className="section-stack">
+      <div className="global-panel-last-sync">{lastSyncLabel}</div>
       {searchTerm.trim() && (
         <div className="card">
           <div className="global-search-results">
@@ -853,7 +937,7 @@ export default function GlobalPanel({
                   className="global-search-result"
                   onClick={() => selectPlatform(platform)}
                 >
-                  {platform.name}
+                  {formatPlatformDisplayName(platform.name)}
                 </button>
               ))
             ) : (
@@ -896,7 +980,10 @@ export default function GlobalPanel({
           </div>
         </div>
 
-        <div className="chart-container chart-container-global">
+        <div
+          className="chart-container chart-container-global"
+          style={{ minHeight: Math.max(360, storageChartPlatforms.length * 34) }}
+        >
           <Bar
             data={currentComparisonData}
             options={{
@@ -937,6 +1024,7 @@ export default function GlobalPanel({
                   ticks: {
                     color: '#C9D6EA',
                     font: { size: 11, family: CHART_FONT_FAMILY },
+                    autoSkip: false,
                   },
                   grid: {
                     display: false,
@@ -1055,7 +1143,16 @@ export default function GlobalPanel({
             Aún no hay snapshots globales suficientes para mostrar el historial de almacenamiento.
           </p>
         ) : (
-          <div className="chart-container chart-container-global">
+          <div className="chart-container chart-container-line-xl">
+            {isolatedHistorySource && (
+              <button
+                type="button"
+                className="chart-isolate-clear"
+                onClick={() => setIsolatedHistorySource(null)}
+              >
+                Mostrar todas las plataformas
+              </button>
+            )}
             <Line
               data={globalStorageHistoryData}
               options={{
@@ -1065,6 +1162,28 @@ export default function GlobalPanel({
                   mode: 'nearest',
                   axis: 'xy',
                   intersect: true,
+                },
+                onClick: (event, activeElements, chart) => {
+                  if (!activeElements.length) return;
+                  const dataset = chart.data.datasets[activeElements[0].datasetIndex];
+                  if (!dataset?.source) return;
+                  setIsolatedHistorySource((prev) =>
+                    prev === dataset.source ? null : dataset.source
+                  );
+                },
+                onHover: (event, activeElements, chart) => {
+                  if (event?.native && chart?.canvas) {
+                    chart.canvas.style.cursor = activeElements.length ? 'pointer' : 'default';
+                  }
+                  if (isolatedHistorySource) return;
+                  if (!activeElements.length) {
+                    setHoveredHistorySource((prev) => (prev === null ? prev : null));
+                    return;
+                  }
+                  const dataset = chart.data.datasets[activeElements[0].datasetIndex];
+                  setHoveredHistorySource((prev) =>
+                    prev === dataset?.source ? prev : dataset?.source || null
+                  );
                 },
                 plugins: {
                   legend: {
@@ -1077,6 +1196,13 @@ export default function GlobalPanel({
                       padding: 14,
                       color: '#C9D6EA',
                       font: { size: 11, family: CHART_FONT_FAMILY },
+                    },
+                    onClick: (_event, legendItem, legend) => {
+                      const dataset = legend.chart.data.datasets[legendItem.datasetIndex];
+                      if (!dataset?.source) return;
+                      setIsolatedHistorySource((prev) =>
+                        prev === dataset.source ? null : dataset.source
+                      );
                     },
                   },
                   tooltip: {
@@ -1164,7 +1290,9 @@ export default function GlobalPanel({
           <div className="history-note history-note-warning">
             Configuración financiera pendiente en:{' '}
             <strong>
-              {pendingFinancialPlatforms.map((platform) => platform.name).join(', ')}
+              {pendingFinancialPlatforms
+                .map((platform) => formatPlatformDisplayName(platform.name))
+                .join(', ')}
             </strong>
             .
           </div>
@@ -1188,7 +1316,10 @@ export default function GlobalPanel({
           </p>
         ) : (
           <>
-            <div className="chart-container chart-container-global">
+            <div
+              className="chart-container chart-container-global"
+              style={{ minHeight: Math.max(360, marginChartPlatforms.length * 34) }}
+            >
               <Bar
                 data={marginComparisonData}
                 options={{
@@ -1249,6 +1380,7 @@ export default function GlobalPanel({
                       ticks: {
                         color: '#C9D6EA',
                         font: { size: 11, family: CHART_FONT_FAMILY },
+                        autoSkip: false,
                       },
                       grid: {
                         display: false,

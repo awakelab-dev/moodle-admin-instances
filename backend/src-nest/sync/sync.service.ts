@@ -48,6 +48,18 @@ export class SyncService {
     const courseIds: number[] = courses.map((c: any) => c.id);
     const backupWsAvailable = await detectBackupWsAvailability(client, courseIds);
 
+    const progressUnitsTotal = courses.length * (backupWsAvailable ? 3 : 2) || 1;
+    let progressUnitsDone = 0;
+    const bumpProgress = (label: string) => {
+      progressUnitsDone += 1;
+      const current = this.progress.get();
+      if (current) {
+        current.current_step = label;
+        current.items_done = Math.min(progressUnitsDone, progressUnitsTotal);
+        current.items_total = progressUnitsTotal;
+      }
+    };
+
     const courseMetaMap: Record<number, any> = {};
     for (const course of courses) {
       courseMetaMap[course.id] = {
@@ -71,6 +83,8 @@ export class SyncService {
         Object.assign(courseSizes[course.id], totals);
       } catch (err: any) {
         console.error(`  ⚠ Error content course ${course.id}: ${err.message}`);
+      } finally {
+        bumpProgress('Calculando contenido de cursos');
       }
     });
 
@@ -81,6 +95,8 @@ export class SyncService {
           courseSizes[course.id].backup += await getCourseBackupSize(client, course.id);
         } catch (err: any) {
           console.warn(`  ⚠ Error backup scan course ${course.id}: ${err.message}`);
+        } finally {
+          bumpProgress('Calculando copias de seguridad');
         }
       });
     }
@@ -95,6 +111,8 @@ export class SyncService {
         }
       } catch (err: any) {
         console.warn(`  ⚠ Error enrolled users course ${course.id}: ${err.message}`);
+      } finally {
+        bumpProgress('Calculando usuarios matriculados');
       }
     });
 
@@ -296,7 +314,43 @@ export class SyncService {
       console.warn(`  ⚠ Error saving platform snapshot: ${err.message}`);
     }
 
+    await this.prisma.platform.update({ where: { id: platform.id }, data: { lastSyncedAt: now } });
+
     return { courses: courses.length, users: userIds.length, totalBytes };
+  }
+
+  async runSinglePlatformInBackground(platformId: string) {
+    const platform = await this.prisma.platform.findUniqueOrThrow({ where: { id: platformId } });
+
+    this.progress.set({
+      id: `single-${platform.id}`,
+      status: 'running',
+      started_at: new Date(),
+      completed_at: null,
+      platforms_total: 1,
+      platforms_synced: 0,
+      current_platform: platform.name,
+      sync_errors: [],
+      current_step: 'Iniciando sincronización',
+      items_done: 0,
+      items_total: 0,
+      platform_id: platform.id,
+    });
+
+    try {
+      await this.syncPlatform(platform);
+      const current = this.progress.get()!;
+      current.status = 'completed';
+      current.completed_at = new Date();
+      current.platforms_synced = 1;
+      current.items_done = current.items_total;
+    } catch (err: any) {
+      console.error(`  ✗ ${platform.name}: ${err.message}`);
+      const current = this.progress.get()!;
+      current.status = 'failed';
+      current.completed_at = new Date();
+      current.sync_errors.push(`${platform.name}: ${err.message}`);
+    }
   }
 
   async runFullSync() {

@@ -168,16 +168,10 @@ input:focus-visible {
 }
 
 /* ─── Layout ─── */
-.app {
+.app-shell {
   min-height: 100vh;
-  padding-bottom: 1.5rem;
-}
-
-.main {
-  width: min(1240px, calc(100% - 1.5rem));
-  margin: 1rem auto 0;
-  display: grid;
-  gap: 1rem;
+  display: flex;
+  align-items: stretch;
 }
 
 .section-stack {
@@ -185,43 +179,111 @@ input:focus-visible {
   gap: 1rem;
 }
 
-.header {
-  width: min(1240px, calc(100% - 1.5rem));
-  margin: 1rem auto 0;
+.sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.1rem 0.9rem;
+  background: var(--color-bg);
+  border-right: 1px solid var(--color-border-soft);
+}
+
+.sidebar-brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1rem;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow);
-  position: sticky;
-  top: 0.75rem;
-  z-index: 10;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0 0.2rem;
 }
 
-.header .logo {
-  color: #ffffff;
-}
-
-.header .brand-mark {
+.sidebar-brand .brand-mark {
   background: var(--color-surface);
   border-color: rgba(17, 234, 234, 0.3);
 }
 
-.header .session-box {
-  background: var(--color-surface);
-  border: 1px solid rgba(17, 234, 234, 0.3);
+.sidebar-brand .logo {
+  color: #ffffff;
+  font-size: 0.95rem;
 }
 
-.header .session-name {
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sidebar-nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-control, 6px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-brand-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--color-surface);
+  color: var(--color-brand);
+}
+
+.sidebar-nav-item.active {
+  background: var(--color-surface);
+  border-color: rgba(17, 234, 234, 0.3);
+  color: var(--color-accent);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.sidebar-footer .session-box {
+  background: var(--color-surface);
+  border: 1px solid rgba(17, 234, 234, 0.3);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.sidebar-footer .session-name {
   color: #ffffff;
 }
 
-.header .nav-search-icon {
+.app-content {
+  flex: 1;
+  min-width: 0;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.content-topbar {
+  width: min(1240px, 100%);
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.content-topbar .nav-search-icon {
   color: rgba(255, 255, 255, 0.6);
+}
+
+.main {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
 }
 
 .brand {
@@ -538,6 +600,25 @@ input:focus-visible {
   min-height: 360px;
 }
 
+.chart-container-line-xl {
+  min-height: 720px;
+}
+
+.chart-isolate-clear {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-muted);
+  color: var(--color-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .chart-click-hint {
   margin-top: 0.75rem;
   font-size: 0.76rem;
@@ -695,6 +776,17 @@ input:focus-visible {
 .global-panel-badge-value {
   font-size: 0.95rem;
   color: var(--color-brand);
+}
+
+.global-panel-last-sync {
+  align-self: flex-start;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-muted);
+  color: var(--color-accent);
+  font-size: 0.74rem;
+  font-weight: 700;
 }
 
 .empty {
@@ -1084,6 +1176,13 @@ input:focus-visible {
   color: var(--color-text);
 }
 
+.platform-last-sync {
+  margin-top: 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
 .platform-financial {
   margin-top: 0.55rem;
   display: grid;
@@ -1109,6 +1208,56 @@ input:focus-visible {
   gap: 0.45rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.platform-sync-progress {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.platform-sync-progress-bar {
+  position: relative;
+  height: 6px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-border-soft);
+}
+
+.platform-sync-progress-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  animation: platform-sync-progress-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes platform-sync-progress-slide {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.platform-sync-progress-bar-fill-determinate {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--color-accent);
+  transition: width 0.4s ease;
+}
+
+.platform-sync-progress-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-brand-strong);
 }
 
 .test-result {
@@ -1221,9 +1370,20 @@ input:focus-visible {
     flex-direction: row;
   }
 
-  .nav {
+  .sidebar {
     width: 100%;
-    justify-content: flex-start;
+    height: auto;
+    position: static;
+    flex-direction: column;
+  }
+
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .session-box {
@@ -1271,9 +1431,8 @@ input:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .header,
-  .main {
-    width: calc(100% - 1rem);
+  .app-content {
+    padding: 0.75rem;
   }
 
   .login-screen {
@@ -1287,12 +1446,6 @@ input:focus-visible {
   .login-brand-logo {
     width: min(100%, 248px);
     margin-bottom: 1.5rem;
-  }
-
-  .header {
-    margin-top: 0.5rem;
-    top: 0.5rem;
-    padding: 0.8rem;
   }
 
   .card {

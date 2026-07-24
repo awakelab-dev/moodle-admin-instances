@@ -109,6 +109,7 @@ export class PlatformsService {
       currency: p.currency,
       isActive: p.isActive,
       hasFinancialConfig: p.monthlyCharge !== null,
+      lastSyncedAt: p.lastSyncedAt,
     }));
   }
 

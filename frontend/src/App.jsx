@@ -114,8 +114,6 @@ export default function App() {
 
   const resolvedView = view === 'detail' && !selectedPlatform ? 'global' : view;
   const isGlobalView = resolvedView === 'global';
-  const showGlobalPanelButton =
-    resolvedView === 'detail' || resolvedView === 'sync' || resolvedView === 'config';
 
   function openPlatformDetail(platform) {
     setSelectedPlatform(platform);
@@ -172,9 +170,9 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="brand">
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
           <div className="brand-mark" aria-hidden="true">
             <span />
             <span />
@@ -185,59 +183,34 @@ export default function App() {
             <h1 className="logo">Moodle Admin Instances</h1>
           </div>
         </div>
-        <div className="header-actions">
-          <nav className="nav" aria-label="Secciones principales">
-            {isGlobalView && (
-              <>
-                <div className="nav-search-wrapper">
-                  <svg
-                    className="nav-search-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <Input
-                    type="text"
-                    className="nav-search-input pl-8"
-                    placeholder="Buscar empresa"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button type="button" onClick={handleSearchClick}>
-                  Buscar
-                </Button>
-              </>
-            )}
-            {showGlobalPanelButton && (
-              <Button variant="outline" onClick={() => setView('global')}>
-                Panel global
-              </Button>
-            )}
-            {canAccessSync && (
-              <Button
-                variant={resolvedView === 'sync' ? 'default' : 'outline'}
-                onClick={() => setView('sync')}
-              >
-                Sincronización
-              </Button>
-            )}
-            <Button
-              variant={resolvedView === 'config' ? 'default' : 'outline'}
-              onClick={() => setView('config')}
+
+        <nav className="sidebar-nav" aria-label="Secciones principales">
+          <button
+            type="button"
+            className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
+            onClick={() => setView('global')}
+          >
+            Panel global
+          </button>
+          {canAccessSync && (
+            <button
+              type="button"
+              className={`sidebar-nav-item ${resolvedView === 'sync' ? 'active' : ''}`}
+              onClick={() => setView('sync')}
             >
-              Configuración
-            </Button>
-          </nav>
+              Sincronización
+            </button>
+          )}
+          <button
+            type="button"
+            className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
+            onClick={() => setView('config')}
+          >
+            Configuración
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
           <div className="session-box">
             <div className="session-copy">
               <span className="session-name">
@@ -252,11 +225,45 @@ export default function App() {
             </Button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <main className="main">
-        {views[resolvedView]}
-      </main>
+      <div className="app-content">
+        {isGlobalView && (
+          <div className="content-topbar">
+            <div className="nav-search-wrapper">
+              <svg
+                className="nav-search-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <Input
+                type="text"
+                className="nav-search-input pl-8"
+                placeholder="Buscar empresa"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button type="button" onClick={handleSearchClick}>
+              Buscar
+            </Button>
+          </div>
+        )}
+
+        <main className="main">
+          {views[resolvedView]}
+        </main>
+      </div>
     </div>
   );
 }

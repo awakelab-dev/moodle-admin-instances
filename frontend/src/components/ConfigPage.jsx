@@ -5,6 +5,8 @@ import {
   updatePlatform,
   deletePlatform,
   testPlatform,
+  triggerPlatformSync,
+  getSyncStatus,
 } from '../api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { formatPlatformDisplayName } from '@/lib/utils';
 
 const EMPTY_FORM = {
   name: '',
@@ -50,6 +53,19 @@ function renderCheckList(title, checks = []) {
   );
 }
 
+function formatLastSync(value) {
+  if (!value) return 'Nunca sincronizada';
+
+  try {
+    return `Última sincronización: ${new Intl.DateTimeFormat('es-CL', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value))}`;
+  } catch {
+    return 'Nunca sincronizada';
+  }
+}
+
 function formatCurrency(value, currency = 'USD') {
   if (!Number.isFinite(Number(value))) return '—';
 
@@ -68,6 +84,13 @@ function formatCurrency(value, currency = 'USD') {
   }
 }
 
+function formatElapsed(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`;
+}
+
 export default function ConfigPage() {
   const [platforms, setPlatforms] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -77,21 +100,104 @@ export default function ConfigPage() {
   const [msg, setMsg] = useState(null);
   const [testResults, setTestResults] = useState({});
   const [toggleLoading, setToggleLoading] = useState({});
+  const [syncLoading, setSyncLoading] = useState({});
+  const [syncStartedAt, setSyncStartedAt] = useState({});
+  const [syncProgress, setSyncProgress] = useState({});
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    if (!Object.values(syncLoading).some(Boolean)) return undefined;
+    const intervalId = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(intervalId);
+  }, [syncLoading]);
 
   async function load() {
     try {
       const data = await getPlatforms();
       setPlatforms(data);
+      return data;
     } catch {
       setPlatforms([]);
+      return [];
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    load();
+    load().then((data) => resumeRunningSync(data));
   }, []);
+
+  function finishSyncTracking(platformId) {
+    setSyncLoading((prev) => ({ ...prev, [platformId]: false }));
+    setSyncStartedAt((prev) => {
+      const next = { ...prev };
+      delete next[platformId];
+      return next;
+    });
+    setSyncProgress((prev) => {
+      const next = { ...prev };
+      delete next[platformId];
+      return next;
+    });
+  }
+
+  async function pollSyncStatus(platformId) {
+    let status;
+    do {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      status = await getSyncStatus();
+      setSyncProgress((prev) => ({
+        ...prev,
+        [platformId]: {
+          percent:
+            status?.items_total > 0
+              ? Math.min(100, Math.round((status.items_done / status.items_total) * 100))
+              : null,
+          step: status?.current_step || null,
+        },
+      }));
+    } while (status?.status === 'running');
+    return status;
+  }
+
+  async function trackSync(platform, startedAtMs) {
+    setSyncLoading((prev) => ({ ...prev, [platform.id]: true }));
+    setSyncStartedAt((prev) => ({ ...prev, [platform.id]: startedAtMs }));
+    setSyncProgress((prev) => ({ ...prev, [platform.id]: null }));
+    try {
+      const status = await pollSyncStatus(platform.id);
+      await load();
+      const lastError = status?.sync_errors?.[status.sync_errors.length - 1];
+      if (status?.status === 'failed' && lastError) {
+        flash(lastError, 'error');
+      } else {
+        flash(`"${formatPlatformDisplayName(platform.name)}" sincronizada.`);
+      }
+    } catch (err) {
+      flash(err.message, 'error');
+    } finally {
+      finishSyncTracking(platform.id);
+    }
+  }
+
+  // Si al montar (p.ej. tras cambiar de pestaña y volver) ya hay una sincronización
+  // en curso para alguna plataforma, reenganchamos la barra de progreso a ese estado real
+  // en vez de dejar que el usuario crea que se detuvo.
+  async function resumeRunningSync(platformsList) {
+    try {
+      const status = await getSyncStatus();
+      if (status?.status !== 'running' || !status.platform_id) return;
+
+      const platform = platformsList.find((item) => item.id === status.platform_id);
+      if (!platform) return;
+
+      const startedAtMs = status.started_at ? new Date(status.started_at).getTime() : Date.now();
+      trackSync(platform, startedAtMs);
+    } catch {
+      // si no se puede consultar el estado, simplemente no restauramos el indicador
+    }
+  }
 
   function flash(text, type = 'success') {
     setMsg({ text, type });
@@ -165,10 +271,10 @@ export default function ConfigPage() {
   }
 
   async function handleDelete(p) {
-    if (!confirm(`¿Eliminar "${p.name}"?`)) return;
+    if (!confirm(`¿Eliminar "${formatPlatformDisplayName(p.name)}"?`)) return;
     try {
       await deletePlatform(p.id);
-      flash(`"${p.name}" eliminada.`);
+      flash(`"${formatPlatformDisplayName(p.name)}" eliminada.`);
       await load();
     } catch (err) {
       flash(err.message, 'error');
@@ -187,6 +293,37 @@ export default function ConfigPage() {
       }));
     }
   }
+  async function handleSyncOne(p) {
+    try {
+      await triggerPlatformSync(p.id);
+    } catch (err) {
+      if (err.status === 409) {
+        // El backend ya tenía una sincronización corriendo — puede ser esta misma
+        // plataforma (p.ej. la iniciamos antes de cambiar de pestaña) u otra distinta.
+        try {
+          const status = await getSyncStatus();
+          if (status?.platform_id === p.id) {
+            const startedAtMs = status.started_at ? new Date(status.started_at).getTime() : Date.now();
+            trackSync(p, startedAtMs);
+            return;
+          }
+          flash(
+            `Ya hay una sincronización en curso${status?.current_platform ? ` (${formatPlatformDisplayName(status.current_platform)})` : ''}. Espera a que termine.`,
+            'error'
+          );
+          return;
+        } catch {
+          flash('Ya hay una sincronización en curso. Espera a que termine.', 'error');
+          return;
+        }
+      }
+      flash(err.message, 'error');
+      return;
+    }
+
+    trackSync(p, Date.now());
+  }
+
   async function handleToggleActive(platform) {
     const nextActive = !platform.isActive;
     setToggleLoading((prev) => ({ ...prev, [platform.id]: true }));
@@ -198,7 +335,7 @@ export default function ConfigPage() {
         )
       );
       flash(
-        `"${platform.name}" ${nextActive ? 'activada' : 'desactivada'} para métricas.`
+        `"${formatPlatformDisplayName(platform.name)}" ${nextActive ? 'activada' : 'desactivada'} para métricas.`
       );
     } catch (err) {
       flash(err.message, 'error');
@@ -321,7 +458,7 @@ export default function ConfigPage() {
           {platforms.map((p) => (
             <Card key={p.id} className="platform-card p-4">
               <div className="platform-info">
-                <div className="platform-name">{p.name}</div>
+                <div className="platform-name">{formatPlatformDisplayName(p.name)}</div>
                 <div className="platform-url">{p.url}</div>
                 <div className="platform-token">Token: {p.token}</div>
                 <div className="platform-toggle-row flex items-center gap-2.5">
@@ -334,6 +471,9 @@ export default function ConfigPage() {
                   <Label htmlFor={`platform-active-${p.id}`} className="platform-toggle-label cursor-pointer">
                     {p.isActive ? 'Activa en métricas' : 'Inactiva en métricas'}
                   </Label>
+                </div>
+                <div className="platform-last-sync">
+                  {formatLastSync(p.lastSyncedAt)}
                 </div>
                 <div className="platform-financial">
                   <div className="platform-financial-grid">
@@ -364,7 +504,16 @@ export default function ConfigPage() {
                   disabled={testResults[p.id]?.loading || !!toggleLoading[p.id]}
                 >
                   {testResults[p.id]?.loading && <span className="spinner spinner-sm" />}
-                  {testResults[p.id]?.loading ? 'Probando…' : 'Probar'}
+                  {testResults[p.id]?.loading ? 'Probando…' : 'Probar conexión con plataforma'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSyncOne(p)}
+                  disabled={!!syncLoading[p.id] || !!toggleLoading[p.id]}
+                >
+                  {syncLoading[p.id] && <span className="spinner spinner-sm" />}
+                  {syncLoading[p.id] ? 'Sincronizando…' : 'Sincronizar'}
                 </Button>
                 <Button
                   size="sm"
@@ -383,6 +532,29 @@ export default function ConfigPage() {
                   Eliminar
                 </Button>
               </div>
+              {syncLoading[p.id] && (
+                <div className="platform-sync-progress">
+                  <div className="platform-sync-progress-bar">
+                    {typeof syncProgress[p.id]?.percent === 'number' ? (
+                      <div
+                        className="platform-sync-progress-bar-fill-determinate"
+                        style={{ width: `${syncProgress[p.id].percent}%` }}
+                      />
+                    ) : (
+                      <div className="platform-sync-progress-bar-fill" />
+                    )}
+                  </div>
+                  <span className="platform-sync-progress-label">
+                    Sincronizando "{formatPlatformDisplayName(p.name)}"
+                    {typeof syncProgress[p.id]?.percent === 'number'
+                      ? ` — ${syncProgress[p.id].percent}%`
+                      : '…'}
+                    {syncProgress[p.id]?.step ? ` · ${syncProgress[p.id].step}` : ''}
+                    {' · '}
+                    {formatElapsed(nowMs - (syncStartedAt[p.id] || nowMs))}
+                  </span>
+                </div>
+              )}
               {testResults[p.id] && !testResults[p.id].loading && (
                 <div
                   className={`test-result ${

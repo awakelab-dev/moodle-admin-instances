@@ -3,6 +3,7 @@ import CourseSizeTab from './CourseSizeTab';
 import PlatformHistoryTab from './PlatformHistoryTab';
 import TopUsersTab from './TopUsersTab';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { formatPlatformDisplayName } from '@/lib/utils';
 
 export default function Dashboard({ selectedPlatform, userRole }) {
   const [tab, setTab] = useState('courses');
@@ -26,19 +27,19 @@ export default function Dashboard({ selectedPlatform, userRole }) {
         <TabsContent value="courses">
           <CourseSizeTab
             moodleSource={selectedPlatform.source}
-            platformName={selectedPlatform.name}
+            platformName={formatPlatformDisplayName(selectedPlatform.name)}
           />
         </TabsContent>
         <TabsContent value="users">
           <TopUsersTab
             moodleSource={selectedPlatform.source}
-            platformName={selectedPlatform.name}
+            platformName={formatPlatformDisplayName(selectedPlatform.name)}
           />
         </TabsContent>
         <TabsContent value="history">
           <PlatformHistoryTab
             moodleSource={selectedPlatform.source}
-            platformName={selectedPlatform.name}
+            platformName={formatPlatformDisplayName(selectedPlatform.name)}
             userRole={userRole}
           />
         </TabsContent>

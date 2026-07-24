@@ -9,6 +9,10 @@ export interface SyncProgress {
   platforms_synced: number;
   current_platform: string;
   sync_errors: string[];
+  current_step?: string;
+  items_done?: number;
+  items_total?: number;
+  platform_id?: string;
 }
 
 @Injectable()
