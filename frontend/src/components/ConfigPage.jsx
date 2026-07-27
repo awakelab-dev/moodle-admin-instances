@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatPlatformDisplayName } from '@/lib/utils';
+import { formatCurrency } from '@/lib/formatters';
 
 const EMPTY_FORM = {
   name: '',
@@ -63,24 +64,6 @@ function formatLastSync(value) {
     }).format(new Date(value))}`;
   } catch {
     return 'Nunca sincronizada';
-  }
-}
-
-function formatCurrency(value, currency = 'USD') {
-  if (!Number.isFinite(Number(value))) return '—';
-
-  try {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(Number(value));
-  } catch {
-    return `${new Intl.NumberFormat('es-CL', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(Number(value))} ${currency || ''}`.trim();
   }
 }
 

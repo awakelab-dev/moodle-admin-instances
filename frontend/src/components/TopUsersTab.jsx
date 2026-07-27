@@ -10,6 +10,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { getTopUsers } from '../api';
+import { formatBytes } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -21,13 +22,6 @@ const USER_BORDER_COLOR = '#01264C';
 function truncateLabel(value, maxLength = 26) {
   if (!value) return '';
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
-}
-
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
 }
 
 export default function TopUsersTab({ moodleSource, platformName }) {

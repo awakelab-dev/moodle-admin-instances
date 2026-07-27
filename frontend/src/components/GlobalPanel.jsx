@@ -13,6 +13,18 @@ import {
 import { Bar, Line } from 'react-chartjs-2';
 import { getGlobalStorageHistory, getPlatformStorageSummary, getLastSync } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
+import {
+  formatGigabytes,
+  formatCurrency,
+  formatCurrencyCompact,
+  parseMonthKey,
+  formatMonthLabel,
+  getQuarterKey,
+  formatQuarterLabel,
+  getYearKey,
+  formatPeriodLabel,
+  hasMarginData,
+} from '@/lib/formatters';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -94,10 +106,6 @@ function formatRelativeSync(completedAt) {
   return `Actualizado hace ${days} d`;
 }
 
-function parseMonthKey(month) {
-  const date = new Date(`${month}-01T00:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 const MARGIN_FILTER_OPTIONS = [
   { value: 'all', label: 'Todas' },
   { value: 'positive', label: 'Ganancia' },
@@ -108,51 +116,6 @@ const GLOBAL_HISTORY_GROUP_BY_OPTIONS = [
   { value: 'quarter', label: 'Trimestre' },
   { value: 'year', label: 'Año' },
 ];
-
-function formatGigabytes(value) {
-  return `${new Intl.NumberFormat('es-CL', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  }).format(Number(value || 0))} GB`;
-}
-
-function formatMonthLabel(month) {
-  const date = parseMonthKey(month);
-  if (!date) return month;
-
-  return new Intl.DateTimeFormat('es-CL', {
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
-}
-
-function getQuarterKey(month) {
-  const date = parseMonthKey(month);
-  if (!date) return month;
-
-  const quarter = Math.floor(date.getMonth() / 3) + 1;
-  return `${date.getFullYear()}-Q${quarter}`;
-}
-
-function formatQuarterLabel(quarterKey) {
-  const match = /^(\d{4})-Q([1-4])$/.exec(quarterKey);
-  if (!match) return quarterKey;
-
-  return `Q${match[2]} ${match[1]}`;
-}
-
-function getYearKey(month) {
-  const date = parseMonthKey(month);
-  if (!date) return String(month).slice(0, 4);
-
-  return String(date.getFullYear());
-}
-
-function formatPeriodLabel(periodKey, groupBy) {
-  if (groupBy === 'quarter') return formatQuarterLabel(periodKey);
-  if (groupBy === 'year') return periodKey;
-  return formatMonthLabel(periodKey);
-}
 
 function buildGroupedGlobalStoragePoints(points, groupBy) {
   const sortedPoints = [...points].sort((a, b) =>
@@ -231,13 +194,6 @@ function buildGroupedPlatformStoragePoints(points, groupBy) {
   });
 
   return Array.from(groups.values());
-}
-
-function hasMarginData(point) {
-  return (
-    Number.isFinite(Number(point?.margin)) &&
-    (point?.hasFinancialConfig || point?.hasPartialFinancialConfig)
-  );
 }
 
 function buildGroupedPlatformFinancialPoints(points, groupBy) {
@@ -332,56 +288,6 @@ function getGlobalMarginDescription(groupBy) {
   }
 
   return 'Comparativa del margen por empresa para los meses seleccionados, usando los mismos filtros del histórico global y un costo global de USD 1 por GB.';
-}
-
-function formatCurrency(value, currency = 'CLP') {
-  if (!Number.isFinite(Number(value))) return '—';
-
-  try {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: currency || 'CLP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(Number(value));
-  } catch {
-    return `${new Intl.NumberFormat('es-CL', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(Number(value))} ${currency || ''}`.trim();
-  }
-}
-
-function getCurrencyPrefix(currency = 'CLP') {
-  try {
-    const formatter = new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: currency || 'CLP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-
-    return (
-      formatter
-        .formatToParts(0)
-        .find((part) => part.type === 'currency')?.value || currency
-    );
-  } catch {
-    return currency || '';
-  }
-}
-
-function formatCurrencyCompact(value, currency = 'CLP') {
-  if (!Number.isFinite(Number(value))) return '—';
-
-  const amount = Number(value);
-  const prefix = getCurrencyPrefix(currency);
-  const compact = new Intl.NumberFormat('es-CL', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(Math.abs(amount));
-
-  return `${amount < 0 ? '-' : ''}${prefix}${compact}`;
 }
 
 function getClosestTickIndex(scale, pixel) {
@@ -1171,7 +1077,11 @@ export default function GlobalPanel({
                   intersect: true,
                 },
                 onClick: (event, activeElements, chart) => {
-                  if (!activeElements.length) return;
+                  if (!activeElements.length) {
+                    // Clic fuera de cualquier punto/línea: volver a ver todas las plataformas.
+                    setIsolatedHistorySource(null);
+                    return;
+                  }
                   const dataset = chart.data.datasets[activeElements[0].datasetIndex];
                   if (!dataset?.source) return;
                   setIsolatedHistorySource((prev) =>

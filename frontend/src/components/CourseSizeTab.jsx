@@ -11,6 +11,7 @@ import {
 import { Bar } from 'react-chartjs-2';
 import { getCourseBreakdown, getCourses } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
+import { formatBytes } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,13 +27,6 @@ const STORAGE_COLORS = {
 };
 
 const CHART_FONT_FAMILY = "'Poppins', sans-serif";
-
-function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
-}
 
 function formatPercentage(part, total) {
   if (!part || !total) return '0.0%';
