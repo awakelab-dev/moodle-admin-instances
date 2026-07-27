@@ -1147,7 +1147,10 @@ export default function GlobalPanel({
             Aún no hay snapshots globales suficientes para mostrar el historial de almacenamiento.
           </p>
         ) : (
-          <div className="chart-container chart-container-line-xl">
+          <div
+            className="chart-container chart-container-line-xl"
+            onMouseLeave={() => setHoveredHistorySource(null)}
+          >
             {isolatedHistorySource && (
               <button
                 type="button"
