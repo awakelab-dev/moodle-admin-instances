@@ -267,7 +267,12 @@ export function upsertUserAccumulator(userSizeMap: Record<string, any>, userId: 
   const fallbackFullname = partialUser.fullname || fallbackUsername || `Usuario ${key}`;
 
   if (!userSizeMap[key]) {
-    userSizeMap[key] = { username: fallbackUsername, fullname: fallbackFullname, totalBytes: 0 };
+    userSizeMap[key] = {
+      username: fallbackUsername,
+      fullname: fallbackFullname,
+      email: partialUser.email || '',
+      totalBytes: 0,
+    };
     return userSizeMap[key];
   }
 
@@ -282,6 +287,9 @@ export function upsertUserAccumulator(userSizeMap: Record<string, any>, userId: 
       userSizeMap[key].fullname.startsWith('Usuario '))
   ) {
     userSizeMap[key].fullname = partialUser.fullname;
+  }
+  if (partialUser.email && !userSizeMap[key].email) {
+    userSizeMap[key].email = partialUser.email;
   }
   return userSizeMap[key];
 }

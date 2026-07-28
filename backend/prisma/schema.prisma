@@ -35,9 +35,10 @@ model Platform {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  courses   Course[]
-  users     MoodleUser[]
-  snapshots PlatformSnapshot[]
+  courses     Course[]
+  users       MoodleUser[]
+  snapshots   PlatformSnapshot[]
+  enrollments CourseEnrollment[]
 
   @@map("platforms")
 }
@@ -53,6 +54,7 @@ model Course {
   shortname    String @default("")
   categoryId   Int    @map("category_id")
   categoryName String @default("Sin categoría") @map("category_name")
+  visible      Boolean @default(true)
 
   sizeBytes           BigInt @default(0) @map("size_bytes")
   backupSizeBytes     BigInt @default(0) @map("backup_size_bytes")
@@ -87,6 +89,7 @@ model MoodleUser {
   userId         Int    @map("user_id")
   username       String
   fullname       String @default("")
+  email          String @default("")
   totalSizeBytes BigInt @default(0) @map("total_size_bytes")
 
   syncedAt  DateTime @default(now()) @map("synced_at")
@@ -95,6 +98,22 @@ model MoodleUser {
 
   @@unique([platformId, userId], name: "platform_user_unique")
   @@map("moodle_users")
+}
+
+model CourseEnrollment {
+  id         String   @id @default(uuid())
+  platformId String   @map("platform_id")
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  courseId Int @map("course_id")
+  userId   Int @map("user_id")
+
+  syncedAt DateTime @default(now()) @map("synced_at")
+
+  @@unique([platformId, courseId, userId], name: "platform_course_user_unique")
+  @@index([platformId, courseId])
+  @@index([platformId, userId])
+  @@map("course_enrollments")
 }
 
 model PlatformSnapshot {

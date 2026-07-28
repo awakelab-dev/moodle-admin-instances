@@ -569,6 +569,13 @@ input:focus-visible {
   color: var(--chart-blue);
 }
 
+.stat-sublabel {
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
 .stat-value-forum {
   color: var(--chart-orange);
 }

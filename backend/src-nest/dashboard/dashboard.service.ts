@@ -357,4 +357,75 @@ export class DashboardService {
       .slice(0, 10)
       .map((u) => ({ username: u.username, fullname: u.fullname, total_size_bytes: u.total_size_bytes, platforms: Array.from(u.platforms) }));
   }
+
+  async getInsights(moodleSource: string) {
+    if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar los insights.');
+
+    const platform = await this.findPlatformByUrl(moodleSource);
+    if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+
+    const [courses, students, enrollmentCounts, enrolledPerCourse] = await Promise.all([
+      this.prisma.course.findMany({
+        where: { platformId: platform.id },
+        select: { courseId: true, courseName: true, shortname: true, categoryName: true, visible: true },
+      }),
+      this.prisma.moodleUser.findMany({
+        where: { platformId: platform.id },
+        select: { userId: true, fullname: true, username: true, email: true },
+      }),
+      this.prisma.courseEnrollment.groupBy({
+        by: ['userId'],
+        where: { platformId: platform.id },
+        _count: { userId: true },
+      }),
+      this.prisma.courseEnrollment.groupBy({
+        by: ['courseId'],
+        where: { platformId: platform.id },
+        _count: { courseId: true },
+      }),
+    ]);
+
+    const courseCountByUserId = new Map(enrollmentCounts.map((row) => [row.userId, row._count.userId]));
+    const studentCountByCourseId = new Map(enrolledPerCourse.map((row) => [row.courseId, row._count.courseId]));
+
+    const categoryCounts = new Map<string, number>();
+    for (const course of courses) {
+      const key = course.categoryName || 'Sin categoría';
+      categoryCounts.set(key, (categoryCounts.get(key) || 0) + 1);
+    }
+    const topCategories = Array.from(categoryCounts.entries())
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const enrollmentsTotal = enrolledPerCourse.reduce((acc, row) => acc + row._count.courseId, 0);
+    const visibleCourses = courses.filter((c) => c.visible).length;
+
+    return {
+      moodleSource: platform.url,
+      platformName: platform.name,
+      stats: {
+        courses: courses.length,
+        visibleCourses,
+        students: students.length,
+        enrollments: enrollmentsTotal,
+      },
+      topCategories,
+      courses: courses.map((c) => ({
+        courseId: c.courseId,
+        courseName: c.courseName,
+        shortname: c.shortname,
+        categoryName: c.categoryName,
+        visible: c.visible,
+        enrolledCount: studentCountByCourseId.get(c.courseId) || 0,
+      })),
+      students: students.map((u) => ({
+        userId: u.userId,
+        fullname: u.fullname,
+        username: u.username,
+        email: u.email,
+        courseCount: courseCountByUserId.get(u.userId) || 0,
+      })),
+    };
+  }
 }

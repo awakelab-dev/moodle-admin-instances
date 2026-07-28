@@ -2,6 +2,7 @@ import { useState } from 'react';
 import CourseSizeTab from './CourseSizeTab';
 import PlatformHistoryTab from './PlatformHistoryTab';
 import TopUsersTab from './TopUsersTab';
+import InsightsTab from './InsightsTab';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatPlatformDisplayName } from '@/lib/utils';
 
@@ -23,6 +24,7 @@ export default function Dashboard({ selectedPlatform, userRole }) {
           <TabsTrigger value="courses">Tamaño del curso</TabsTrigger>
           <TabsTrigger value="users">Usuarios (top 10)</TabsTrigger>
           <TabsTrigger value="history">Histórico</TabsTrigger>
+          <TabsTrigger value="insights">Dashboard</TabsTrigger>
         </TabsList>
         <TabsContent value="courses">
           <CourseSizeTab
@@ -41,6 +43,12 @@ export default function Dashboard({ selectedPlatform, userRole }) {
             moodleSource={selectedPlatform.source}
             platformName={formatPlatformDisplayName(selectedPlatform.name)}
             userRole={userRole}
+          />
+        </TabsContent>
+        <TabsContent value="insights">
+          <InsightsTab
+            moodleSource={selectedPlatform.source}
+            platformName={formatPlatformDisplayName(selectedPlatform.name)}
           />
         </TabsContent>
       </Tabs>

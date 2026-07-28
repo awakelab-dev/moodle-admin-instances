@@ -67,6 +67,7 @@ export class SyncService {
         shortname: course.shortname || '',
         category_id: course.categoryid ?? 0,
         category_name: catMap[course.categoryid] || 'Sin categoría',
+        visible: course.visible !== 0,
       };
     }
 
@@ -103,11 +104,17 @@ export class SyncService {
 
     // STEP 3a: enrolled users
     const userSizeMap: Record<string, any> = {};
+    const enrollmentPairs: { courseId: number; userId: number }[] = [];
     await runInBatches(courses, ENROL_CONCURRENCY, async (course: any) => {
       try {
         const users = await client.getEnrolledUsers(course.id);
         for (const u of users) {
-          upsertUserAccumulator(userSizeMap, u.id, { username: u.username, fullname: `${u.firstname || ''} ${u.lastname || ''}`.trim() });
+          upsertUserAccumulator(userSizeMap, u.id, {
+            username: u.username,
+            fullname: `${u.firstname || ''} ${u.lastname || ''}`.trim(),
+            email: u.email || '',
+          });
+          enrollmentPairs.push({ courseId: course.id, userId: u.id });
         }
       } catch (err: any) {
         console.warn(`  ⚠ Error enrolled users course ${course.id}: ${err.message}`);
@@ -240,6 +247,7 @@ export class SyncService {
             shortname: meta.shortname,
             categoryId: meta.category_id,
             categoryName: meta.category_name,
+            visible: meta.visible,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),
             assignmentSizeBytes: BigInt(sizes.assignments),
@@ -252,6 +260,7 @@ export class SyncService {
             shortname: meta.shortname,
             categoryId: meta.category_id,
             categoryName: meta.category_name,
+            visible: meta.visible,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),
             assignmentSizeBytes: BigInt(sizes.assignments),
@@ -270,13 +279,40 @@ export class SyncService {
       try {
         await this.prisma.moodleUser.upsert({
           where: { platform_user_unique: { platformId: platform.id, userId: Number(uid) } },
-          create: { platformId: platform.id, moodleName: platform.name, userId: Number(uid), username: u.username, fullname: u.fullname, totalSizeBytes: BigInt(u.totalBytes), syncedAt: now },
-          update: { moodleName: platform.name, username: u.username, fullname: u.fullname, totalSizeBytes: BigInt(u.totalBytes), syncedAt: now },
+          create: { platformId: platform.id, moodleName: platform.name, userId: Number(uid), username: u.username, fullname: u.fullname, email: u.email || '', totalSizeBytes: BigInt(u.totalBytes), syncedAt: now },
+          update: { moodleName: platform.name, username: u.username, fullname: u.fullname, email: u.email || '', totalSizeBytes: BigInt(u.totalBytes), syncedAt: now },
         });
       } catch (err: any) {
         console.error(`  ⚠ Error saving user ${uid}: ${err.message}`);
       }
     });
+
+    // Reemplazar las matrículas de esta plataforma con el snapshot actual
+    // (simplifica altas/bajas de alumnos entre sincronizaciones).
+    try {
+      await this.prisma.courseEnrollment.deleteMany({ where: { platformId: platform.id } });
+      if (enrollmentPairs.length > 0) {
+        const uniquePairs = Array.from(
+          new Map(
+            enrollmentPairs.map((pair) => [`${pair.courseId}:${pair.userId}`, pair])
+          ).values()
+        );
+        for (let i = 0; i < uniquePairs.length; i += CHUNK) {
+          const chunk = uniquePairs.slice(i, i + CHUNK);
+          await this.prisma.courseEnrollment.createMany({
+            data: chunk.map((pair) => ({
+              platformId: platform.id,
+              courseId: pair.courseId,
+              userId: pair.userId,
+              syncedAt: now,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn(`  ⚠ Error saving enrollments: ${err.message}`);
+    }
 
     const totalBytes = Object.values(courseSizes).reduce((acc: number, s: any) => acc + s.content + s.backup + s.assignments + s.forums, 0);
     const monthlyCharge = platform.monthlyCharge === null || platform.monthlyCharge === undefined ? null : Number(platform.monthlyCharge);

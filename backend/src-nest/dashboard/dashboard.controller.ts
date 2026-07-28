@@ -36,4 +36,9 @@ export class DashboardController {
   topUsers(@Query() query: PlatformQueryDto) {
     return this.dashboardService.getTopUsers(query.moodleSource);
   }
+
+  @Get('insights')
+  insights(@Query() query: PlatformQueryDto) {
+    return this.dashboardService.getInsights(query.moodleSource);
+  }
 }

@@ -111,6 +111,10 @@ export const getCourseBreakdown = (courseId, params = {}) =>
   });
 export const getTopUsers = (params = {}) =>
   request(buildPath('/dashboard/users/top', params));
+export const getInsights = (params = {}) =>
+  request(buildPath('/dashboard/insights', params), {
+    cache: 'no-store',
+  });
 
 /* ─── Platforms ─── */
 export const getPlatforms = () => request('/platforms', { cache: 'no-store' });
