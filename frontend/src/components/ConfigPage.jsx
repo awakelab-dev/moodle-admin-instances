@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   getPlatforms,
   addPlatform,
@@ -87,6 +87,8 @@ export default function ConfigPage() {
   const [syncStartedAt, setSyncStartedAt] = useState({});
   const [syncProgress, setSyncProgress] = useState({});
   const [nowMs, setNowMs] = useState(Date.now());
+  const platformsRef = useRef([]);
+  const trackedSyncIdsRef = useRef(new Set());
 
   useEffect(() => {
     if (!Object.values(syncLoading).some(Boolean)) return undefined;
@@ -98,9 +100,11 @@ export default function ConfigPage() {
     try {
       const data = await getPlatforms();
       setPlatforms(data);
+      platformsRef.current = data;
       return data;
     } catch {
       setPlatforms([]);
+      platformsRef.current = [];
       return [];
     } finally {
       setLoading(false);
@@ -108,7 +112,38 @@ export default function ConfigPage() {
   }
 
   useEffect(() => {
-    load().then((data) => resumeRunningSync(data));
+    load();
+  }, []);
+
+  // Vigía continuo: en cualquier momento (no solo al entrar a la página) que
+  // haya una sincronización en curso —la hayas lanzado tú o no, esté su
+  // tarjeta a la vista o no— la reenganchamos a la barra de progreso de esa
+  // plataforma en concreto, para que nunca parezca "salida de la nada".
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const status = await getSyncStatus();
+        if (cancelled) return;
+        if (status?.status !== 'running' || !status.platform_id) return;
+
+        const platform = platformsRef.current.find((item) => item.id === status.platform_id);
+        if (!platform) return;
+
+        const startedAtMs = status.started_at ? new Date(status.started_at).getTime() : Date.now();
+        trackSyncOnce(platform, startedAtMs);
+      } catch {
+        // ignorar errores de sondeo, no interrumpir la vista
+      }
+    }
+
+    poll();
+    const intervalId = setInterval(poll, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
   }, []);
 
   function finishSyncTracking(platformId) {
@@ -161,24 +196,6 @@ export default function ConfigPage() {
       flash(err.message, 'error');
     } finally {
       finishSyncTracking(platform.id);
-    }
-  }
-
-  // Si al montar (p.ej. tras cambiar de pestaña y volver) ya hay una sincronización
-  // en curso para alguna plataforma, reenganchamos la barra de progreso a ese estado real
-  // en vez de dejar que el usuario crea que se detuvo.
-  async function resumeRunningSync(platformsList) {
-    try {
-      const status = await getSyncStatus();
-      if (status?.status !== 'running' || !status.platform_id) return;
-
-      const platform = platformsList.find((item) => item.id === status.platform_id);
-      if (!platform) return;
-
-      const startedAtMs = status.started_at ? new Date(status.started_at).getTime() : Date.now();
-      trackSync(platform, startedAtMs);
-    } catch {
-      // si no se puede consultar el estado, simplemente no restauramos el indicador
     }
   }
 
@@ -276,6 +293,14 @@ export default function ConfigPage() {
       }));
     }
   }
+  function trackSyncOnce(platform, startedAtMs) {
+    if (trackedSyncIdsRef.current.has(platform.id)) return;
+    trackedSyncIdsRef.current.add(platform.id);
+    trackSync(platform, startedAtMs).finally(() => {
+      trackedSyncIdsRef.current.delete(platform.id);
+    });
+  }
+
   async function handleSyncOne(p) {
     try {
       await triggerPlatformSync(p.id);
@@ -287,7 +312,7 @@ export default function ConfigPage() {
           const status = await getSyncStatus();
           if (status?.platform_id === p.id) {
             const startedAtMs = status.started_at ? new Date(status.started_at).getTime() : Date.now();
-            trackSync(p, startedAtMs);
+            trackSyncOnce(p, startedAtMs);
             return;
           }
           flash(
@@ -304,7 +329,7 @@ export default function ConfigPage() {
       return;
     }
 
-    trackSync(p, Date.now());
+    trackSyncOnce(p, Date.now());
   }
 
   async function handleToggleActive(platform) {
