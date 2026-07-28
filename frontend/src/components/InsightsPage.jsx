@@ -52,7 +52,7 @@ export default function InsightsPage() {
       <div className="config-header">
         <div>
           <p className="eyebrow">Dashboard</p>
-          <h2 className="card-title section-title">Moodle Insights</h2>
+          <h2 className="card-title section-title">Aulacloner</h2>
           <p className="panel-description">
             Cursos, alumnos y matrículas de una plataforma Moodle concreta.
           </p>
