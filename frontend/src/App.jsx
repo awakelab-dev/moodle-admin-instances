@@ -10,6 +10,7 @@ import LoginPage from './components/LoginPage';
 import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import GlobalPanel from './components/GlobalPanel';
+import InsightsPage from './components/InsightsPage';
 import ConfigPage from './components/ConfigPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,7 @@ export default function App() {
   const [session, setSession] = useState(initialSessionRef.current);
   const [authLoading, setAuthLoading] = useState(Boolean(initialSessionRef.current?.token));
   const [authNotice, setAuthNotice] = useState(null);
-  const [view, setView] = useState('global');
+  const [view, setView] = useState('insights');
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,7 +75,7 @@ export default function App() {
       clearAuthSession();
       setSession(null);
       setSelectedPlatform(null);
-      setView('global');
+      setView('insights');
       setSearchTerm('');
       setAuthNotice('Tu sesión expiró. Inicia sesión nuevamente.');
     }
@@ -99,7 +100,7 @@ export default function App() {
     setSession(nextSession);
     setAuthNotice(null);
     setSelectedPlatform(null);
-    setView('global');
+    setView('insights');
     setSearchTerm('');
   }
 
@@ -108,7 +109,7 @@ export default function App() {
     setSession(null);
     setAuthNotice(null);
     setSelectedPlatform(null);
-    setView('global');
+    setView('insights');
     setSearchTerm('');
   }
 
@@ -129,6 +130,7 @@ export default function App() {
   }
 
   const views = {
+    insights: <InsightsPage />,
     global: (
       <GlobalPanel
         onSelectPlatform={openPlatformDetail}
@@ -185,6 +187,13 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Secciones principales">
+          <button
+            type="button"
+            className={`sidebar-nav-item ${resolvedView === 'insights' ? 'active' : ''}`}
+            onClick={() => setView('insights')}
+          >
+            Dashboard
+          </button>
           <button
             type="button"
             className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
