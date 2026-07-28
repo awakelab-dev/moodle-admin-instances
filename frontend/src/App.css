@@ -859,6 +859,21 @@ input:focus-visible {
 .insights-table-wrapper {
   max-height: 420px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent) var(--color-surface-muted);
+}
+
+.insights-table-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.insights-table-wrapper::-webkit-scrollbar-track {
+  background: var(--color-surface-muted);
+}
+
+.insights-table-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--color-accent);
+  border-radius: 999px;
 }
 
 .course-table {
