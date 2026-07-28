@@ -856,6 +856,11 @@ input:focus-visible {
   overflow-y: auto;
 }
 
+.insights-table-wrapper {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
 .course-table {
   width: 100%;
   border-collapse: separate;

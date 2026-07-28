@@ -194,9 +194,9 @@ export default function InsightsTab({ moodleSource, platformName }) {
             <h3 className="card-title table-title">Cursos ({courses.length})</h3>
           </div>
         </div>
-        <div className="table-wrapper">
+        <div className="table-wrapper insights-table-wrapper">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-surface">
               <TableRow>
                 <TableHead>Curso</TableHead>
                 <TableHead>Categoría</TableHead>
@@ -234,9 +234,9 @@ export default function InsightsTab({ moodleSource, platformName }) {
             <h3 className="card-title table-title">Alumnos ({students.length})</h3>
           </div>
         </div>
-        <div className="table-wrapper">
+        <div className="table-wrapper insights-table-wrapper">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-surface">
               <TableRow>
                 <TableHead>Alumno</TableHead>
                 <TableHead>Email</TableHead>
