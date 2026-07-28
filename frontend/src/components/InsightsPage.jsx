@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getPlatformStorageSummary } from '../api';
+import { getPlatforms } from '../api';
 import InsightsTab from './InsightsTab';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,10 +13,12 @@ export default function InsightsPage() {
   useEffect(() => {
     let isMounted = true;
 
-    getPlatformStorageSummary()
+    getPlatforms()
       .then((response) => {
         if (!isMounted) return;
-        const list = Array.isArray(response) ? response : [];
+        const list = (Array.isArray(response) ? response : []).sort((a, b) =>
+          formatPlatformDisplayName(a.name).localeCompare(formatPlatformDisplayName(b.name))
+        );
         setPlatforms(list);
         setSelectedSource((prev) => prev || list[0]?.source || '');
         setError(null);
