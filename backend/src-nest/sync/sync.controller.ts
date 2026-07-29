@@ -23,6 +23,15 @@ export class SyncController {
     return { message: 'Sincronización iniciada.' };
   }
 
+  @Post('cancel')
+  cancel() {
+    if (!this.progress.isRunning()) {
+      throw new ConflictException('No hay ninguna sincronización en curso.');
+    }
+    this.progress.requestCancel();
+    return { message: 'Cancelación solicitada.' };
+  }
+
   @Post(':platformId')
   triggerSingle(@Param('platformId') platformId: string) {
     if (this.progress.isRunning()) {

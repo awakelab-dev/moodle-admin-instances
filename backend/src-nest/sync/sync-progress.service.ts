@@ -18,6 +18,7 @@ export interface SyncProgress {
 @Injectable()
 export class SyncProgressService {
   private current: SyncProgress | null = null;
+  private cancelRequested = false;
 
   get(): SyncProgress | null {
     return this.current;
@@ -25,9 +26,18 @@ export class SyncProgressService {
 
   set(progress: SyncProgress | null) {
     this.current = progress;
+    this.cancelRequested = false;
   }
 
   isRunning(): boolean {
     return this.current?.status === 'running';
+  }
+
+  requestCancel() {
+    this.cancelRequested = true;
+  }
+
+  isCancelRequested(): boolean {
+    return this.cancelRequested;
   }
 }

@@ -88,6 +88,7 @@ export const getCurrentUser = () =>
 /* ─── Sync ─── */
 export const triggerSync = () => request('/sync', { method: 'POST' });
 export const triggerPlatformSync = (id) => request(`/sync/${id}`, { method: 'POST' });
+export const cancelSync = () => request('/sync/cancel', { method: 'POST' });
 export const getSyncStatus = () => request('/sync/status');
 export const getLastSync = () => request('/sync/last');
 

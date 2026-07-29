@@ -18,10 +18,24 @@ const FORUM_CONCURRENCY = 10;
 const CHUNK = 50;
 const DB_WRITE_CONCURRENCY = 20;
 
-async function runInBatches<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>) {
+class SyncCancelledError extends Error {
+  constructor() {
+    super('Sincronización cancelada por el usuario.');
+    this.name = 'SyncCancelledError';
+  }
+}
+
+async function runInBatches<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+  ensureNotCancelled?: () => void,
+) {
   for (let i = 0; i < items.length; i += concurrency) {
+    ensureNotCancelled?.();
     await Promise.all(items.slice(i, i + concurrency).map(fn));
   }
+  ensureNotCancelled?.();
 }
 
 @Injectable()
@@ -59,6 +73,9 @@ export class SyncService {
         current.items_total = progressUnitsTotal;
       }
     };
+    const ensureNotCancelled = () => {
+      if (this.progress.isCancelRequested()) throw new SyncCancelledError();
+    };
 
     const courseMetaMap: Record<number, any> = {};
     for (const course of courses) {
@@ -87,7 +104,7 @@ export class SyncService {
       } finally {
         bumpProgress('Calculando contenido de cursos');
       }
-    });
+    }, ensureNotCancelled);
 
     // STEP 2: Moodle backup sizes
     if (backupWsAvailable) {
@@ -99,7 +116,7 @@ export class SyncService {
         } finally {
           bumpProgress('Calculando copias de seguridad');
         }
-      });
+      }, ensureNotCancelled);
     }
 
     // STEP 3a: enrolled users
@@ -121,10 +138,11 @@ export class SyncService {
       } finally {
         bumpProgress('Calculando usuarios matriculados');
       }
-    });
+    }, ensureNotCancelled);
 
     // STEP 3b: assignments + submissions
     for (let i = 0; i < courseIds.length; i += CHUNK) {
+      ensureNotCancelled();
       try {
         const chunk = courseIds.slice(i, i + CHUNK);
         const assignData = await client.getAssignments(chunk);
@@ -180,6 +198,7 @@ export class SyncService {
     // STEP 4: forum attachments
     try {
       for (let i = 0; i < courseIds.length; i += CHUNK) {
+        ensureNotCancelled();
         const chunk = courseIds.slice(i, i + CHUNK);
         let forums;
         try {
@@ -226,8 +245,11 @@ export class SyncService {
         });
       }
     } catch (err: any) {
+      if (err instanceof SyncCancelledError) throw err;
       console.warn(`  ⚠ Forum scanning failed: ${err.message}`);
     }
+
+    ensureNotCancelled();
 
     // STEP 5: persist to Postgres
     const now = new Date();
@@ -420,6 +442,7 @@ export class SyncService {
           const result = await this.syncPlatform(p);
           console.log(`  ✓ ${p.name}: ${result.courses} courses, ${result.users} users`);
         } catch (err: any) {
+          if (err instanceof SyncCancelledError) throw err;
           const msg = `${p.name}: ${err.message}`;
           console.error(`  ✗ ${msg}`);
           syncErrors.push(msg);

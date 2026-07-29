@@ -6,6 +6,7 @@ import {
   deletePlatform,
   testPlatform,
   triggerPlatformSync,
+  cancelSync,
   getSyncStatus,
 } from '../api';
 import { Card } from '@/components/ui/card';
@@ -86,6 +87,7 @@ export default function ConfigPage() {
   const [syncLoading, setSyncLoading] = useState({});
   const [syncStartedAt, setSyncStartedAt] = useState({});
   const [syncProgress, setSyncProgress] = useState({});
+  const [cancelingSync, setCancelingSync] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
   const platformsRef = useRef([]);
   const trackedSyncIdsRef = useRef(new Set());
@@ -299,6 +301,18 @@ export default function ConfigPage() {
     trackSync(platform, startedAtMs).finally(() => {
       trackedSyncIdsRef.current.delete(platform.id);
     });
+  }
+
+  async function handleCancelSync() {
+    setCancelingSync(true);
+    try {
+      await cancelSync();
+      flash('Cancelación solicitada. Puede tardar unos segundos en detenerse.');
+    } catch (err) {
+      flash(err.message, 'error');
+    } finally {
+      setCancelingSync(false);
+    }
   }
 
   async function handleSyncOne(p) {
@@ -552,15 +566,26 @@ export default function ConfigPage() {
                       <div className="platform-sync-progress-bar-fill" />
                     )}
                   </div>
-                  <span className="platform-sync-progress-label">
-                    Sincronizando "{formatPlatformDisplayName(p.name)}"
-                    {typeof syncProgress[p.id]?.percent === 'number'
-                      ? ` — ${syncProgress[p.id].percent}%`
-                      : '…'}
-                    {syncProgress[p.id]?.step ? ` · ${syncProgress[p.id].step}` : ''}
-                    {' · '}
-                    {formatElapsed(nowMs - (syncStartedAt[p.id] || nowMs))}
-                  </span>
+                  <div className="platform-sync-progress-row">
+                    <span className="platform-sync-progress-label">
+                      Sincronizando "{formatPlatformDisplayName(p.name)}"
+                      {typeof syncProgress[p.id]?.percent === 'number'
+                        ? ` — ${syncProgress[p.id].percent}%`
+                        : '…'}
+                      {syncProgress[p.id]?.step ? ` · ${syncProgress[p.id].step}` : ''}
+                      {' · '}
+                      {formatElapsed(nowMs - (syncStartedAt[p.id] || nowMs))}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelSync}
+                      disabled={cancelingSync}
+                    >
+                      {cancelingSync && <span className="spinner spinner-sm" />}
+                      {cancelingSync ? 'Cancelando…' : 'Cancelar'}
+                    </Button>
+                  </div>
                 </div>
               )}
               {testResults[p.id] && !testResults[p.id].loading && (
