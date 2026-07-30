@@ -846,16 +846,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                       <th className="sortable" onClick={() => handleAccessSort('firstAccess')}>
                         Primer acceso (sitio){accessSortIcon('firstAccess')}
                       </th>
-                      <th className="sortable" onClick={() => handleAccessSort('lastAccess')}>
-                        Último acceso (sitio){accessSortIcon('lastAccess')}
-                      </th>
                       <th
                         className="sortable"
                         onClick={() => handleAccessSort('lastCourseAccess')}
                       >
                         Último acceso (curso){accessSortIcon('lastCourseAccess')}
                       </th>
-                      <th>Registros</th>
                       <th>Tiempo acumulado</th>
                       <th>Contenidos visualizados</th>
                       <th>Evaluaciones</th>
@@ -877,9 +873,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                         <td className="mono">{student.username}</td>
                         <td>{student.email || '—'}</td>
                         <td>{formatUnixSeconds(student.firstAccess)}</td>
-                        <td>{formatUnixSeconds(student.lastAccess)}</td>
                         <td>{formatUnixSeconds(student.lastCourseAccess)}</td>
-                        <td className="muted" title="No disponible por Web Services">—</td>
                         <td className="muted" title="No disponible por Web Services">—</td>
                         <td className="muted" title="No disponible por Web Services">—</td>
                         <td className="muted" title="No disponible por Web Services">—</td>
@@ -890,9 +884,9 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                 </table>
               </div>
               <p className="history-note">
-                "Registros", "Tiempo acumulado", "Contenidos visualizados", "Evaluaciones" y
-                "Correos" no están disponibles por Web Services de Moodle — solo existen dentro
-                de plugins de informes (como Configurable Reports), que no exponen API.
+                "Tiempo acumulado", "Contenidos visualizados", "Evaluaciones" y "Correos" no
+                están disponibles por Web Services de Moodle — solo existen dentro de plugins de
+                informes (como Configurable Reports), que no exponen API.
               </p>
             </>
           )}
