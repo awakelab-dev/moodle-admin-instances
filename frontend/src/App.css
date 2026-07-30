@@ -828,7 +828,8 @@ input:focus-visible {
 }
 
 .global-panel-last-sync {
-  align-self: flex-start;
+  justify-self: start;
+  width: fit-content;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -839,6 +840,7 @@ input:focus-visible {
   color: var(--color-accent);
   font-size: 0.74rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .global-panel-sync-gear {
