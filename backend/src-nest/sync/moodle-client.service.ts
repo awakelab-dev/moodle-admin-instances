@@ -47,6 +47,14 @@ export class MoodleClient {
     return this.call('core_enrol_get_enrolled_users', { courseid: courseId });
   }
 
+  getActiveEnrolledUserIds(courseId: number) {
+    return this.call('core_enrol_get_enrolled_users', {
+      courseid: courseId,
+      'options[0][name]': 'onlyactive',
+      'options[0][value]': 1,
+    });
+  }
+
   getAssignments(courseIds: number[]) {
     const params: Record<string, any> = {};
     courseIds.forEach((id, i) => {

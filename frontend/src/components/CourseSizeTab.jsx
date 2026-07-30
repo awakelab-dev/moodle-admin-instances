@@ -49,7 +49,8 @@ function formatUnixSeconds(value) {
   if (!value) return 'Nunca';
   const date = new Date(value * 1000);
   if (Number.isNaN(date.getTime())) return 'Nunca';
-  return date.toLocaleString('es-CL');
+  return date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    + ' ' + date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function CourseSizeTab({ moodleSource, platformName }) {
@@ -826,7 +827,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                 onChange={(e) => setAccessSearchTerm(e.target.value)}
               />
               <div className="table-wrapper insights-table-wrapper">
-                <table className="course-table">
+                <table className="course-table access-report-table">
                   <thead>
                     <tr>
                       <th className="sortable" onClick={() => handleAccessSort('firstname')}>
@@ -866,27 +867,32 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                       <tr key={student.userId}>
                         <td>{student.firstname || '—'}</td>
                         <td>{student.lastname || '—'}</td>
-                        <td className="muted">No disponible</td>
+                        <td>
+                          {student.activeEnrollment === null
+                            ? 'No disponible'
+                            : student.activeEnrollment
+                              ? 'Sí'
+                              : 'No'}
+                        </td>
                         <td className="mono">{student.username}</td>
                         <td>{student.email || '—'}</td>
                         <td>{formatUnixSeconds(student.firstAccess)}</td>
                         <td>{formatUnixSeconds(student.lastAccess)}</td>
                         <td>{formatUnixSeconds(student.lastCourseAccess)}</td>
-                        <td className="muted">No disponible</td>
-                        <td className="muted">No disponible</td>
-                        <td className="muted">No disponible</td>
-                        <td className="muted">No disponible</td>
-                        <td className="muted">No disponible</td>
+                        <td className="muted" title="No disponible por Web Services">—</td>
+                        <td className="muted" title="No disponible por Web Services">—</td>
+                        <td className="muted" title="No disponible por Web Services">—</td>
+                        <td className="muted" title="No disponible por Web Services">—</td>
+                        <td className="muted" title="No disponible por Web Services">—</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               <p className="history-note">
-                "Matrícula activa", "Registros", "Tiempo acumulado", "Contenidos visualizados",
-                "Evaluaciones" y "Correos" no están disponibles por Web Services de Moodle — solo
-                existen dentro de plugins de informes (como Configurable Reports), que no exponen
-                API.
+                "Registros", "Tiempo acumulado", "Contenidos visualizados", "Evaluaciones" y
+                "Correos" no están disponibles por Web Services de Moodle — solo existen dentro
+                de plugins de informes (como Configurable Reports), que no exponen API.
               </p>
             </>
           )}

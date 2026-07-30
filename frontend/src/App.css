@@ -1062,6 +1062,13 @@ input:focus-visible {
   color: var(--color-brand);
 }
 
+.access-report-table th,
+.access-report-table td {
+  padding: 0.5rem 0.5rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 .course-table tbody tr {
   transition: background 0.12s ease;
 }

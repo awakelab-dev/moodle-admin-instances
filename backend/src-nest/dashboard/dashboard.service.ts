@@ -334,23 +334,33 @@ export class DashboardService {
     }
 
     const client = new MoodleClient(platform.url, platform.token);
-    const usersRaw = await client.getEnrolledUsers(courseId);
+    const [usersRaw, activeUsersRaw] = await Promise.all([
+      client.getEnrolledUsers(courseId),
+      client.getActiveEnrolledUserIds(courseId).catch(() => null),
+    ]);
     if (!Array.isArray(usersRaw)) {
       throw new ServiceUnavailableException('No se pudo obtener el listado de alumnos matriculados para este curso.');
     }
 
-    // Moodle no expone por Web Services el estado de matrícula, el número de
-    // registros/eventos, el tiempo acumulado, los contenidos visualizados,
-    // las evaluaciones agregadas ni los correos enviados (eso vive dentro de
-    // plugins de informes como Configurable Reports, sin API). Se devuelven
-    // como `null` explícitamente y el frontend los muestra con un valor fijo.
+    // "Matrícula activa" sí se puede saber por Web Services: Moodle permite
+    // filtrar por matrículas activas (options.onlyactive=1). Si un usuario
+    // aparece en el listado completo pero no en el filtrado, está suspendido.
+    const activeUserIds = Array.isArray(activeUsersRaw)
+      ? new Set(activeUsersRaw.map((u: any) => u.id))
+      : null;
+
+    // Moodle no expone por Web Services el número de registros/eventos, el
+    // tiempo acumulado, los contenidos visualizados, las evaluaciones
+    // agregadas ni los correos enviados (eso vive dentro de plugins de
+    // informes como Configurable Reports, sin API). Se devuelven como `null`
+    // explícitamente y el frontend los muestra con un valor fijo.
     const students = usersRaw.map((u: any) => ({
       userId: u.id,
       firstname: u.firstname || '',
       lastname: u.lastname || '',
       username: u.username || '',
       email: u.email || '',
-      activeEnrollment: null,
+      activeEnrollment: activeUserIds ? activeUserIds.has(u.id) : null,
       firstAccess: u.firstaccess || null,
       lastAccess: u.lastaccess || null,
       lastCourseAccess: u.lastcourseaccess || null,
