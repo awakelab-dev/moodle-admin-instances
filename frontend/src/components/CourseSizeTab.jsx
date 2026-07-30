@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { getCourseBreakdown, getCourses } from '../api';
+import { getCourseBreakdown, getCourseAccessReport, getCourses } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatBytes } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
@@ -45,6 +45,13 @@ function formatDateTime(value) {
   return date.toLocaleString('es-CL');
 }
 
+function formatUnixSeconds(value) {
+  if (!value) return 'Nunca';
+  const date = new Date(value * 1000);
+  if (Number.isNaN(date.getTime())) return 'Nunca';
+  return date.toLocaleString('es-CL');
+}
+
 export default function CourseSizeTab({ moodleSource, platformName }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,6 +65,14 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
   const [breakdownError, setBreakdownError] = useState(null);
   const [breakdownRequestedCourseId, setBreakdownRequestedCourseId] = useState(null);
   const latestBreakdownRequestRef = useRef(0);
+  const [accessReportData, setAccessReportData] = useState(null);
+  const [accessReportLoading, setAccessReportLoading] = useState(false);
+  const [accessReportError, setAccessReportError] = useState(null);
+  const [accessReportRequestedCourseId, setAccessReportRequestedCourseId] = useState(null);
+  const [accessSearchTerm, setAccessSearchTerm] = useState('');
+  const [accessSortKey, setAccessSortKey] = useState('lastname');
+  const [accessSortDir, setAccessSortDir] = useState('asc');
+  const latestAccessReportRequestRef = useRef(0);
 
   useEffect(() => {
     latestBreakdownRequestRef.current += 1;
@@ -65,6 +80,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     setBreakdownError(null);
     setBreakdownLoading(false);
     setBreakdownRequestedCourseId(null);
+    latestAccessReportRequestRef.current += 1;
+    setAccessReportData(null);
+    setAccessReportError(null);
+    setAccessReportLoading(false);
+    setAccessReportRequestedCourseId(null);
+    setAccessSearchTerm('');
   }, [moodleSource, selectedCourseId]);
 
   useEffect(() => {
@@ -170,11 +191,83 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     }
   }
 
+  async function handleLoadAccessReport() {
+    if (!moodleSource || !selectedCourseId) return;
+
+    const courseId = selectedCourseId;
+    const requestId = latestAccessReportRequestRef.current + 1;
+    latestAccessReportRequestRef.current = requestId;
+
+    setAccessReportRequestedCourseId(courseId);
+    setAccessReportError(null);
+    setAccessReportData(null);
+    setAccessReportLoading(true);
+
+    try {
+      const response = await getCourseAccessReport(courseId, { moodleSource });
+      if (latestAccessReportRequestRef.current !== requestId) return;
+      setAccessReportData(response);
+    } catch {
+      if (latestAccessReportRequestRef.current !== requestId) return;
+      setAccessReportData(null);
+      setAccessReportError('No se pudo cargar el informe de accesos de este curso.');
+    } finally {
+      if (latestAccessReportRequestRef.current === requestId) {
+        setAccessReportLoading(false);
+      }
+    }
+  }
+
+  function handleAccessSort(key) {
+    if (accessSortKey === key) {
+      setAccessSortDir((direction) => (direction === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setAccessSortKey(key);
+      setAccessSortDir('asc');
+    }
+  }
+
+  function accessSortIcon(key) {
+    if (accessSortKey !== key) return ' ↕';
+    return accessSortDir === 'asc' ? ' ↑' : ' ↓';
+  }
+
+  const accessReportRows = useMemo(() => {
+    const students = accessReportData?.students || [];
+    let filtered = students;
+
+    if (accessSearchTerm.trim()) {
+      const term = accessSearchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (s) =>
+          s.firstname.toLowerCase().includes(term) ||
+          s.lastname.toLowerCase().includes(term) ||
+          s.username.toLowerCase().includes(term) ||
+          s.email.toLowerCase().includes(term)
+      );
+    }
+
+    return [...filtered].sort((a, b) => {
+      const valA = a[accessSortKey] ?? 0;
+      const valB = b[accessSortKey] ?? 0;
+      if (typeof valA === 'string') {
+        return accessSortDir === 'asc'
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+      }
+      return accessSortDir === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [accessReportData, accessSearchTerm, accessSortKey, accessSortDir]);
+
   const selectedCourse = useMemo(
     () => allCourses.find((course) => course.course_id === selectedCourseId) || null,
     [allCourses, selectedCourseId]
   );
   const breakdownCourse = breakdownData?.course || selectedCourse;
+  const hasLoadedAccessReportForSelectedCourse =
+    selectedCourseId !== null &&
+    accessReportRequestedCourseId === selectedCourseId &&
+    Boolean(accessReportData);
   const hasLoadedBreakdownForSelectedCourse =
     selectedCourseId !== null &&
     breakdownRequestedCourseId === selectedCourseId &&
@@ -668,6 +761,134 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+
+        <div className="course-breakdown-panel">
+          <div className="panel-header panel-header-compact course-breakdown-header">
+            <div>
+              <p className="eyebrow">Informe Global</p>
+              <h3 className="card-title table-title">
+                {selectedCourse ? 'Accesos de alumnos' : 'Selecciona un curso'}
+              </h3>
+              {selectedCourse && (
+                <p className="panel-description">
+                  Primer y último acceso al sitio, y último acceso a este curso, según los
+                  datos que expone el Web Service de Moodle. No incluye tiempo dedicado,
+                  registros de actividad ni evaluaciones: eso no está disponible por Web
+                  Services (ver nota más abajo).
+                </p>
+              )}
+            </div>
+          </div>
+
+          {selectedCourse && (
+            <div className="course-breakdown-actions">
+              <Button
+                type="button"
+                className="course-breakdown-sync-btn"
+                onClick={handleLoadAccessReport}
+                disabled={accessReportLoading}
+              >
+                {accessReportLoading
+                  ? 'Cargando informe…'
+                  : hasLoadedAccessReportForSelectedCourse
+                    ? 'Actualizar informe'
+                    : 'Cargar informe de accesos'}
+              </Button>
+            </div>
+          )}
+          {hasLoadedAccessReportForSelectedCourse && (
+            <p className="course-breakdown-meta course-breakdown-meta-live">
+              Calculado: {formatDateTime(accessReportData?.calculatedAt)}
+            </p>
+          )}
+
+          {!selectedCourse ? (
+            <p className="empty">Selecciona un curso para ver su informe de accesos.</p>
+          ) : accessReportLoading ? (
+            <p className="empty">Consultando alumnos matriculados en vivo…</p>
+          ) : accessReportError ? (
+            <p className="empty error">{accessReportError}</p>
+          ) : accessReportRequestedCourseId !== selectedCourseId ? (
+            <p className="empty">
+              Presiona “Cargar informe de accesos” para consultar los datos en vivo.
+            </p>
+          ) : !accessReportData?.students?.length ? (
+            <p className="empty">No hay alumnos matriculados en este curso.</p>
+          ) : (
+            <>
+              <Input
+                type="text"
+                className="table-search"
+                placeholder="Buscar alumno, usuario o email"
+                value={accessSearchTerm}
+                onChange={(e) => setAccessSearchTerm(e.target.value)}
+              />
+              <div className="table-wrapper insights-table-wrapper">
+                <table className="course-table">
+                  <thead>
+                    <tr>
+                      <th className="sortable" onClick={() => handleAccessSort('firstname')}>
+                        Nombre{accessSortIcon('firstname')}
+                      </th>
+                      <th className="sortable" onClick={() => handleAccessSort('lastname')}>
+                        Apellidos{accessSortIcon('lastname')}
+                      </th>
+                      <th>Matrícula activa</th>
+                      <th className="sortable" onClick={() => handleAccessSort('username')}>
+                        Usuario{accessSortIcon('username')}
+                      </th>
+                      <th className="sortable" onClick={() => handleAccessSort('email')}>
+                        Email{accessSortIcon('email')}
+                      </th>
+                      <th className="sortable" onClick={() => handleAccessSort('firstAccess')}>
+                        Primer acceso (sitio){accessSortIcon('firstAccess')}
+                      </th>
+                      <th className="sortable" onClick={() => handleAccessSort('lastAccess')}>
+                        Último acceso (sitio){accessSortIcon('lastAccess')}
+                      </th>
+                      <th
+                        className="sortable"
+                        onClick={() => handleAccessSort('lastCourseAccess')}
+                      >
+                        Último acceso (curso){accessSortIcon('lastCourseAccess')}
+                      </th>
+                      <th>Registros</th>
+                      <th>Tiempo acumulado</th>
+                      <th>Contenidos visualizados</th>
+                      <th>Evaluaciones</th>
+                      <th>Correos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accessReportRows.map((student) => (
+                      <tr key={student.userId}>
+                        <td>{student.firstname || '—'}</td>
+                        <td>{student.lastname || '—'}</td>
+                        <td className="muted">No disponible</td>
+                        <td className="mono">{student.username}</td>
+                        <td>{student.email || '—'}</td>
+                        <td>{formatUnixSeconds(student.firstAccess)}</td>
+                        <td>{formatUnixSeconds(student.lastAccess)}</td>
+                        <td>{formatUnixSeconds(student.lastCourseAccess)}</td>
+                        <td className="muted">No disponible</td>
+                        <td className="muted">No disponible</td>
+                        <td className="muted">No disponible</td>
+                        <td className="muted">No disponible</td>
+                        <td className="muted">No disponible</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="history-note">
+                "Matrícula activa", "Registros", "Tiempo acumulado", "Contenidos visualizados",
+                "Evaluaciones" y "Correos" no están disponibles por Web Services de Moodle — solo
+                existen dentro de plugins de informes (como Configurable Reports), que no exponen
+                API.
+              </p>
+            </>
           )}
         </div>
       </Card>

@@ -317,6 +317,66 @@ export class DashboardService {
     };
   }
 
+  async getCourseAccessReport(courseId: number, moodleSource: string) {
+    if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar el informe del curso.');
+    if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
+
+    const platform = await this.findPlatformByUrl(moodleSource);
+    if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+
+    const course = await this.prisma.course.findUnique({
+      where: { platform_course_unique: { platformId: platform.id, courseId } },
+    });
+    if (!course) throw new NotFoundException('Curso no encontrado.');
+
+    if (!platform.url || !platform.token) {
+      throw new NotFoundException('La plataforma seleccionada no está configurada para consultar el informe en vivo.');
+    }
+
+    const client = new MoodleClient(platform.url, platform.token);
+    const usersRaw = await client.getEnrolledUsers(courseId);
+    if (!Array.isArray(usersRaw)) {
+      throw new ServiceUnavailableException('No se pudo obtener el listado de alumnos matriculados para este curso.');
+    }
+
+    // Moodle no expone por Web Services el estado de matrícula, el número de
+    // registros/eventos, el tiempo acumulado, los contenidos visualizados,
+    // las evaluaciones agregadas ni los correos enviados (eso vive dentro de
+    // plugins de informes como Configurable Reports, sin API). Se devuelven
+    // como `null` explícitamente y el frontend los muestra con un valor fijo.
+    const students = usersRaw.map((u: any) => ({
+      userId: u.id,
+      firstname: u.firstname || '',
+      lastname: u.lastname || '',
+      username: u.username || '',
+      email: u.email || '',
+      activeEnrollment: null,
+      firstAccess: u.firstaccess || null,
+      lastAccess: u.lastaccess || null,
+      lastCourseAccess: u.lastcourseaccess || null,
+      records: null,
+      accumulatedTime: null,
+      contentViewed: null,
+      evaluations: null,
+      emailsSent: null,
+      roles: Array.isArray(u.roles) ? u.roles.map((r: any) => r.shortname).filter(Boolean) : [],
+    }));
+
+    return {
+      moodleSource: platform.url,
+      platformName: platform.name || course.moodleName || null,
+      calculatedAt: new Date().toISOString(),
+      course: {
+        course_id: course.courseId,
+        course_name: course.courseName,
+        shortname: course.shortname || '',
+        category_name: course.categoryName || 'Sin categoría',
+      },
+      totalStudents: students.length,
+      students,
+    };
+  }
+
   async getTopUsers(moodleSource?: string) {
     const url = moodleSource ? normalizeUrl(moodleSource) : '';
 

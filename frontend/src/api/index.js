@@ -108,6 +108,10 @@ export const getCourseBreakdown = (courseId, params = {}) =>
   request(buildPath(`/dashboard/courses/${courseId}/breakdown`, params), {
     cache: 'no-store',
   });
+export const getCourseAccessReport = (courseId, params = {}) =>
+  request(buildPath(`/dashboard/courses/${courseId}/access-report`, params), {
+    cache: 'no-store',
+  });
 export const getTopUsers = (params = {}) =>
   request(buildPath('/dashboard/users/top', params));
 export const getInsights = (params = {}) =>
