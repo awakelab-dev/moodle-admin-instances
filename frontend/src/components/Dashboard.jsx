@@ -11,7 +11,7 @@ export default function Dashboard({ selectedPlatform, userRole }) {
   if (!selectedPlatform) {
     return (
       <p className="empty">
-        Selecciona una plataforma desde el Panel Global para ver su detalle.
+        Selecciona una plataforma desde Storage para ver su detalle.
       </p>
     );
   }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, LayoutDashboard, HardDrive, Settings } from 'lucide-react';
 import {
   clearAuthSession,
   getCurrentUser,
@@ -7,7 +8,6 @@ import {
   saveAuthSession,
 } from './api';
 import LoginPage from './components/LoginPage';
-import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import GlobalPanel from './components/GlobalPanel';
 import InsightsPage from './components/InsightsPage';
@@ -26,12 +26,11 @@ export default function App() {
   const [authNotice, setAuthNotice] = useState(null);
   const [view, setView] = useState('insights');
   const [selectedPlatform, setSelectedPlatform] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [navExpanded, setNavExpanded] = useState(true);
   const searchSubmitRef = useRef(null);
   const currentUser = session?.user || null;
   const currentUserRole = currentUser?.role || null;
-  const canAccessSync = currentUserRole === 'admin';
 
   useEffect(() => {
     const existingToken = initialSessionRef.current?.token;
@@ -84,16 +83,6 @@ export default function App() {
     return () => window.removeEventListener('auth:expired', handleSessionExpired);
   }, []);
 
-  useEffect(() => {
-    if (!canAccessSync && view === 'sync') {
-      setView('global');
-    }
-  }, [canAccessSync, view]);
-
-  function handleSyncComplete() {
-    setRefreshKey((k) => k + 1);
-  }
-
   async function handleLogin(credentials) {
     const nextSession = await loginUser(credentials);
 
@@ -134,13 +123,12 @@ export default function App() {
     global: (
       <GlobalPanel
         onSelectPlatform={openPlatformDetail}
-        refreshKey={refreshKey}
+        onNavigateToConfig={() => setView('config')}
         searchTerm={searchTerm}
         onSearchTermChange={setSearchTerm}
         searchSubmitRef={searchSubmitRef}
       />
     ),
-    sync: <SyncPanel onSyncComplete={handleSyncComplete} />,
     detail: (
       <Dashboard
         key={selectedPlatform?.id || 'detail-view'}
@@ -182,41 +170,52 @@ export default function App() {
           </div>
           <div className="brand-copy">
             <p className="brand-kicker">AWK UI PRODUCTS</p>
-            <h1 className="logo">Moodle Admin Instances</h1>
+            <h1 className="logo">Moodle Insights</h1>
           </div>
         </div>
 
         <nav className="sidebar-nav" aria-label="Secciones principales">
           <button
             type="button"
-            className={`sidebar-nav-item ${resolvedView === 'insights' ? 'active' : ''}`}
-            onClick={() => setView('insights')}
+            className="sidebar-nav-category"
+            onClick={() => setNavExpanded((prev) => !prev)}
+            aria-expanded={navExpanded}
           >
-            Dashboard
+            <span>Administración de plataformas</span>
+            <ChevronDown
+              size={16}
+              className={`sidebar-nav-chevron ${navExpanded ? '' : 'is-collapsed'}`}
+            />
           </button>
-          <button
-            type="button"
-            className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
-            onClick={() => setView('global')}
-          >
-            Panel global
-          </button>
-          {canAccessSync && (
-            <button
-              type="button"
-              className={`sidebar-nav-item ${resolvedView === 'sync' ? 'active' : ''}`}
-              onClick={() => setView('sync')}
-            >
-              Sincronización
-            </button>
+
+          {navExpanded && (
+            <div className="sidebar-nav-group">
+              <button
+                type="button"
+                className={`sidebar-nav-item ${resolvedView === 'insights' ? 'active' : ''}`}
+                onClick={() => setView('insights')}
+              >
+                <LayoutDashboard size={16} />
+                Dashboard
+              </button>
+              <button
+                type="button"
+                className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
+                onClick={() => setView('global')}
+              >
+                <HardDrive size={16} />
+                Storage
+              </button>
+              <button
+                type="button"
+                className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
+                onClick={() => setView('config')}
+              >
+                <Settings size={16} />
+                Configuración
+              </button>
+            </div>
           )}
-          <button
-            type="button"
-            className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
-            onClick={() => setView('config')}
-          >
-            Configuración
-          </button>
         </nav>
 
         <div className="sidebar-footer">

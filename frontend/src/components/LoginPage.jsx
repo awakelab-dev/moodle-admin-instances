@@ -49,7 +49,7 @@ export default function LoginPage({ onLogin, notice = null }) {
           <img
             className="login-brand-logo"
             src="/login/logo-aulacloner.svg"
-            alt="Aulacloner"
+            alt="Moodle Insights"
           />
 
           {bannerMessage && (

@@ -64,6 +64,7 @@ export class DashboardService {
           cost: financial.cost,
           margin: financial.margin,
           hasFinancialConfig: financial.hasFinancialConfig,
+          lastSyncedAt: p.lastSyncedAt,
         };
       });
 

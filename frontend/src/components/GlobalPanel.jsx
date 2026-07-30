@@ -11,7 +11,8 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
-import { getGlobalStorageHistory, getPlatformStorageSummary, getLastSync } from '../api';
+import { Settings } from 'lucide-react';
+import { getGlobalStorageHistory, getPlatformStorageSummary } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import {
   formatGigabytes,
@@ -90,20 +91,20 @@ const STORAGE_FILTER_OPTIONS = [
 ];
 
 function formatRelativeSync(completedAt) {
-  if (!completedAt) return 'Sin sincronizar aún';
+  if (!completedAt) return 'Actualizado: nunca sincronizado';
 
   const diffMs = Date.now() - new Date(completedAt).getTime();
-  if (!Number.isFinite(diffMs) || diffMs < 0) return 'Actualizado justo ahora';
+  if (!Number.isFinite(diffMs) || diffMs < 0) return 'Actualizado: justo ahora';
 
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'Actualizado hace instantes';
-  if (minutes < 60) return `Actualizado hace ${minutes} min`;
+  if (minutes < 1) return 'Actualizado: hace instantes';
+  if (minutes < 60) return `Actualizado: hace ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Actualizado hace ${hours} h`;
+  if (hours < 24) return `Actualizado: hace ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
 
   const days = Math.floor(hours / 24);
-  return `Actualizado hace ${days} d`;
+  return `Actualizado: hace ${days} ${days === 1 ? 'día' : 'días'}`;
 }
 
 const MARGIN_FILTER_OPTIONS = [
@@ -356,6 +357,7 @@ function getMarginColor(value) {
 
 export default function GlobalPanel({
   onSelectPlatform,
+  onNavigateToConfig,
   refreshKey = 0,
   searchTerm = '',
   onSearchTermChange,
@@ -370,29 +372,27 @@ export default function GlobalPanel({
   const [storageHistoryRangeStartKey, setStorageHistoryRangeStartKey] = useState('');
   const [storageHistoryRangeEndKey, setStorageHistoryRangeEndKey] = useState('');
   const [marginFilter, setMarginFilter] = useState('all');
-  const [lastSyncLabel, setLastSyncLabel] = useState('Sin sincronizar aún');
+  const [lastSyncLabel, setLastSyncLabel] = useState('Actualizado: nunca sincronizado');
   const [isolatedHistorySource, setIsolatedHistorySource] = useState(null);
   const [hoveredHistorySource, setHoveredHistorySource] = useState(null);
 
+  // La fecha de "Actualizado" refleja la sincronización individual más reciente
+  // entre todas las plataformas (ya no existe una sincronización general).
+  const latestSyncedAtMs = useMemo(() => {
+    const timestamps = platformSummaries
+      .map((p) => (p.lastSyncedAt ? new Date(p.lastSyncedAt).getTime() : null))
+      .filter((ms) => Number.isFinite(ms));
+    return timestamps.length ? Math.max(...timestamps) : null;
+  }, [platformSummaries]);
+
   useEffect(() => {
-    let isMounted = true;
-
-    function refreshLastSyncLabel() {
-      getLastSync()
-        .then((data) => {
-          if (isMounted) setLastSyncLabel(formatRelativeSync(data?.completed_at));
-        })
-        .catch(() => {});
+    function refresh() {
+      setLastSyncLabel(formatRelativeSync(latestSyncedAtMs));
     }
-
-    refreshLastSyncLabel();
-    const intervalId = setInterval(refreshLastSyncLabel, 60000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
-  }, [refreshKey]);
+    refresh();
+    const intervalId = setInterval(refresh, 60000);
+    return () => clearInterval(intervalId);
+  }, [latestSyncedAtMs]);
 
   useEffect(() => {
     let isMounted = true;
@@ -835,7 +835,20 @@ export default function GlobalPanel({
 
   return (
     <div className="section-stack">
-      <div className="global-panel-last-sync">{lastSyncLabel}</div>
+      <div className="global-panel-last-sync">
+        <span>{lastSyncLabel}</span>
+        {onNavigateToConfig && (
+          <button
+            type="button"
+            className="global-panel-sync-gear"
+            onClick={onNavigateToConfig}
+            title="Ir a Configuración para sincronizar plataformas"
+            aria-label="Ir a Configuración para sincronizar plataformas"
+          >
+            <Settings size={16} />
+          </button>
+        )}
+      </div>
       {searchTerm.trim() && (
         <div className="card">
           <div className="global-search-results">
