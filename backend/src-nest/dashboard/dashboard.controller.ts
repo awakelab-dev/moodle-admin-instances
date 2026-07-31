@@ -37,6 +37,11 @@ export class DashboardController {
     return this.dashboardService.getCourseAccessReport(Number(courseId), query.moodleSource);
   }
 
+  @Get('courses/:courseId/grades-report')
+  courseGradesReport(@Param('courseId') courseId: string, @Query() query: PlatformQueryDto) {
+    return this.dashboardService.getCourseGradesReport(Number(courseId), query.moodleSource);
+  }
+
   @Get('users/top')
   topUsers(@Query() query: PlatformQueryDto) {
     return this.dashboardService.getTopUsers(query.moodleSource);

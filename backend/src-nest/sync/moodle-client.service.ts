@@ -47,6 +47,10 @@ export class MoodleClient {
     return this.call('core_enrol_get_enrolled_users', { courseid: courseId });
   }
 
+  getGradeItems(courseId: number) {
+    return this.call('gradereport_user_get_grade_items', { courseid: courseId });
+  }
+
   getActiveEnrolledUserIds(courseId: number) {
     return this.call('core_enrol_get_enrolled_users', {
       courseid: courseId,

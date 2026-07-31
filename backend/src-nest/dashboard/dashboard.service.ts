@@ -387,6 +387,85 @@ export class DashboardService {
     };
   }
 
+  async getCourseGradesReport(courseId: number, moodleSource: string) {
+    if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar las calificaciones del curso.');
+    if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
+
+    const platform = await this.findPlatformByUrl(moodleSource);
+    if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+
+    const course = await this.prisma.course.findUnique({
+      where: { platform_course_unique: { platformId: platform.id, courseId } },
+    });
+    if (!course) throw new NotFoundException('Curso no encontrado.');
+
+    if (!platform.url || !platform.token) {
+      throw new NotFoundException('La plataforma seleccionada no está configurada para consultar calificaciones en vivo.');
+    }
+
+    const client = new MoodleClient(platform.url, platform.token);
+
+    // gradereport_user_get_grade_items no está habilitado en la mayoría de
+    // plataformas todavía (falta permiso del lado de Moodle) — se devuelve
+    // available:false con el motivo en vez de un error duro, así el
+    // frontend puede mostrar un mensaje claro en vez de romperse.
+    let raw: any;
+    try {
+      raw = await client.getGradeItems(courseId);
+    } catch (err: any) {
+      return {
+        moodleSource: platform.url,
+        available: false,
+        reason: err.message || 'gradereport_user_get_grade_items no está disponible en esta plataforma.',
+        course: {
+          course_id: course.courseId,
+          course_name: course.courseName,
+          shortname: course.shortname || '',
+          category_name: course.categoryName || 'Sin categoría',
+        },
+        students: [],
+      };
+    }
+
+    const usergrades = Array.isArray(raw?.usergrades) ? raw.usergrades : [];
+    const students = usergrades.map((ug: any) => {
+      const items = (Array.isArray(ug.gradeitems) ? ug.gradeitems : [])
+        .filter((item: any) => item.itemtype !== 'course')
+        .map((item: any) => ({
+          itemName: item.itemname || 'Elemento sin nombre',
+          gradeFormatted: (item.gradeformatted || '').trim() || '—',
+          percentageFormatted: (item.percentageformatted || '').trim() || '—',
+          feedback: (item.feedback || '').replace(/<[^>]*>/g, '').trim(),
+        }));
+
+      const courseItem = (Array.isArray(ug.gradeitems) ? ug.gradeitems : []).find(
+        (item: any) => item.itemtype === 'course',
+      );
+
+      return {
+        userId: ug.userid,
+        fullname: ug.userfullname || '',
+        totalItems: items.length,
+        completedItems: items.filter((i: any) => i.gradeFormatted !== '—').length,
+        coursePercentage: courseItem?.percentageformatted?.trim() || '—',
+        items,
+      };
+    });
+
+    return {
+      moodleSource: platform.url,
+      available: true,
+      course: {
+        course_id: course.courseId,
+        course_name: course.courseName,
+        shortname: course.shortname || '',
+        category_name: course.categoryName || 'Sin categoría',
+      },
+      totalStudents: students.length,
+      students,
+    };
+  }
+
   async getTopUsers(moodleSource?: string) {
     const url = moodleSource ? normalizeUrl(moodleSource) : '';
 

@@ -112,6 +112,10 @@ export const getCourseAccessReport = (courseId, params = {}) =>
   request(buildPath(`/dashboard/courses/${courseId}/access-report`, params), {
     cache: 'no-store',
   });
+export const getCourseGradesReport = (courseId, params = {}) =>
+  request(buildPath(`/dashboard/courses/${courseId}/grades-report`, params), {
+    cache: 'no-store',
+  });
 export const getTopUsers = (params = {}) =>
   request(buildPath('/dashboard/users/top', params));
 export const getInsights = (params = {}) =>

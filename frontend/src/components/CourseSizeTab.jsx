@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { getCourseBreakdown, getCourseAccessReport, getCourses } from '../api';
+import { getCourseBreakdown, getCourseAccessReport, getCourseGradesReport, getCourses } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatBytes } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
@@ -74,6 +74,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
   const [accessSortKey, setAccessSortKey] = useState('lastname');
   const [accessSortDir, setAccessSortDir] = useState('asc');
   const latestAccessReportRequestRef = useRef(0);
+  const [gradesReportData, setGradesReportData] = useState(null);
+  const [gradesReportLoading, setGradesReportLoading] = useState(false);
+  const [gradesReportError, setGradesReportError] = useState(null);
+  const [gradesReportRequestedCourseId, setGradesReportRequestedCourseId] = useState(null);
+  const latestGradesReportRequestRef = useRef(0);
 
   useEffect(() => {
     latestBreakdownRequestRef.current += 1;
@@ -87,6 +92,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     setAccessReportLoading(false);
     setAccessReportRequestedCourseId(null);
     setAccessSearchTerm('');
+    latestGradesReportRequestRef.current += 1;
+    setGradesReportData(null);
+    setGradesReportError(null);
+    setGradesReportLoading(false);
+    setGradesReportRequestedCourseId(null);
   }, [moodleSource, selectedCourseId]);
 
   useEffect(() => {
@@ -219,6 +229,33 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     }
   }
 
+  async function handleLoadGradesReport() {
+    if (!moodleSource || !selectedCourseId) return;
+
+    const courseId = selectedCourseId;
+    const requestId = latestGradesReportRequestRef.current + 1;
+    latestGradesReportRequestRef.current = requestId;
+
+    setGradesReportRequestedCourseId(courseId);
+    setGradesReportError(null);
+    setGradesReportData(null);
+    setGradesReportLoading(true);
+
+    try {
+      const response = await getCourseGradesReport(courseId, { moodleSource });
+      if (latestGradesReportRequestRef.current !== requestId) return;
+      setGradesReportData(response);
+    } catch {
+      if (latestGradesReportRequestRef.current !== requestId) return;
+      setGradesReportData(null);
+      setGradesReportError('No se pudo cargar el informe de calificaciones de este curso.');
+    } finally {
+      if (latestGradesReportRequestRef.current === requestId) {
+        setGradesReportLoading(false);
+      }
+    }
+  }
+
   function handleAccessSort(key) {
     if (accessSortKey === key) {
       setAccessSortDir((direction) => (direction === 'asc' ? 'desc' : 'asc'));
@@ -269,6 +306,10 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     selectedCourseId !== null &&
     accessReportRequestedCourseId === selectedCourseId &&
     Boolean(accessReportData);
+  const hasLoadedGradesReportForSelectedCourse =
+    selectedCourseId !== null &&
+    gradesReportRequestedCourseId === selectedCourseId &&
+    Boolean(gradesReportData);
   const hasLoadedBreakdownForSelectedCourse =
     selectedCourseId !== null &&
     breakdownRequestedCourseId === selectedCourseId &&
@@ -889,6 +930,96 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                 informes (como Configurable Reports), que no exponen API.
               </p>
             </>
+          )}
+        </div>
+
+        <div className="course-breakdown-panel">
+          <div className="panel-header panel-header-compact course-breakdown-header">
+            <div>
+              <p className="eyebrow">Evaluaciones</p>
+              <h3 className="card-title table-title">
+                {selectedCourse ? 'Calificaciones de alumnos' : 'Selecciona un curso'}
+              </h3>
+              {selectedCourse && (
+                <p className="panel-description">
+                  Notas por elemento evaluable de cada alumno matriculado, obtenidas en vivo de
+                  Moodle (<span className="mono">gradereport_user_get_grade_items</span>).
+                </p>
+              )}
+            </div>
+          </div>
+
+          {selectedCourse && (
+            <div className="course-breakdown-actions">
+              <Button
+                type="button"
+                className="course-breakdown-sync-btn"
+                onClick={handleLoadGradesReport}
+                disabled={gradesReportLoading}
+              >
+                {gradesReportLoading
+                  ? 'Cargando calificaciones…'
+                  : hasLoadedGradesReportForSelectedCourse
+                    ? 'Actualizar calificaciones'
+                    : 'Cargar evaluaciones y calificaciones'}
+              </Button>
+            </div>
+          )}
+
+          {!selectedCourse ? (
+            <p className="empty">Selecciona un curso para ver sus calificaciones.</p>
+          ) : gradesReportLoading ? (
+            <p className="empty">Consultando calificaciones en vivo…</p>
+          ) : gradesReportError ? (
+            <p className="empty error">{gradesReportError}</p>
+          ) : gradesReportRequestedCourseId !== selectedCourseId ? (
+            <p className="empty">
+              Presiona “Cargar evaluaciones y calificaciones” para consultar los datos en vivo.
+            </p>
+          ) : gradesReportData?.available === false ? (
+            <p className="empty error">
+              Esta plataforma todavía no tiene habilitada la función de calificaciones
+              (<span className="mono">gradereport_user_get_grade_items</span>) en su Web
+              Service — hay que pedirle al administrador de ese Moodle que la habilite en el
+              servicio externo y añada la capacidad <span className="mono">moodle/grade:viewall</span>.
+            </p>
+          ) : !gradesReportData?.students?.length ? (
+            <p className="empty">No hay calificaciones registradas para este curso todavía.</p>
+          ) : (
+            <div className="table-wrapper insights-table-wrapper">
+              <table className="course-table">
+                <thead>
+                  <tr>
+                    <th>Alumno</th>
+                    <th className="right">Evaluaciones</th>
+                    <th className="right">Nota curso</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gradesReportData.students.map((student) => (
+                    <tr key={student.userId}>
+                      <td>{student.fullname || '—'}</td>
+                      <td className="right mono">
+                        {student.completedItems}/{student.totalItems}
+                      </td>
+                      <td className="right mono bold">{student.coursePercentage}</td>
+                      <td>
+                        {student.items.length ? (
+                          <span className="panel-description">
+                            {student.items
+                              .map((item) => `${item.itemName}: ${item.gradeFormatted}`)
+                              .join(' · ')}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </Card>
