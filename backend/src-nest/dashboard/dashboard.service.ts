@@ -517,11 +517,18 @@ export class DashboardService {
     const [courses, students, enrollmentCounts, enrolledPerCourse] = await Promise.all([
       this.prisma.course.findMany({
         where: { platformId: platform.id },
-        select: { courseId: true, courseName: true, shortname: true, categoryName: true, visible: true },
+        select: {
+          courseId: true,
+          courseName: true,
+          shortname: true,
+          categoryName: true,
+          visible: true,
+          averageGradePercent: true,
+        },
       }),
       this.prisma.moodleUser.findMany({
         where: { platformId: platform.id },
-        select: { userId: true, fullname: true, username: true, email: true },
+        select: { userId: true, fullname: true, username: true, email: true, averageGradePercent: true },
       }),
       this.prisma.courseEnrollment.groupBy({
         by: ['userId'],
@@ -551,6 +558,17 @@ export class DashboardService {
     const enrollmentsTotal = enrolledPerCourse.reduce((acc, row) => acc + row._count.courseId, 0);
     const visibleCourses = courses.filter((c) => c.visible).length;
 
+    const gradedCourses = courses.filter((c) => c.averageGradePercent !== null);
+    const gradesAvailable = gradedCourses.length > 0;
+    const globalAverageGrade = gradesAvailable
+      ? gradedCourses.reduce((acc, c) => acc + (c.averageGradePercent as number), 0) / gradedCourses.length
+      : null;
+
+    const topGradedCourses = [...gradedCourses]
+      .sort((a, b) => (b.averageGradePercent as number) - (a.averageGradePercent as number))
+      .slice(0, 10)
+      .map((c) => ({ courseName: c.courseName, shortname: c.shortname, averageGradePercent: c.averageGradePercent }));
+
     return {
       moodleSource: platform.url,
       platformName: platform.name,
@@ -559,8 +577,11 @@ export class DashboardService {
         visibleCourses,
         students: students.length,
         enrollments: enrollmentsTotal,
+        gradesAvailable,
+        globalAverageGrade,
       },
       topCategories,
+      topGradedCourses,
       courses: courses.map((c) => ({
         courseId: c.courseId,
         courseName: c.courseName,
@@ -568,6 +589,7 @@ export class DashboardService {
         categoryName: c.categoryName,
         visible: c.visible,
         enrolledCount: studentCountByCourseId.get(c.courseId) || 0,
+        averageGradePercent: c.averageGradePercent,
       })),
       students: students.map((u) => ({
         userId: u.userId,
@@ -575,6 +597,7 @@ export class DashboardService {
         username: u.username,
         email: u.email,
         courseCount: courseCountByUserId.get(u.userId) || 0,
+        averageGradePercent: u.averageGradePercent,
       })),
     };
   }

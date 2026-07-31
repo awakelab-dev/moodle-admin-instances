@@ -35,6 +35,11 @@ function truncateLabel(value, maxLength = 24) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }
 
+function formatGradePercent(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return null;
+  return `${Number(value).toFixed(1)}%`;
+}
+
 function compareValues(a, b) {
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   const as = String(a ?? '').toLowerCase();
@@ -258,6 +263,25 @@ export default function InsightsTab({ moodleSource, platformName }) {
     };
   }, [data]);
 
+  const gradeChartData = useMemo(() => {
+    if (!data?.topGradedCourses?.length) return null;
+
+    return {
+      labels: data.topGradedCourses.map((c) => truncateLabel(c.shortname || c.courseName)),
+      datasets: [
+        {
+          label: 'Promedio de calificación',
+          data: data.topGradedCourses.map((c) => c.averageGradePercent),
+          backgroundColor: '#19F7F1',
+          borderColor: '#01264C',
+          borderWidth: 1,
+          borderRadius: 8,
+          barThickness: 28,
+        },
+      ],
+    };
+  }, [data]);
+
   const courses = data?.courses || [];
   const students = data?.students || [];
 
@@ -308,7 +332,11 @@ export default function InsightsTab({ moodleSource, platformName }) {
         <div className="stat-box stat-box-secondary">
           <div className="stat-label">Promedio global</div>
           <div className="stat-value">
-            <Badge variant="secondary">Pendiente</Badge>
+            {stats.gradesAvailable ? (
+              formatGradePercent(stats.globalAverageGrade)
+            ) : (
+              <Badge variant="secondary">Pendiente</Badge>
+            )}
           </div>
         </div>
       </div>
@@ -368,6 +396,63 @@ export default function InsightsTab({ moodleSource, platformName }) {
         </div>
       </Card>
 
+      <Card className="p-4 detail-chart-card">
+        <div className="panel-header panel-header-compact">
+          <div>
+            <p className="eyebrow">Calificaciones</p>
+            <h3 className="card-title">Top 10 cursos por promedio de calificación</h3>
+            <p className="panel-description">
+              {stats.gradesAvailable
+                ? `Cursos con mejor promedio de calificación en ${platformName || 'la plataforma seleccionada'}.`
+                : 'Pendiente: esta plataforma todavía no tiene habilitada la función de calificaciones de Moodle.'}
+            </p>
+          </div>
+        </div>
+        <div className="chart-container">
+          {gradeChartData ? (
+            <Bar
+              data={gradeChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: '#01264C',
+                    titleColor: '#FFFFFF',
+                    bodyColor: '#FFFFFF',
+                    padding: 12,
+                    callbacks: {
+                      label: (ctx) => formatGradePercent(ctx.raw) || '—',
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    ticks: { color: '#C9D6EA', font: { size: 11, family: CHART_FONT_FAMILY } },
+                    grid: { display: false },
+                    border: { display: false },
+                  },
+                  y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                      color: '#C9D6EA',
+                      font: { size: 11, family: CHART_FONT_FAMILY },
+                      callback: (value) => `${value}%`,
+                    },
+                    grid: { color: 'rgba(240, 243, 252, 0.10)' },
+                    border: { display: false },
+                  },
+                },
+              }}
+            />
+          ) : (
+            <p className="empty">Sin datos de calificaciones disponibles todavía.</p>
+          )}
+        </div>
+      </Card>
+
       <Card className="p-4 detail-table-card">
         <div className="table-header-row">
           <div>
@@ -389,6 +474,12 @@ export default function InsightsTab({ moodleSource, platformName }) {
                   controls={courseControls}
                   align="right"
                 />
+                <SortableHead
+                  label="Promedio"
+                  sortKey="averageGradePercent"
+                  controls={courseControls}
+                  align="right"
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -407,11 +498,14 @@ export default function InsightsTab({ moodleSource, platformName }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">{course.enrolledCount}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {formatGradePercent(course.averageGradePercent) || '—'}
+                  </TableCell>
                 </TableRow>
               ))}
               {!courseControls.pageItems.length && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No hay cursos que coincidan con la búsqueda.
                   </TableCell>
                 </TableRow>
@@ -443,8 +537,8 @@ export default function InsightsTab({ moodleSource, platformName }) {
                   align="right"
                 />
                 <SortableHead
-                  label="Calificación"
-                  sortKey="averageGrade"
+                  label="Promedio"
+                  sortKey="averageGradePercent"
                   controls={studentControls}
                   align="right"
                 />
@@ -459,7 +553,7 @@ export default function InsightsTab({ moodleSource, platformName }) {
                   <TableCell className="text-muted-foreground">{student.email || '—'}</TableCell>
                   <TableCell className="text-right">{student.courseCount}</TableCell>
                   <TableCell className="text-right text-muted-foreground">
-                    {student.averageGrade ?? '—'}
+                    {formatGradePercent(student.averageGradePercent) || '—'}
                   </TableCell>
                 </TableRow>
               ))}

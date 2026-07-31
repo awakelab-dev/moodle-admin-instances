@@ -7,6 +7,8 @@ import {
   isBackupFile,
   calcLegacyCourseContentTotals,
   detectBackupWsAvailability,
+  detectGradesWsAvailability,
+  extractCoursePercentage,
   getCourseBackupSize,
   upsertUserAccumulator,
 } from './sync-helpers';
@@ -14,6 +16,7 @@ import {
 const CONTENT_CONCURRENCY = 10;
 const BACKUP_CONCURRENCY = 10;
 const ENROL_CONCURRENCY = 10;
+const GRADES_CONCURRENCY = 10;
 const FORUM_CONCURRENCY = 10;
 const CHUNK = 50;
 const DB_WRITE_CONCURRENCY = 20;
@@ -61,8 +64,10 @@ export class SyncService {
 
     const courseIds: number[] = courses.map((c: any) => c.id);
     const backupWsAvailable = await detectBackupWsAvailability(client, courseIds);
+    const gradesWsAvailable = await detectGradesWsAvailability(client, courseIds);
 
-    const progressUnitsTotal = courses.length * (backupWsAvailable ? 3 : 2) || 1;
+    const progressUnitsTotal =
+      courses.length * (2 + (backupWsAvailable ? 1 : 0) + (gradesWsAvailable ? 1 : 0)) || 1;
     let progressUnitsDone = 0;
     const bumpProgress = (label: string) => {
       progressUnitsDone += 1;
@@ -139,6 +144,35 @@ export class SyncService {
         bumpProgress('Calculando usuarios matriculados');
       }
     }, ensureNotCancelled);
+
+    // STEP 3c: calificaciones por curso (requiere permiso habilitado en Moodle)
+    const courseGradeAverages: Record<number, number | null> = {};
+    const gradeAccumulatorByUser: Record<string, { sum: number; count: number }> = {};
+    if (gradesWsAvailable) {
+      await runInBatches(courses, GRADES_CONCURRENCY, async (course: any) => {
+        try {
+          const raw = await client.getGradeItems(course.id);
+          const usergrades = Array.isArray(raw?.usergrades) ? raw.usergrades : [];
+          let sum = 0;
+          let count = 0;
+          for (const ug of usergrades) {
+            const percentage = extractCoursePercentage(ug.gradeitems);
+            if (percentage === null) continue;
+            sum += percentage;
+            count += 1;
+            const acc = gradeAccumulatorByUser[ug.userid] || (gradeAccumulatorByUser[ug.userid] = { sum: 0, count: 0 });
+            acc.sum += percentage;
+            acc.count += 1;
+          }
+          courseGradeAverages[course.id] = count > 0 ? sum / count : null;
+        } catch (err: any) {
+          console.warn(`  ⚠ Error grades course ${course.id}: ${err.message}`);
+          courseGradeAverages[course.id] = null;
+        } finally {
+          bumpProgress('Calculando calificaciones');
+        }
+      }, ensureNotCancelled);
+    }
 
     // STEP 3b: assignments + submissions
     for (let i = 0; i < courseIds.length; i += CHUNK) {
@@ -270,6 +304,7 @@ export class SyncService {
             categoryId: meta.category_id,
             categoryName: meta.category_name,
             visible: meta.visible,
+            averageGradePercent: courseGradeAverages[courseId] ?? null,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),
             assignmentSizeBytes: BigInt(sizes.assignments),
@@ -283,6 +318,7 @@ export class SyncService {
             categoryId: meta.category_id,
             categoryName: meta.category_name,
             visible: meta.visible,
+            averageGradePercent: courseGradeAverages[courseId] ?? null,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),
             assignmentSizeBytes: BigInt(sizes.assignments),
@@ -298,11 +334,13 @@ export class SyncService {
     const userIds = Object.keys(userSizeMap);
     await runInBatches(userIds, DB_WRITE_CONCURRENCY, async (uid) => {
       const u = userSizeMap[uid];
+      const gradeAcc = gradeAccumulatorByUser[uid];
+      const averageGradePercent = gradeAcc && gradeAcc.count > 0 ? gradeAcc.sum / gradeAcc.count : null;
       try {
         await this.prisma.moodleUser.upsert({
           where: { platform_user_unique: { platformId: platform.id, userId: Number(uid) } },
-          create: { platformId: platform.id, moodleName: platform.name, userId: Number(uid), username: u.username, fullname: u.fullname, email: u.email || '', totalSizeBytes: BigInt(u.totalBytes), syncedAt: now },
-          update: { moodleName: platform.name, username: u.username, fullname: u.fullname, email: u.email || '', totalSizeBytes: BigInt(u.totalBytes), syncedAt: now },
+          create: { platformId: platform.id, moodleName: platform.name, userId: Number(uid), username: u.username, fullname: u.fullname, email: u.email || '', totalSizeBytes: BigInt(u.totalBytes), averageGradePercent, syncedAt: now },
+          update: { moodleName: platform.name, username: u.username, fullname: u.fullname, email: u.email || '', totalSizeBytes: BigInt(u.totalBytes), averageGradePercent, syncedAt: now },
         });
       } catch (err: any) {
         console.error(`  ⚠ Error saving user ${uid}: ${err.message}`);

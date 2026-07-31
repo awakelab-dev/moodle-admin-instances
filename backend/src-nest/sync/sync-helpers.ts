@@ -261,6 +261,36 @@ export async function detectBackupWsAvailability(client: any, courseIds: number[
   }
 }
 
+export async function detectGradesWsAvailability(client: any, courseIds: number[] = []): Promise<boolean> {
+  const sampleCourseId = courseIds.find((id) => Number.isFinite(id) && id > 0);
+  if (!sampleCourseId) return false;
+  try {
+    await client.getGradeItems(sampleCourseId);
+    return true;
+  } catch (err: any) {
+    console.warn(`  ⚠ gradereport_user_get_grade_items not available for grades sync: ${err.message}`);
+    return false;
+  }
+}
+
+export function extractCoursePercentage(gradeItems: any[] = []): number | null {
+  const courseItem = Array.isArray(gradeItems)
+    ? gradeItems.find((item: any) => item?.itemtype === 'course')
+    : null;
+  if (!courseItem) return null;
+
+  if (typeof courseItem.percentageformatted === 'string') {
+    const parsed = parseFloat(courseItem.percentageformatted.replace('%', '').replace(',', '.').trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  if (Number.isFinite(courseItem.graderaw) && Number.isFinite(courseItem.grademax) && courseItem.grademax > 0) {
+    return (Number(courseItem.graderaw) / Number(courseItem.grademax)) * 100;
+  }
+
+  return null;
+}
+
 export function upsertUserAccumulator(userSizeMap: Record<string, any>, userId: number | string, partialUser: any = {}) {
   const key = String(userId);
   const fallbackUsername = partialUser.username || `user-${key}`;

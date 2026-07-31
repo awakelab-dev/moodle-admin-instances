@@ -55,6 +55,7 @@ model Course {
   categoryId   Int    @map("category_id")
   categoryName String @default("Sin categoría") @map("category_name")
   visible      Boolean @default(true)
+  averageGradePercent Float? @map("average_grade_percent")
 
   sizeBytes           BigInt @default(0) @map("size_bytes")
   backupSizeBytes     BigInt @default(0) @map("backup_size_bytes")
@@ -91,6 +92,7 @@ model MoodleUser {
   fullname       String @default("")
   email          String @default("")
   totalSizeBytes BigInt @default(0) @map("total_size_bytes")
+  averageGradePercent Float? @map("average_grade_percent")
 
   syncedAt  DateTime @default(now()) @map("synced_at")
   createdAt DateTime @default(now()) @map("created_at")
