@@ -1125,6 +1125,25 @@ export default function GlobalPanel({
                       padding: 14,
                       color: '#C9D6EA',
                       font: { size: 11, family: CHART_FONT_FAMILY },
+                      generateLabels: (chart) => {
+                        const focusedSource = isolatedHistorySource || hoveredHistorySource;
+                        return chart.data.datasets.map((dataset, index) => {
+                          const isFocused = !focusedSource || dataset.source === focusedSource;
+                          // En vez de un color casi transparente (que se ve como un
+                          // círculo vacío en la leyenda), las líneas no activas usan
+                          // un círculo "desactivado" siempre visible.
+                          const color = isFocused ? dataset.backgroundColor : '#3B6996';
+                          return {
+                            text: dataset.label,
+                            fillStyle: color,
+                            strokeStyle: color,
+                            lineWidth: 0,
+                            pointStyle: 'circle',
+                            hidden: false,
+                            datasetIndex: index,
+                          };
+                        });
+                      },
                     },
                     onClick: (_event, legendItem, legend) => {
                       const dataset = legend.chart.data.datasets[legendItem.datasetIndex];
