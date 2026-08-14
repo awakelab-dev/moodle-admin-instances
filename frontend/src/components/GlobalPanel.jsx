@@ -1132,7 +1132,7 @@ export default function GlobalPanel({
                           // En vez de un color casi transparente (que se ve como un
                           // círculo vacío en la leyenda), las líneas no activas usan
                           // un círculo "desactivado" siempre visible.
-                          const color = isFocused ? dataset.backgroundColor : '#3B6996';
+                          const color = isFocused ? dataset.backgroundColor : 'rgba(201, 214, 234, 0.55)';
                           return {
                             text: dataset.label,
                             fillStyle: color,
