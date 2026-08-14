@@ -894,9 +894,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                         Último acceso (curso){accessSortIcon('lastCourseAccess')}
                       </th>
                       <th>Tiempo acumulado</th>
-                      <th>Contenidos visualizados</th>
+                      <th>Actividades de aprendizaje</th>
+                      <th>Nota final</th>
                       <th>Evaluaciones</th>
                       <th>Correos</th>
+                      <th>Mensajes Foro</th>
+                      <th>Mensajes chats</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -916,8 +919,35 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                         <td>{formatUnixSeconds(student.firstAccess)}</td>
                         <td>{formatUnixSeconds(student.lastCourseAccess)}</td>
                         <td className="muted" title="No disponible por Web Services">—</td>
+                        <td>
+                          {student.activitiesTotal === null ? (
+                            <span className="muted" title="Requiere 'Finalización de actividades' activada en el curso">
+                              No disponible
+                            </span>
+                          ) : (
+                            `${student.activitiesCompleted}/${student.activitiesTotal}`
+                          )}
+                        </td>
+                        <td>
+                          {student.finalGrade === null ? (
+                            <span className="muted" title="Requiere permiso de calificaciones habilitado">
+                              No disponible
+                            </span>
+                          ) : (
+                            student.finalGrade
+                          )}
+                        </td>
                         <td className="muted" title="No disponible por Web Services">—</td>
                         <td className="muted" title="No disponible por Web Services">—</td>
+                        <td>
+                          {student.forumMessageCount === null ? (
+                            <span className="muted" title="No hay foros disponibles en este curso">
+                              No disponible
+                            </span>
+                          ) : (
+                            student.forumMessageCount
+                          )}
+                        </td>
                         <td className="muted" title="No disponible por Web Services">—</td>
                       </tr>
                     ))}
@@ -925,9 +955,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                 </table>
               </div>
               <p className="history-note">
-                "Tiempo acumulado", "Contenidos visualizados", "Evaluaciones" y "Correos" no
-                están disponibles por Web Services de Moodle — solo existen dentro de plugins de
-                informes (como Configurable Reports), que no exponen API.
+                "Tiempo acumulado", "Evaluaciones", "Correos" y "Mensajes chats" no están
+                disponibles por Web Services de Moodle — solo existen dentro de plugins de
+                informes (como block_advanced_reports), que no exponen API. "Actividades de
+                aprendizaje" necesita que el curso tenga activada la "Finalización de
+                actividades"; "Nota final" necesita el permiso de calificaciones habilitado;
+                "Mensajes Foro" necesita que el curso tenga al menos un foro.
               </p>
             </>
           )}

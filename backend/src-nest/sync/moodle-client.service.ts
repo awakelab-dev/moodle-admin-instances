@@ -51,6 +51,13 @@ export class MoodleClient {
     return this.call('gradereport_user_get_grade_items', { courseid: courseId });
   }
 
+  getActivitiesCompletionStatus(courseId: number, userId: number) {
+    return this.call('core_completion_get_activities_completion_status', {
+      courseid: courseId,
+      userid: userId,
+    });
+  }
+
   getActiveEnrolledUserIds(courseId: number) {
     return this.call('core_enrol_get_enrolled_users', {
       courseid: courseId,

@@ -291,6 +291,26 @@ export function extractCoursePercentage(gradeItems: any[] = []): number | null {
   return null;
 }
 
+export function extractCourseGradeItem(gradeItems: any[] = []): any | null {
+  return Array.isArray(gradeItems) ? gradeItems.find((item: any) => item?.itemtype === 'course') || null : null;
+}
+
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  for (let i = 0; i < items.length; i += concurrency) {
+    const chunk = items.slice(i, i + concurrency);
+    const chunkResults = await Promise.all(chunk.map(fn));
+    chunkResults.forEach((result, idx) => {
+      results[i + idx] = result;
+    });
+  }
+  return results;
+}
+
 export function upsertUserAccumulator(userSizeMap: Record<string, any>, userId: number | string, partialUser: any = {}) {
   const key = String(userId);
   const fallbackUsername = partialUser.username || `user-${key}`;

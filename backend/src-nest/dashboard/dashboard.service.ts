@@ -1,7 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MoodleClient } from '../sync/moodle-client.service';
-import { buildCourseStorageBreakdown, deriveCourseSizeTotals, detectFileBrowserAvailability } from '../sync/sync-helpers';
+import {
+  buildCourseStorageBreakdown,
+  deriveCourseSizeTotals,
+  detectFileBrowserAvailability,
+  extractCourseGradeItem,
+  mapWithConcurrency,
+} from '../sync/sync-helpers';
 import { bytesToGigabytes, calculateFinancialMetrics, normalizeUrl } from '../common/platform-utils';
 
 function parseBooleanFlag(value?: string): boolean {
@@ -349,11 +355,92 @@ export class DashboardService {
       ? new Set(activeUsersRaw.map((u: any) => u.id))
       : null;
 
+    // Nota final por alumno: mismo ítem "curso" que usa el informe de
+    // calificaciones. Si la función no está habilitada, se ignora sin
+    // romper el resto del informe.
+    const finalGradeByUserId = new Map<number, string>();
+    try {
+      const gradesRaw = await client.getGradeItems(courseId);
+      const usergrades = Array.isArray(gradesRaw?.usergrades) ? gradesRaw.usergrades : [];
+      for (const ug of usergrades) {
+        const courseItem = extractCourseGradeItem(ug.gradeitems);
+        if (courseItem?.gradeformatted) {
+          finalGradeByUserId.set(ug.userid, courseItem.gradeformatted.trim());
+        }
+      }
+    } catch {
+      // gradereport_user_get_grade_items no disponible: se deja sin nota final.
+    }
+
+    // Actividades de aprendizaje completadas: requiere que el curso tenga
+    // "Finalización de actividades" activada. Se prueba con el primer
+    // alumno; si falla, se asume no disponible para todo el curso (evita
+    // repetir el mismo error por cada alumno).
+    const completionByUserId = new Map<number, { completed: number; total: number }>();
+    if (usersRaw.length > 0) {
+      let completionAvailable = true;
+      try {
+        await client.getActivitiesCompletionStatus(courseId, usersRaw[0].id);
+      } catch {
+        completionAvailable = false;
+      }
+
+      if (completionAvailable) {
+        await mapWithConcurrency(usersRaw, 8, async (u: any) => {
+          try {
+            const raw = await client.getActivitiesCompletionStatus(courseId, u.id);
+            const statuses = Array.isArray(raw?.statuses) ? raw.statuses : [];
+            const completed = statuses.filter((s: any) => s.state === 1 || s.state === 2).length;
+            completionByUserId.set(u.id, { completed, total: statuses.length });
+          } catch {
+            // se deja sin dato para este alumno en particular
+          }
+        });
+      }
+    }
+
+    // Mensajes de foro: se recorren los foros del curso y se cuentan los
+    // mensajes por autor. Si el curso no tiene foros o la función no está
+    // disponible, se deja sin dato en vez de romper el informe.
+    const forumMessageCountByUserId = new Map<number, number>();
+    let forumMessagesAvailable = false;
+    try {
+      const forums = await client.getForumsByCourses([courseId]);
+      if (Array.isArray(forums)) {
+        forumMessagesAvailable = true;
+        for (const forum of forums) {
+          let discussions: any[] = [];
+          try {
+            const discResult = await client.getForumDiscussions(forum.id);
+            discussions = Array.isArray(discResult?.discussions) ? discResult.discussions : [];
+          } catch {
+            continue;
+          }
+
+          await mapWithConcurrency(discussions, 8, async (disc: any) => {
+            try {
+              const postResult = await client.getDiscussionPosts(disc.discussion);
+              const posts = Array.isArray(postResult?.posts) ? postResult.posts : [];
+              for (const post of posts) {
+                forumMessageCountByUserId.set(
+                  post.userid,
+                  (forumMessageCountByUserId.get(post.userid) || 0) + 1,
+                );
+              }
+            } catch {
+              // se ignora esta discusión puntual
+            }
+          });
+        }
+      }
+    } catch {
+      // mod_forum_get_forums_by_courses no disponible
+    }
+
     // Moodle no expone por Web Services el número de registros/eventos, el
-    // tiempo acumulado, los contenidos visualizados, las evaluaciones
-    // agregadas ni los correos enviados (eso vive dentro de plugins de
-    // informes como Configurable Reports, sin API). Se devuelven como `null`
-    // explícitamente y el frontend los muestra con un valor fijo.
+    // tiempo acumulado ni los correos enviados (eso vive dentro de plugins de
+    // informes como block_advanced_reports, sin API). Se devuelven como
+    // `null` explícitamente y el frontend los muestra con un valor fijo.
     const students = usersRaw.map((u: any) => ({
       userId: u.id,
       firstname: u.firstname || '',
@@ -366,8 +453,10 @@ export class DashboardService {
       lastCourseAccess: u.lastcourseaccess || null,
       records: null,
       accumulatedTime: null,
-      contentViewed: null,
-      evaluations: null,
+      activitiesCompleted: completionByUserId.get(u.id)?.completed ?? null,
+      activitiesTotal: completionByUserId.get(u.id)?.total ?? null,
+      finalGrade: finalGradeByUserId.get(u.id) ?? null,
+      forumMessageCount: forumMessagesAvailable ? forumMessageCountByUserId.get(u.id) ?? 0 : null,
       emailsSent: null,
       roles: Array.isArray(u.roles) ? u.roles.map((r: any) => r.shortname).filter(Boolean) : [],
     }));
