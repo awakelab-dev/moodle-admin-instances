@@ -757,7 +757,6 @@ export default function GlobalPanel({
           tension: 0.28,
           fill: false,
           spanGaps: true,
-          order: isFocused ? 0 : 1,
         };
       })
       .filter(Boolean);
