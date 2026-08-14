@@ -1123,7 +1123,7 @@ export default function GlobalPanel({
                       boxWidth: 8,
                       boxHeight: 8,
                       padding: 14,
-                      color: '#C9D6EA',
+                      color: '#FFFFFF',
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       generateLabels: (chart) => {
                         const focusedSource = isolatedHistorySource || hoveredHistorySource;
@@ -1137,6 +1137,7 @@ export default function GlobalPanel({
                             text: dataset.label,
                             fillStyle: color,
                             strokeStyle: color,
+                            fontColor: '#FFFFFF',
                             lineWidth: 0,
                             pointStyle: 'circle',
                             hidden: false,
