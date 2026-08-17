@@ -10,6 +10,10 @@ import {
 } from '../sync/sync-helpers';
 import { bytesToGigabytes, calculateFinancialMetrics, normalizeUrl } from '../common/platform-utils';
 
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+}
+
 function parseBooleanFlag(value?: string): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
@@ -365,7 +369,8 @@ export class DashboardService {
       for (const ug of usergrades) {
         const courseItem = extractCourseGradeItem(ug.gradeitems);
         if (courseItem?.gradeformatted) {
-          finalGradeByUserId.set(ug.userid, courseItem.gradeformatted.trim());
+          const clean = stripHtml(courseItem.gradeformatted);
+          if (clean) finalGradeByUserId.set(ug.userid, clean);
         }
       }
     } catch {
@@ -522,9 +527,9 @@ export class DashboardService {
         .filter((item: any) => item.itemtype !== 'course')
         .map((item: any) => ({
           itemName: item.itemname || 'Elemento sin nombre',
-          gradeFormatted: (item.gradeformatted || '').trim() || '—',
-          percentageFormatted: (item.percentageformatted || '').trim() || '—',
-          feedback: (item.feedback || '').replace(/<[^>]*>/g, '').trim(),
+          gradeFormatted: stripHtml(item.gradeformatted || '') || '—',
+          percentageFormatted: stripHtml(item.percentageformatted || '') || '—',
+          feedback: stripHtml(item.feedback || ''),
         }));
 
       const courseItem = (Array.isArray(ug.gradeitems) ? ug.gradeitems : []).find(
@@ -536,7 +541,7 @@ export class DashboardService {
         fullname: ug.userfullname || '',
         totalItems: items.length,
         completedItems: items.filter((i: any) => i.gradeFormatted !== '—').length,
-        coursePercentage: courseItem?.percentageformatted?.trim() || '—',
+        coursePercentage: stripHtml(courseItem?.percentageformatted || '') || '—',
         items,
       };
     });
