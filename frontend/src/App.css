@@ -257,11 +257,6 @@ input:focus-visible {
   margin-left: 0.9rem;
 }
 
-.sidebar-nav-config {
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-border-soft);
-}
-
 .sidebar-nav-item {
   display: flex;
   align-items: center;

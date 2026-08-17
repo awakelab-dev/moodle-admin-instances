@@ -30,6 +30,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [storageNavExpanded, setStorageNavExpanded] = useState(true);
   const [insightsNavExpanded, setInsightsNavExpanded] = useState(true);
+  const [configNavExpanded, setConfigNavExpanded] = useState(true);
   const searchSubmitRef = useRef(null);
   const currentUser = session?.user || null;
   const currentUserRole = currentUser?.role || null;
@@ -238,18 +239,32 @@ export default function App() {
             </div>
           )}
 
-        </nav>
-
-        <div className="sidebar-nav-config">
           <button
             type="button"
-            className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
-            onClick={() => setView('config')}
+            className="sidebar-nav-category"
+            onClick={() => setConfigNavExpanded((prev) => !prev)}
+            aria-expanded={configNavExpanded}
           >
-            <Settings size={16} />
-            Configuración
+            <span>Configuración</span>
+            <ChevronDown
+              size={16}
+              className={`sidebar-nav-chevron ${configNavExpanded ? '' : 'is-collapsed'}`}
+            />
           </button>
-        </div>
+
+          {configNavExpanded && (
+            <div className="sidebar-nav-group">
+              <button
+                type="button"
+                className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
+                onClick={() => setView('config')}
+              >
+                <Settings size={16} />
+                Plataformas
+              </button>
+            </div>
+          )}
+        </nav>
 
         <div className="sidebar-footer">
           <div className="session-box">
