@@ -359,10 +359,11 @@ export class DashboardService {
       ? new Set(activeUsersRaw.map((u: any) => u.id))
       : null;
 
-    // Nota final por alumno: mismo ítem "curso" que usa el informe de
-    // calificaciones. Si la función no está habilitada, se ignora sin
-    // romper el resto del informe.
+    // Nota final y evaluaciones completadas por alumno: mismos datos que usa
+    // el informe de calificaciones. Si la función no está habilitada, se
+    // ignora sin romper el resto del informe.
     const finalGradeByUserId = new Map<number, string>();
+    const evaluationsByUserId = new Map<number, { completed: number; total: number }>();
     try {
       const gradesRaw = await client.getGradeItems(courseId);
       const usergrades = Array.isArray(gradesRaw?.usergrades) ? gradesRaw.usergrades : [];
@@ -372,6 +373,15 @@ export class DashboardService {
           const clean = stripHtml(courseItem.gradeformatted);
           if (clean) finalGradeByUserId.set(ug.userid, clean);
         }
+
+        const items = Array.isArray(ug.gradeitems)
+          ? ug.gradeitems.filter((item: any) => item.itemtype !== 'course')
+          : [];
+        const completed = items.filter((item: any) => {
+          const formatted = stripHtml(item.gradeformatted || '');
+          return formatted && formatted !== '-' && formatted !== '—';
+        }).length;
+        evaluationsByUserId.set(ug.userid, { completed, total: items.length });
       }
     } catch {
       // gradereport_user_get_grade_items no disponible: se deja sin nota final.
@@ -461,6 +471,8 @@ export class DashboardService {
       activitiesCompleted: completionByUserId.get(u.id)?.completed ?? null,
       activitiesTotal: completionByUserId.get(u.id)?.total ?? null,
       finalGrade: finalGradeByUserId.get(u.id) ?? null,
+      evaluationsCompleted: evaluationsByUserId.get(u.id)?.completed ?? null,
+      evaluationsTotal: evaluationsByUserId.get(u.id)?.total ?? null,
       forumMessageCount: forumMessagesAvailable ? forumMessageCountByUserId.get(u.id) ?? 0 : null,
       emailsSent: null,
       roles: Array.isArray(u.roles) ? u.roles.map((r: any) => r.shortname).filter(Boolean) : [],
@@ -540,7 +552,7 @@ export class DashboardService {
         userId: ug.userid,
         fullname: ug.userfullname || '',
         totalItems: items.length,
-        completedItems: items.filter((i: any) => i.gradeFormatted !== '—').length,
+        completedItems: items.filter((i: any) => i.gradeFormatted !== '—' && i.gradeFormatted !== '-').length,
         coursePercentage: stripHtml(courseItem?.percentageformatted || '') || '—',
         items,
       };

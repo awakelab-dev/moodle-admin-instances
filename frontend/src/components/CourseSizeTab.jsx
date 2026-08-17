@@ -811,14 +811,14 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
             <div>
               <p className="eyebrow">Informe Global</p>
               <h3 className="card-title table-title">
-                {selectedCourse ? 'Accesos de alumnos' : 'Selecciona un curso'}
+                {selectedCourse ? 'Ficha de alumnos' : 'Selecciona un curso'}
               </h3>
               {selectedCourse && (
                 <p className="panel-description">
-                  Primer y último acceso al sitio, y último acceso a este curso, según los
-                  datos que expone el Web Service de Moodle. No incluye tiempo dedicado,
-                  registros de actividad ni evaluaciones: eso no está disponible por Web
-                  Services (ver nota más abajo).
+                  Matrícula, accesos, actividades completadas, nota final y mensajes de foro
+                  de cada alumno, según los datos que expone el Web Service de Moodle.
+                  "Registros", "Tiempo acumulado", "Correos" y "Mensajes chats" no están
+                  disponibles por esta vía (ver nota más abajo).
                 </p>
               )}
             </div>
@@ -836,7 +836,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                   ? 'Cargando informe…'
                   : hasLoadedAccessReportForSelectedCourse
                     ? 'Actualizar informe'
-                    : 'Cargar informe de accesos'}
+                    : 'Cargar informe de alumnos'}
               </Button>
             </div>
           )}
@@ -847,14 +847,14 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
           )}
 
           {!selectedCourse ? (
-            <p className="empty">Selecciona un curso para ver su informe de accesos.</p>
+            <p className="empty">Selecciona un curso para ver su ficha de alumnos.</p>
           ) : accessReportLoading ? (
             <p className="empty">Consultando alumnos matriculados en vivo…</p>
           ) : accessReportError ? (
             <p className="empty error">{accessReportError}</p>
           ) : accessReportRequestedCourseId !== selectedCourseId ? (
             <p className="empty">
-              Presiona “Cargar informe de accesos” para consultar los datos en vivo.
+              Presiona “Cargar informe de alumnos” para consultar los datos en vivo.
             </p>
           ) : !accessReportData?.students?.length ? (
             <p className="empty">No hay alumnos matriculados en este curso.</p>
@@ -937,7 +937,15 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                             student.finalGrade
                           )}
                         </td>
-                        <td className="muted" title="No disponible por Web Services">—</td>
+                        <td>
+                          {student.evaluationsTotal === null ? (
+                            <span className="muted" title="Requiere permiso de calificaciones habilitado">
+                              No disponible
+                            </span>
+                          ) : (
+                            `${student.evaluationsCompleted}/${student.evaluationsTotal}`
+                          )}
+                        </td>
                         <td className="muted" title="No disponible por Web Services">—</td>
                         <td>
                           {student.forumMessageCount === null ? (
@@ -971,12 +979,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
             <div>
               <p className="eyebrow">Evaluaciones</p>
               <h3 className="card-title table-title">
-                {selectedCourse ? 'Calificaciones de alumnos' : 'Selecciona un curso'}
+                {selectedCourse ? 'Detalle de calificaciones' : 'Selecciona un curso'}
               </h3>
               {selectedCourse && (
                 <p className="panel-description">
-                  Notas por elemento evaluable de cada alumno matriculado, obtenidas en vivo de
-                  Moodle (<span className="mono">gradereport_user_get_grade_items</span>).
+                  Nota de cada tarea, examen y actividad evaluable por alumno matriculado,
+                  obtenida en vivo de Moodle (<span className="mono">gradereport_user_get_grade_items</span>).
                 </p>
               )}
             </div>
