@@ -942,6 +942,34 @@ input:focus-visible {
   border-radius: 999px;
 }
 
+.grade-detail-cell {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 0.4rem;
+  min-width: 280px;
+}
+
+.grade-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.2rem;
+}
+
+.grade-detail-name {
+  flex: 1;
+}
+
+.grade-detail-value {
+  flex-shrink: 0;
+  color: var(--color-text);
+}
+
 .insights-table-toolbar {
   display: flex;
   align-items: center;

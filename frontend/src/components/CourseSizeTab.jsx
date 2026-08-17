@@ -1039,11 +1039,14 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                       <td className="right mono bold">{student.coursePercentage}</td>
                       <td>
                         {student.items.length ? (
-                          <span className="panel-description">
-                            {student.items
-                              .map((item) => `${item.itemName}: ${item.gradeFormatted}`)
-                              .join(' · ')}
-                          </span>
+                          <div className="grade-detail-cell">
+                            {student.items.map((item, idx) => (
+                              <div key={idx} className="grade-detail-row">
+                                <span className="grade-detail-name">{item.itemName}</span>
+                                <span className="grade-detail-value mono">{item.gradeFormatted}</span>
+                              </div>
+                            ))}
+                          </div>
                         ) : (
                           '—'
                         )}
