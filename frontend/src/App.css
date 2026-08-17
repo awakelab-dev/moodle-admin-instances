@@ -257,8 +257,9 @@ input:focus-visible {
   margin-left: 0.9rem;
 }
 
-.sidebar-nav-item-top {
-  margin-top: 0.35rem;
+.sidebar-nav-config {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-soft);
 }
 
 .sidebar-nav-item {

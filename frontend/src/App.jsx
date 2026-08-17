@@ -238,15 +238,18 @@ export default function App() {
             </div>
           )}
 
+        </nav>
+
+        <div className="sidebar-nav-config">
           <button
             type="button"
-            className={`sidebar-nav-item sidebar-nav-item-top ${resolvedView === 'config' ? 'active' : ''}`}
+            className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
             onClick={() => setView('config')}
           >
             <Settings size={16} />
             Configuración
           </button>
-        </nav>
+        </div>
 
         <div className="sidebar-footer">
           <div className="session-box">
