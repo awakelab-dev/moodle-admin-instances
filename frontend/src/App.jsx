@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LayoutDashboard, HardDrive, Settings } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap } from 'lucide-react';
 import {
   clearAuthSession,
   getCurrentUser,
@@ -11,6 +11,7 @@ import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import GlobalPanel from './components/GlobalPanel';
 import InsightsPage from './components/InsightsPage';
+import CoursesStudentsPage from './components/CoursesStudentsPage';
 import ConfigPage from './components/ConfigPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +28,8 @@ export default function App() {
   const [view, setView] = useState('insights');
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [navExpanded, setNavExpanded] = useState(true);
+  const [storageNavExpanded, setStorageNavExpanded] = useState(true);
+  const [insightsNavExpanded, setInsightsNavExpanded] = useState(true);
   const searchSubmitRef = useRef(null);
   const currentUser = session?.user || null;
   const currentUserRole = currentUser?.role || null;
@@ -136,6 +138,7 @@ export default function App() {
         userRole={currentUserRole}
       />
     ),
+    'courses-students': <CoursesStudentsPage />,
     config: <ConfigPage />,
   };
 
@@ -169,8 +172,8 @@ export default function App() {
             <span />
           </div>
           <div className="brand-copy">
-            <p className="brand-kicker">AWK UI PRODUCTS</p>
-            <h1 className="logo">Moodle Insights</h1>
+            <p className="brand-kicker">AWK PLATFORMS MANAGER</p>
+            <h1 className="logo">AWK Platforms Manager</h1>
           </div>
         </div>
 
@@ -178,17 +181,43 @@ export default function App() {
           <button
             type="button"
             className="sidebar-nav-category"
-            onClick={() => setNavExpanded((prev) => !prev)}
-            aria-expanded={navExpanded}
+            onClick={() => setStorageNavExpanded((prev) => !prev)}
+            aria-expanded={storageNavExpanded}
           >
-            <span>Administración de plataformas</span>
+            <span>Storage</span>
             <ChevronDown
               size={16}
-              className={`sidebar-nav-chevron ${navExpanded ? '' : 'is-collapsed'}`}
+              className={`sidebar-nav-chevron ${storageNavExpanded ? '' : 'is-collapsed'}`}
             />
           </button>
 
-          {navExpanded && (
+          {storageNavExpanded && (
+            <div className="sidebar-nav-group">
+              <button
+                type="button"
+                className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
+                onClick={() => setView('global')}
+              >
+                <HardDrive size={16} />
+                Administración
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="sidebar-nav-category"
+            onClick={() => setInsightsNavExpanded((prev) => !prev)}
+            aria-expanded={insightsNavExpanded}
+          >
+            <span>Moodle Insights</span>
+            <ChevronDown
+              size={16}
+              className={`sidebar-nav-chevron ${insightsNavExpanded ? '' : 'is-collapsed'}`}
+            />
+          </button>
+
+          {insightsNavExpanded && (
             <div className="sidebar-nav-group">
               <button
                 type="button"
@@ -200,22 +229,23 @@ export default function App() {
               </button>
               <button
                 type="button"
-                className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
-                onClick={() => setView('global')}
+                className={`sidebar-nav-item ${resolvedView === 'courses-students' ? 'active' : ''}`}
+                onClick={() => setView('courses-students')}
               >
-                <HardDrive size={16} />
-                Storage
-              </button>
-              <button
-                type="button"
-                className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
-                onClick={() => setView('config')}
-              >
-                <Settings size={16} />
-                Configuración
+                <GraduationCap size={16} />
+                Cursos y Alumnos
               </button>
             </div>
           )}
+
+          <button
+            type="button"
+            className={`sidebar-nav-item sidebar-nav-item-top ${resolvedView === 'config' ? 'active' : ''}`}
+            onClick={() => setView('config')}
+          >
+            <Settings size={16} />
+            Configuración
+          </button>
         </nav>
 
         <div className="sidebar-footer">

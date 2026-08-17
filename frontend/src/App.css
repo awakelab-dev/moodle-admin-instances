@@ -257,6 +257,10 @@ input:focus-visible {
   margin-left: 0.9rem;
 }
 
+.sidebar-nav-item-top {
+  margin-top: 0.35rem;
+}
+
 .sidebar-nav-item {
   display: flex;
   align-items: center;
@@ -1108,6 +1112,129 @@ input:focus-visible {
 .course-table tbody tr:focus-visible {
   outline: 2px solid rgba(17, 234, 234, 0.4);
   outline-offset: -2px;
+}
+
+.course-row-clickable {
+  cursor: pointer;
+}
+
+.course-row-clickable:hover {
+  background: rgba(17, 234, 234, 0.08);
+}
+
+.cs-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cs-breadcrumb-segment {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.cs-breadcrumb-sep {
+  color: var(--color-text-secondary);
+}
+
+.cs-breadcrumb-link {
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+}
+
+.cs-breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+.cs-breadcrumb-current {
+  color: var(--color-text);
+}
+
+.cs-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.cs-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cs-list-item:hover {
+  background: rgba(17, 234, 234, 0.08);
+}
+
+.cs-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.cs-tab {
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border-soft);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.cs-tab.active {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+}
+
+.cs-detail-card {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 520px;
+}
+
+.cs-stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border-soft);
+  font-size: 0.82rem;
+}
+
+.cs-stat-label {
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.cs-stat-value {
+  color: var(--color-text);
+  font-weight: 700;
+  text-align: right;
+}
+
+.cs-grades-detail {
+  margin-top: 1.2rem;
 }
 
 .course-row-selected {
