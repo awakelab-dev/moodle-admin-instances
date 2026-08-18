@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatCurrency } from '@/lib/formatters';
+import ConfirmDialog from './ConfirmDialog';
 
 const EMPTY_FORM = {
   name: '',
@@ -80,6 +81,7 @@ export default function ConfigPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null); // null = adding, number = editing
   const [showForm, setShowForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [testResults, setTestResults] = useState({});
@@ -272,8 +274,14 @@ export default function ConfigPage() {
     }
   }
 
-  async function handleDelete(p) {
-    if (!confirm(`¿Eliminar "${formatPlatformDisplayName(p.name)}"?`)) return;
+  function handleDelete(p) {
+    setDeleteTarget(p);
+  }
+
+  async function confirmDelete() {
+    const p = deleteTarget;
+    if (!p) return;
+    setDeleteTarget(null);
     try {
       await deletePlatform(p.id);
       flash(`"${formatPlatformDisplayName(p.name)}" eliminada.`);
@@ -606,6 +614,19 @@ export default function ConfigPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Eliminar plataforma"
+        message={
+          deleteTarget
+            ? `¿Eliminar "${formatPlatformDisplayName(deleteTarget.name)}"? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

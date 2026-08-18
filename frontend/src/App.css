@@ -440,6 +440,31 @@ input:focus-visible {
   border-radius: var(--radius-control);
 }
 
+/* ─── Confirm dialog ─── */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(1, 25, 50, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.confirm-dialog-card {
+  max-width: 420px;
+  width: 90%;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
 /* ─── Cards & Shared Blocks ─── */
 .card {
   position: relative;

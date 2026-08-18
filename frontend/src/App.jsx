@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap } from 'lucide-react';
 import {
   clearAuthSession,
@@ -8,13 +8,16 @@ import {
   saveAuthSession,
 } from './api';
 import LoginPage from './components/LoginPage';
-import Dashboard from './components/Dashboard';
-import GlobalPanel from './components/GlobalPanel';
-import InsightsPage from './components/InsightsPage';
-import CoursesStudentsPage from './components/CoursesStudentsPage';
-import ConfigPage from './components/ConfigPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+// Cada pantalla pesada (gráficos, tablas) se carga solo cuando se navega a
+// ella, en vez de ir toda en el bundle inicial.
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const GlobalPanel = lazy(() => import('./components/GlobalPanel'));
+const InsightsPage = lazy(() => import('./components/InsightsPage'));
+const CoursesStudentsPage = lazy(() => import('./components/CoursesStudentsPage'));
+const ConfigPage = lazy(() => import('./components/ConfigPage'));
 const ROLE_LABELS = {
   admin: 'Acceso total',
   limited: 'Sin sincronización',
@@ -318,7 +321,9 @@ export default function App() {
         )}
 
         <main className="main">
-          {views[resolvedView]}
+          <Suspense fallback={<p className="empty">Cargando…</p>}>
+            {views[resolvedView]}
+          </Suspense>
         </main>
       </div>
     </div>
