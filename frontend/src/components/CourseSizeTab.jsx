@@ -11,7 +11,7 @@ import {
 import { Bar } from 'react-chartjs-2';
 import { getCourseBreakdown, getCourseAccessReport, getCourseGradesReport, getCourses } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
-import { formatBytes } from '@/lib/formatters';
+import { formatBytes, formatUnixSeconds } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,14 +44,6 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString('es-CL');
-}
-
-function formatUnixSeconds(value) {
-  if (!value) return 'Nunca';
-  const date = new Date(value * 1000);
-  if (Number.isNaN(date.getTime())) return 'Nunca';
-  return date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    + ' ' + date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function CourseSizeTab({ moodleSource, platformName }) {

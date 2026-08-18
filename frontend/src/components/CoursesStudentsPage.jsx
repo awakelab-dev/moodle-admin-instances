@@ -8,7 +8,7 @@ import {
   getCourseGradesReport,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
-import { formatBytes } from '@/lib/formatters';
+import { formatBytes, formatUnixSeconds } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -44,17 +44,6 @@ function TableSkeleton({ rows = 6, columns = 4 }) {
         </div>
       ))}
     </div>
-  );
-}
-
-function formatUnixSeconds(value) {
-  if (!value) return 'Nunca';
-  const date = new Date(value * 1000);
-  if (Number.isNaN(date.getTime())) return 'Nunca';
-  return (
-    date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
-    ' ' +
-    date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
   );
 }
 

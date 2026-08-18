@@ -1,3 +1,14 @@
+export function formatUnixSeconds(value) {
+  if (!value) return 'Nunca';
+  const date = new Date(value * 1000);
+  if (Number.isNaN(date.getTime())) return 'Nunca';
+  return (
+    date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
+    ' ' +
+    date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+  );
+}
+
 export function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
