@@ -137,6 +137,7 @@ export default function App() {
         key={selectedPlatform?.id || 'detail-view'}
         selectedPlatform={selectedPlatform}
         userRole={currentUserRole}
+        onBackToStorage={() => setView('global')}
       />
     ),
     'courses-students': <CoursesStudentsPage />,

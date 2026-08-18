@@ -2,10 +2,11 @@ import { useState } from 'react';
 import CourseSizeTab from './CourseSizeTab';
 import PlatformHistoryTab from './PlatformHistoryTab';
 import TopUsersTab from './TopUsersTab';
+import Breadcrumb from './Breadcrumb';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatPlatformDisplayName } from '@/lib/utils';
 
-export default function Dashboard({ selectedPlatform, userRole }) {
+export default function Dashboard({ selectedPlatform, userRole, onBackToStorage }) {
   const [tab, setTab] = useState('courses');
 
   if (!selectedPlatform) {
@@ -18,6 +19,12 @@ export default function Dashboard({ selectedPlatform, userRole }) {
 
   return (
     <div className="section-stack detail-section">
+      <Breadcrumb
+        items={[
+          { label: 'Storage', onClick: onBackToStorage },
+          { label: formatPlatformDisplayName(selectedPlatform.name) },
+        ]}
+      />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList aria-label="Secciones del dashboard">
           <TabsTrigger value="courses">Tamaño del curso</TabsTrigger>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import {
   getPlatforms,
   getCourses,
@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Breadcrumb from './Breadcrumb';
 
 function formatUnixSeconds(value) {
   if (!value) return 'Nunca';
@@ -22,25 +23,6 @@ function formatUnixSeconds(value) {
     date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
     ' ' +
     date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-  );
-}
-
-function Breadcrumb({ items }) {
-  return (
-    <div className="cs-breadcrumb">
-      {items.map((item, idx) => (
-        <span key={idx} className="cs-breadcrumb-segment">
-          {idx > 0 && <ChevronRight size={14} className="cs-breadcrumb-sep" />}
-          {item.onClick ? (
-            <button type="button" className="cs-breadcrumb-link" onClick={item.onClick}>
-              {item.label}
-            </button>
-          ) : (
-            <span className="cs-breadcrumb-current">{item.label}</span>
-          )}
-        </span>
-      ))}
-    </div>
   );
 }
 
