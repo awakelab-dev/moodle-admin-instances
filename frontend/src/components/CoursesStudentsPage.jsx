@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import Breadcrumb from './Breadcrumb';
+import ErrorRetry from './ErrorRetry';
 
 const NAV_STORAGE_KEY = 'cs-nav-state';
 
@@ -427,7 +428,7 @@ export default function CoursesStudentsPage() {
           {coursesLoading ? (
             <TableSkeleton columns={2} />
           ) : coursesError ? (
-            <p className="empty error">{coursesError}</p>
+            <ErrorRetry message={coursesError} onRetry={() => openPlatform(selectedPlatform)} />
           ) : !allCourses.length ? (
             <p className="empty">
               No hay datos de cursos para esta plataforma. Sincronízala primero en Configuración.
@@ -524,7 +525,10 @@ export default function CoursesStudentsPage() {
               {accessReportLoading ? (
                 <TableSkeleton columns={5} />
               ) : accessReportError ? (
-                <p className="empty error">{accessReportError}</p>
+                <ErrorRetry
+                  message={accessReportError}
+                  onRetry={() => loadAccessReport(selectedCourse.course_id)}
+                />
               ) : !filteredStudents.length ? (
                 <p className="empty">No hay alumnos matriculados en este curso.</p>
               ) : (
@@ -568,7 +572,10 @@ export default function CoursesStudentsPage() {
               ))}
             </div>
           ) : breakdownError ? (
-            <p className="empty error">{breakdownError}</p>
+            <ErrorRetry
+              message={breakdownError}
+              onRetry={() => loadBreakdown(selectedCourse.course_id)}
+            />
           ) : breakdownData ? (
             <div className="cs-detail-card">
               <StatRow label="Contenido" value={formatBytes(breakdownData.course.size_bytes)} />

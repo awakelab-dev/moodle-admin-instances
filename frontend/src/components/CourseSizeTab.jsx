@@ -15,6 +15,7 @@ import { formatBytes } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ErrorRetry from './ErrorRetry';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -761,7 +762,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
           ) : breakdownLoading ? (
             <p className="empty">Calculando desglose detallado en vivo…</p>
           ) : breakdownError ? (
-            <p className="empty error">{breakdownError}</p>
+            <ErrorRetry message={breakdownError} onRetry={() => handleLoadBreakdown()} />
           ) : breakdownRequestedCourseId !== selectedCourseId ? (
             <p className="empty">
               Presiona “Cargar detalle del curso” para ver el detalle guardado o calcularlo por primera vez.
@@ -851,7 +852,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
           ) : accessReportLoading ? (
             <p className="empty">Consultando alumnos matriculados en vivo…</p>
           ) : accessReportError ? (
-            <p className="empty error">{accessReportError}</p>
+            <ErrorRetry message={accessReportError} onRetry={handleLoadAccessReport} />
           ) : accessReportRequestedCourseId !== selectedCourseId ? (
             <p className="empty">
               Presiona “Cargar informe de alumnos” para consultar los datos en vivo.
@@ -1012,7 +1013,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
           ) : gradesReportLoading ? (
             <p className="empty">Consultando calificaciones en vivo…</p>
           ) : gradesReportError ? (
-            <p className="empty error">{gradesReportError}</p>
+            <ErrorRetry message={gradesReportError} onRetry={handleLoadGradesReport} />
           ) : gradesReportRequestedCourseId !== selectedCourseId ? (
             <p className="empty">
               Presiona “Cargar evaluaciones y calificaciones” para consultar los datos en vivo.

@@ -1266,6 +1266,18 @@ input:focus-visible {
   gap: 1rem;
 }
 
+.cs-error-retry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cs-error-retry .empty.error {
+  margin: 0;
+}
+
 .course-row-selected {
   background: rgba(17, 234, 234, 0.1);
 }
