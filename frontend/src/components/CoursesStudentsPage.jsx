@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, Search } from 'lucide-react';
 import {
   getPlatforms,
@@ -13,7 +13,38 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import Breadcrumb from './Breadcrumb';
+
+const NAV_STORAGE_KEY = 'cs-nav-state';
+
+function isTemplateCourse(course) {
+  return /plantilla/i.test(course.category_name || '');
+}
+
+function ListSkeleton({ rows = 6 }) {
+  return (
+    <div className="cs-list">
+      {Array.from({ length: rows }).map((_, idx) => (
+        <Skeleton key={idx} className="h-11 w-full" />
+      ))}
+    </div>
+  );
+}
+
+function TableSkeleton({ rows = 6, columns = 4 }) {
+  return (
+    <div className="cs-table-skeleton">
+      {Array.from({ length: rows }).map((_, rowIdx) => (
+        <div key={rowIdx} className="cs-table-skeleton-row">
+          {Array.from({ length: columns }).map((__, colIdx) => (
+            <Skeleton key={colIdx} className="h-4 flex-1" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function formatUnixSeconds(value) {
   if (!value) return 'Nunca';
@@ -47,6 +78,8 @@ export default function CoursesStudentsPage() {
   const [coursesError, setCoursesError] = useState(null);
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [hideTemplates, setHideTemplates] = useState(true);
+  const [restoring, setRestoring] = useState(true);
 
   const [courseTab, setCourseTab] = useState('students'); // 'detail' | 'students'
   const [breakdownData, setBreakdownData] = useState(null);
@@ -61,6 +94,16 @@ export default function CoursesStudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentGrades, setStudentGrades] = useState(null);
   const [studentGradesLoading, setStudentGradesLoading] = useState(false);
+
+  const pendingRestoreRef = useRef(
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem(NAV_STORAGE_KEY) || 'null');
+      } catch {
+        return null;
+      }
+    })()
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -82,6 +125,76 @@ export default function CoursesStudentsPage() {
       isMounted = false;
     };
   }, []);
+
+  // Restaurar la última plataforma/curso/alumno visitados (localStorage) al
+  // entrar a la página, en vez de empezar siempre desde "Plataformas".
+  useEffect(() => {
+    if (platformsLoading) return;
+    const pending = pendingRestoreRef.current;
+    if (!pending?.platformSource) {
+      setRestoring(false);
+      return;
+    }
+    const platform = platforms.find((p) => p.source === pending.platformSource);
+    if (!platform) {
+      pendingRestoreRef.current = null;
+      setRestoring(false);
+      return;
+    }
+    openPlatform(platform);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platformsLoading, platforms]);
+
+  useEffect(() => {
+    const pending = pendingRestoreRef.current;
+    if (!pending || !courseData) return;
+
+    if (pending.courseId) {
+      const course = allCourses.find((c) => c.course_id === pending.courseId);
+      if (course) {
+        openCourse(course);
+        if (!pending.studentUserId) {
+          pendingRestoreRef.current = null;
+          setRestoring(false);
+        }
+        return;
+      }
+    }
+    pendingRestoreRef.current = null;
+    setRestoring(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseData]);
+
+  useEffect(() => {
+    const pending = pendingRestoreRef.current;
+    if (!pending?.studentUserId || !accessReportData) return;
+
+    const student = accessReportData.students?.find((s) => s.userId === pending.studentUserId);
+    pendingRestoreRef.current = null;
+    setRestoring(false);
+    if (student) openStudent(student);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessReportData]);
+
+  useEffect(() => {
+    if (restoring) return;
+    try {
+      if (selectedPlatform) {
+        localStorage.setItem(
+          NAV_STORAGE_KEY,
+          JSON.stringify({
+            platformSource: selectedPlatform.source,
+            courseId: selectedCourse?.course_id || null,
+            studentUserId: selectedStudent?.userId || null,
+          })
+        );
+      } else {
+        localStorage.removeItem(NAV_STORAGE_KEY);
+      }
+    } catch {
+      // localStorage no disponible: se ignora, simplemente no se restaura la próxima vez
+    }
+  }, [restoring, selectedPlatform, selectedCourse, selectedStudent]);
 
   function openPlatform(platform) {
     setSelectedPlatform(platform);
@@ -111,16 +224,24 @@ export default function CoursesStudentsPage() {
     return list;
   }, [courseData]);
 
+  const templateCount = useMemo(
+    () => allCourses.filter(isTemplateCourse).length,
+    [allCourses]
+  );
+
   const filteredCourses = useMemo(() => {
-    if (!courseSearch.trim()) return allCourses;
-    const term = courseSearch.toLowerCase();
-    return allCourses.filter(
-      (c) =>
-        c.course_name.toLowerCase().includes(term) ||
-        (c.shortname || '').toLowerCase().includes(term) ||
-        c.category_name.toLowerCase().includes(term)
-    );
-  }, [allCourses, courseSearch]);
+    let list = hideTemplates ? allCourses.filter((c) => !isTemplateCourse(c)) : allCourses;
+    if (courseSearch.trim()) {
+      const term = courseSearch.toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.course_name.toLowerCase().includes(term) ||
+          (c.shortname || '').toLowerCase().includes(term) ||
+          c.category_name.toLowerCase().includes(term)
+      );
+    }
+    return list;
+  }, [allCourses, courseSearch, hideTemplates]);
 
   function openCourse(course) {
     setSelectedCourse(course);
@@ -256,7 +377,7 @@ export default function CoursesStudentsPage() {
             />
           </div>
           {platformsLoading ? (
-            <p className="empty">Cargando plataformas…</p>
+            <ListSkeleton rows={8} />
           ) : (
             <div className="cs-list">
               {filteredPlatforms.map((platform) => (
@@ -282,7 +403,7 @@ export default function CoursesStudentsPage() {
         <Card className="p-4">
           <div className="table-header-row">
             <h3 className="card-title table-title">
-              Cursos de {formatPlatformDisplayName(selectedPlatform.name)} ({allCourses.length})
+              Cursos de {formatPlatformDisplayName(selectedPlatform.name)} ({filteredCourses.length})
             </h3>
             <Input
               type="text"
@@ -292,8 +413,19 @@ export default function CoursesStudentsPage() {
               onChange={(e) => setCourseSearch(e.target.value)}
             />
           </div>
+          {templateCount > 0 && (
+            <button
+              type="button"
+              className="cs-template-toggle"
+              onClick={() => setHideTemplates((prev) => !prev)}
+            >
+              {hideTemplates
+                ? `Mostrar plantillas (${templateCount} ocultas)`
+                : `Ocultar plantillas (${templateCount})`}
+            </button>
+          )}
           {coursesLoading ? (
-            <p className="empty">Cargando cursos…</p>
+            <TableSkeleton columns={2} />
           ) : coursesError ? (
             <p className="empty error">{coursesError}</p>
           ) : !allCourses.length ? (
@@ -326,6 +458,11 @@ export default function CoursesStudentsPage() {
                       </td>
                       <td>
                         <span className="cat-badge">{course.category_name}</span>
+                        {isTemplateCourse(course) && (
+                          <Badge variant="secondary" className="cs-template-badge">
+                            Plantilla
+                          </Badge>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -385,7 +522,7 @@ export default function CoursesStudentsPage() {
                 onChange={(e) => setStudentSearch(e.target.value)}
               />
               {accessReportLoading ? (
-                <p className="empty">Consultando alumnos matriculados en vivo…</p>
+                <TableSkeleton columns={5} />
               ) : accessReportError ? (
                 <p className="empty error">{accessReportError}</p>
               ) : !filteredStudents.length ? (
@@ -422,7 +559,14 @@ export default function CoursesStudentsPage() {
               )}
             </>
           ) : breakdownLoading ? (
-            <p className="empty">Calculando desglose de almacenamiento…</p>
+            <div className="cs-detail-card">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="cs-stat-row">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
           ) : breakdownError ? (
             <p className="empty error">{breakdownError}</p>
           ) : breakdownData ? (
@@ -515,7 +659,11 @@ export default function CoursesStudentsPage() {
           </div>
 
           {studentGradesLoading ? (
-            <p className="empty">Cargando detalle de calificaciones…</p>
+            <div className="grade-detail-cell" style={{ maxHeight: 220 }}>
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <Skeleton key={idx} className="h-4 w-full" />
+              ))}
+            </div>
           ) : studentGrades?.items?.length ? (
             <div className="cs-grades-detail">
               <p className="eyebrow">Detalle por evaluación</p>
