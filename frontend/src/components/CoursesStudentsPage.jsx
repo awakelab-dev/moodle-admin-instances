@@ -78,7 +78,7 @@ export default function CoursesStudentsPage() {
   const [coursesError, setCoursesError] = useState(null);
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [hideTemplates, setHideTemplates] = useState(true);
+  const [hideTemplates, setHideTemplates] = useState(false);
   const [restoring, setRestoring] = useState(true);
 
   const [courseTab, setCourseTab] = useState('students'); // 'detail' | 'students'
