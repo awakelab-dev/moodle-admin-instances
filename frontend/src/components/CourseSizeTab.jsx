@@ -324,8 +324,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
         continue;
       }
 
-      student.items.forEach((item) => {
-        rows.push({ ...base, item: item.itemName, notaItem: item.gradeFormatted });
+      student.items.forEach((item, idx) => {
+        rows.push({
+          ...(idx === 0 ? base : { alumno: '', evaluaciones: '', notaCurso: '' }),
+          item: item.itemName,
+          notaItem: item.gradeFormatted,
+        });
       });
     }
 

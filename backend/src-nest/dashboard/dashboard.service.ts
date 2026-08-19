@@ -553,7 +553,10 @@ export class DashboardService {
         fullname: ug.userfullname || '',
         totalItems: items.length,
         completedItems: items.filter((i: any) => i.gradeFormatted !== '—' && i.gradeFormatted !== '-').length,
-        coursePercentage: stripHtml(courseItem?.percentageformatted || '') || '—',
+        coursePercentage:
+          stripHtml(courseItem?.percentageformatted || '') ||
+          stripHtml(courseItem?.gradeformatted || '') ||
+          '—',
         items,
       };
     });
