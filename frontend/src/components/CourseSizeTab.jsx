@@ -12,7 +12,7 @@ import { Bar } from 'react-chartjs-2';
 import { getCourseBreakdown, getCourseAccessReport, getCourseGradesReport, getCourses } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatBytes, formatUnixSeconds } from '@/lib/formatters';
-import { downloadCsv } from '@/lib/csv';
+import { downloadXlsx } from '@/lib/excel';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -253,69 +253,90 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
   function handleExportAccessReport() {
     if (!accessReportData?.students?.length) return;
 
-    const rows = [
-      [
-        'Nombre',
-        'Apellidos',
-        'Matrícula activa',
-        'Usuario',
-        'Email',
-        'Primer acceso (sitio)',
-        'Último acceso (curso)',
-        'Actividades de aprendizaje',
-        'Nota final',
-        'Evaluaciones',
-        'Mensajes Foro',
-      ],
+    const columns = [
+      { header: 'Nombre', key: 'nombre', width: 16 },
+      { header: 'Apellidos', key: 'apellidos', width: 20 },
+      { header: 'Matrícula activa', key: 'matricula', width: 14 },
+      { header: 'Usuario', key: 'usuario', width: 14 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Primer acceso (sitio)', key: 'primerAcceso', width: 18 },
+      { header: 'Último acceso (curso)', key: 'ultimoAcceso', width: 18 },
+      { header: 'Actividades de aprendizaje', key: 'actividades', width: 15 },
+      { header: 'Nota final', key: 'notaFinal', width: 12 },
+      { header: 'Evaluaciones', key: 'evaluaciones', width: 13 },
+      { header: 'Mensajes Foro', key: 'mensajesForo', width: 13 },
     ];
 
-    for (const student of accessReportRows) {
-      rows.push([
-        student.firstname || '',
-        student.lastname || '',
-        student.activeEnrollment === null ? 'No disponible' : student.activeEnrollment ? 'Sí' : 'No',
-        student.username,
-        student.email || '',
-        formatUnixSeconds(student.firstAccess),
-        formatUnixSeconds(student.lastCourseAccess),
+    const rows = accessReportRows.map((student) => ({
+      nombre: student.firstname || '',
+      apellidos: student.lastname || '',
+      matricula: student.activeEnrollment === null ? 'No disponible' : student.activeEnrollment ? 'Sí' : 'No',
+      usuario: student.username,
+      email: student.email || '',
+      primerAcceso: formatUnixSeconds(student.firstAccess),
+      ultimoAcceso: formatUnixSeconds(student.lastCourseAccess),
+      actividades:
         student.activitiesTotal === null
           ? 'No disponible'
           : `${student.activitiesCompleted}/${student.activitiesTotal}`,
-        student.finalGrade === null ? 'No disponible' : student.finalGrade,
+      notaFinal: student.finalGrade === null ? 'No disponible' : student.finalGrade,
+      evaluaciones:
         student.evaluationsTotal === null
           ? 'No disponible'
           : `${student.evaluationsCompleted}/${student.evaluationsTotal}`,
-        student.forumMessageCount === null ? 'No disponible' : student.forumMessageCount,
-      ]);
-    }
+      mensajesForo: student.forumMessageCount === null ? 'No disponible' : student.forumMessageCount,
+    }));
 
     const courseLabel = selectedCourse?.shortname || selectedCourse?.course_name || 'curso';
-    downloadCsv(`informe-global-${courseLabel}.csv`, rows);
+    downloadXlsx({
+      filename: `informe-global-${courseLabel}.xlsx`,
+      sheetName: 'Ficha de alumnos',
+      columns,
+      rows,
+    });
   }
 
   function handleExportGradesReport() {
     if (!gradesReportData?.students?.length) return;
 
-    const rows = [['Alumno', 'Evaluaciones', 'Nota curso', 'Ítem evaluable', 'Nota del ítem']];
+    const columns = [
+      { header: 'Alumno', key: 'alumno', width: 26 },
+      { header: 'Evaluaciones', key: 'evaluaciones', width: 14 },
+      { header: 'Nota curso', key: 'notaCurso', width: 13 },
+      { header: 'Ítem evaluable', key: 'item', width: 42, wrap: true },
+      { header: 'Nota del ítem', key: 'notaItem', width: 14 },
+    ];
+
+    const rows = [];
+    const groupStartRows = [];
 
     for (const student of gradesReportData.students) {
+      groupStartRows.push(rows.length + 2); // +1 fila de cabecera, +1 base 1
+
+      const base = {
+        alumno: student.fullname,
+        evaluaciones: `${student.completedItems}/${student.totalItems}`,
+        notaCurso: student.coursePercentage,
+      };
+
       if (!student.items.length) {
-        rows.push([student.fullname, `${student.completedItems}/${student.totalItems}`, student.coursePercentage, '', '']);
+        rows.push({ ...base, item: '', notaItem: '' });
         continue;
       }
-      student.items.forEach((item, idx) => {
-        rows.push([
-          idx === 0 ? student.fullname : '',
-          idx === 0 ? `${student.completedItems}/${student.totalItems}` : '',
-          idx === 0 ? student.coursePercentage : '',
-          item.itemName,
-          item.gradeFormatted,
-        ]);
+
+      student.items.forEach((item) => {
+        rows.push({ ...base, item: item.itemName, notaItem: item.gradeFormatted });
       });
     }
 
     const courseLabel = selectedCourse?.shortname || selectedCourse?.course_name || 'curso';
-    downloadCsv(`calificaciones-${courseLabel}.csv`, rows);
+    downloadXlsx({
+      filename: `calificaciones-${courseLabel}.xlsx`,
+      sheetName: 'Detalle de calificaciones',
+      columns,
+      rows,
+      groupStartRows,
+    });
   }
 
   function handleAccessSort(key) {
