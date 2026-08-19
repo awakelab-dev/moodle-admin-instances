@@ -302,9 +302,10 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     const columns = [
       { header: 'Alumno', key: 'alumno', width: 26 },
       { header: 'Evaluaciones', key: 'evaluaciones', width: 14 },
-      { header: 'Nota curso', key: 'notaCurso', width: 13 },
+      { header: 'Nota curso (/10)', key: 'notaCurso', width: 15 },
       { header: 'Ítem evaluable', key: 'item', width: 42, wrap: true },
       { header: 'Nota del ítem', key: 'notaItem', width: 14 },
+      { header: 'Nota (/10)', key: 'notaItem10', width: 12 },
     ];
 
     const rows = [];
@@ -316,11 +317,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
       const base = {
         alumno: student.fullname,
         evaluaciones: `${student.completedItems}/${student.totalItems}`,
-        notaCurso: student.coursePercentage,
+        notaCurso: student.courseScoreOutOf10,
       };
 
       if (!student.items.length) {
-        rows.push({ ...base, item: '', notaItem: '' });
+        rows.push({ ...base, item: '', notaItem: '', notaItem10: '' });
         continue;
       }
 
@@ -329,6 +330,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
           ...(idx === 0 ? base : { alumno: '', evaluaciones: '', notaCurso: '' }),
           item: item.itemName,
           notaItem: item.gradeFormatted,
+          notaItem10: item.scoreOutOf10,
         });
       });
     }
@@ -1130,7 +1132,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                   <tr>
                     <th>Alumno</th>
                     <th className="right">Evaluaciones</th>
-                    <th className="right">Nota curso</th>
+                    <th className="right">Nota curso (/10)</th>
                     <th>Detalle</th>
                   </tr>
                 </thead>
@@ -1141,14 +1143,16 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                       <td className="right mono">
                         {student.completedItems}/{student.totalItems}
                       </td>
-                      <td className="right mono bold">{student.coursePercentage}</td>
+                      <td className="right mono bold">{student.courseScoreOutOf10}</td>
                       <td>
                         {student.items.length ? (
                           <div className="grade-detail-cell">
                             {student.items.map((item, idx) => (
                               <div key={idx} className="grade-detail-row">
                                 <span className="grade-detail-name">{item.itemName}</span>
-                                <span className="grade-detail-value mono">{item.gradeFormatted}</span>
+                                <span className="grade-detail-value mono">
+                                  {item.gradeFormatted} ({item.scoreOutOf10}/10)
+                                </span>
                               </div>
                             ))}
                           </div>

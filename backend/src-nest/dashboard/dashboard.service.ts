@@ -14,6 +14,17 @@ function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 }
 
+// Cada ítem de Moodle puede tener su propia nota máxima (grademax) —
+// algunas actividades están configuradas sobre 10, otras sobre 100, etc.
+// Se normaliza a una nota sobre 10 para que todos los ítems se puedan
+// comparar entre sí en el informe, en vez de mezclar escalas distintas.
+function formatScoreOutOf10(graderaw: unknown, grademax: unknown): string {
+  const raw = typeof graderaw === 'number' ? graderaw : Number(graderaw);
+  const max = typeof grademax === 'number' ? grademax : Number(grademax);
+  if (!Number.isFinite(raw) || !Number.isFinite(max) || max <= 0) return '—';
+  return ((raw / max) * 10).toFixed(2).replace('.', ',');
+}
+
 function parseBooleanFlag(value?: string): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
@@ -541,6 +552,7 @@ export class DashboardService {
           itemName: item.itemname || 'Elemento sin nombre',
           gradeFormatted: stripHtml(item.gradeformatted || '') || '—',
           percentageFormatted: stripHtml(item.percentageformatted || '') || '—',
+          scoreOutOf10: formatScoreOutOf10(item.graderaw, item.grademax),
           feedback: stripHtml(item.feedback || ''),
         }));
 
@@ -557,6 +569,7 @@ export class DashboardService {
           stripHtml(courseItem?.percentageformatted || '') ||
           stripHtml(courseItem?.gradeformatted || '') ||
           '—',
+        courseScoreOutOf10: formatScoreOutOf10(courseItem?.graderaw, courseItem?.grademax),
         items,
       };
     });
