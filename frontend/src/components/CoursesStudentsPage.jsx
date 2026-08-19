@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   getPlatforms,
   getCourses,
@@ -60,7 +61,6 @@ export default function CoursesStudentsPage() {
   const [level, setLevel] = useState('platforms');
   const [platforms, setPlatforms] = useState([]);
   const [platformsLoading, setPlatformsLoading] = useState(true);
-  const [platformSearch, setPlatformSearch] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState(null);
 
   const [courseData, setCourseData] = useState(null);
@@ -121,17 +121,20 @@ export default function CoursesStudentsPage() {
   useEffect(() => {
     if (platformsLoading) return;
     const pending = pendingRestoreRef.current;
-    if (!pending?.platformSource) {
-      setRestoring(false);
+    const platform = pending?.platformSource
+      ? platforms.find((p) => p.source === pending.platformSource)
+      : null;
+
+    if (platform) {
+      openPlatform(platform);
       return;
     }
-    const platform = platforms.find((p) => p.source === pending.platformSource);
-    if (!platform) {
-      pendingRestoreRef.current = null;
-      setRestoring(false);
-      return;
-    }
-    openPlatform(platform);
+
+    // Sin plataforma restaurable: igual que el Dashboard, se selecciona la
+    // primera por defecto en vez de mostrar una pantalla vacía de elección.
+    pendingRestoreRef.current = null;
+    setRestoring(false);
+    if (platforms.length) openPlatform(platforms[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platformsLoading, platforms]);
 
@@ -299,13 +302,6 @@ export default function CoursesStudentsPage() {
       .finally(() => setStudentGradesLoading(false));
   }
 
-  function backToPlatforms() {
-    setLevel('platforms');
-    setSelectedPlatform(null);
-    setSelectedCourse(null);
-    setSelectedStudent(null);
-  }
-
   function backToCourses() {
     setLevel('courses');
     setSelectedCourse(null);
@@ -317,13 +313,7 @@ export default function CoursesStudentsPage() {
     setSelectedStudent(null);
   }
 
-  const filteredPlatforms = useMemo(() => {
-    if (!platformSearch.trim()) return platforms;
-    const term = platformSearch.toLowerCase();
-    return platforms.filter((p) => formatPlatformDisplayName(p.name).toLowerCase().includes(term));
-  }, [platforms, platformSearch]);
-
-  const breadcrumbItems = [{ label: 'Plataformas', onClick: level !== 'platforms' ? backToPlatforms : undefined }];
+  const breadcrumbItems = [{ label: 'Plataformas' }];
   if (selectedPlatform) {
     breadcrumbItems.push({
       label: formatPlatformDisplayName(selectedPlatform.name),
@@ -350,42 +340,33 @@ export default function CoursesStudentsPage() {
             Explora cada plataforma, sus cursos y el detalle de cada alumno matriculado.
           </p>
         </div>
+        {!platformsLoading && platforms.length > 0 && (
+          <Select
+            value={selectedPlatform?.source || ''}
+            onValueChange={(value) => {
+              const platform = platforms.find((p) => p.source === value);
+              if (platform) openPlatform(platform);
+            }}
+          >
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Selecciona una plataforma" />
+            </SelectTrigger>
+            <SelectContent>
+              {platforms.map((p) => (
+                <SelectItem key={p.source} value={p.source}>
+                  {formatPlatformDisplayName(p.name)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Breadcrumb items={breadcrumbItems} />
 
       {level === 'platforms' && (
         <Card className="p-4">
-          <div className="table-header-row">
-            <h3 className="card-title table-title">Plataformas ({platforms.length})</h3>
-            <Input
-              type="text"
-              className="table-search"
-              placeholder="Buscar plataforma"
-              value={platformSearch}
-              onChange={(e) => setPlatformSearch(e.target.value)}
-            />
-          </div>
-          {platformsLoading ? (
-            <ListSkeleton rows={8} />
-          ) : (
-            <div className="cs-list">
-              {filteredPlatforms.map((platform) => (
-                <button
-                  key={platform.id}
-                  type="button"
-                  className="cs-list-item"
-                  onClick={() => openPlatform(platform)}
-                >
-                  <span>{formatPlatformDisplayName(platform.name)}</span>
-                  <ChevronRight size={16} />
-                </button>
-              ))}
-              {!filteredPlatforms.length && (
-                <p className="empty">No se encontraron plataformas.</p>
-              )}
-            </div>
-          )}
+          {platformsLoading ? <ListSkeleton rows={8} /> : <p className="empty">Cargando…</p>}
         </Card>
       )}
 
@@ -553,6 +534,10 @@ export default function CoursesStudentsPage() {
             </>
           ) : breakdownLoading ? (
             <div className="cs-detail-card">
+              <p className="cs-detail-loading-note">
+                Calculando el detalle en vivo, archivo por archivo — puede tardar hasta un
+                minuto en cursos con mucho contenido.
+              </p>
               {Array.from({ length: 5 }).map((_, idx) => (
                 <div key={idx} className="cs-stat-row">
                   <Skeleton className="h-4 w-24" />

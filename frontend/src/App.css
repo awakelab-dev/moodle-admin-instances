@@ -1234,6 +1234,12 @@ input:focus-visible {
   max-width: 520px;
 }
 
+.cs-detail-loading-note {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
 .cs-stat-row {
   display: flex;
   justify-content: space-between;

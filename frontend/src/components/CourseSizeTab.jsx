@@ -12,6 +12,7 @@ import { Bar } from 'react-chartjs-2';
 import { getCourseBreakdown, getCourseAccessReport, getCourseGradesReport, getCourses } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatBytes, formatUnixSeconds } from '@/lib/formatters';
+import { downloadCsv } from '@/lib/csv';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -247,6 +248,74 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
         setGradesReportLoading(false);
       }
     }
+  }
+
+  function handleExportAccessReport() {
+    if (!accessReportData?.students?.length) return;
+
+    const rows = [
+      [
+        'Nombre',
+        'Apellidos',
+        'Matrícula activa',
+        'Usuario',
+        'Email',
+        'Primer acceso (sitio)',
+        'Último acceso (curso)',
+        'Actividades de aprendizaje',
+        'Nota final',
+        'Evaluaciones',
+        'Mensajes Foro',
+      ],
+    ];
+
+    for (const student of accessReportRows) {
+      rows.push([
+        student.firstname || '',
+        student.lastname || '',
+        student.activeEnrollment === null ? 'No disponible' : student.activeEnrollment ? 'Sí' : 'No',
+        student.username,
+        student.email || '',
+        formatUnixSeconds(student.firstAccess),
+        formatUnixSeconds(student.lastCourseAccess),
+        student.activitiesTotal === null
+          ? 'No disponible'
+          : `${student.activitiesCompleted}/${student.activitiesTotal}`,
+        student.finalGrade === null ? 'No disponible' : student.finalGrade,
+        student.evaluationsTotal === null
+          ? 'No disponible'
+          : `${student.evaluationsCompleted}/${student.evaluationsTotal}`,
+        student.forumMessageCount === null ? 'No disponible' : student.forumMessageCount,
+      ]);
+    }
+
+    const courseLabel = selectedCourse?.shortname || selectedCourse?.course_name || 'curso';
+    downloadCsv(`informe-global-${courseLabel}.csv`, rows);
+  }
+
+  function handleExportGradesReport() {
+    if (!gradesReportData?.students?.length) return;
+
+    const rows = [['Alumno', 'Evaluaciones', 'Nota curso', 'Ítem evaluable', 'Nota del ítem']];
+
+    for (const student of gradesReportData.students) {
+      if (!student.items.length) {
+        rows.push([student.fullname, `${student.completedItems}/${student.totalItems}`, student.coursePercentage, '', '']);
+        continue;
+      }
+      student.items.forEach((item, idx) => {
+        rows.push([
+          idx === 0 ? student.fullname : '',
+          idx === 0 ? `${student.completedItems}/${student.totalItems}` : '',
+          idx === 0 ? student.coursePercentage : '',
+          item.itemName,
+          item.gradeFormatted,
+        ]);
+      });
+    }
+
+    const courseLabel = selectedCourse?.shortname || selectedCourse?.course_name || 'curso';
+    downloadCsv(`calificaciones-${courseLabel}.csv`, rows);
   }
 
   function handleAccessSort(key) {
@@ -831,6 +900,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     ? 'Actualizar informe'
                     : 'Cargar informe de alumnos'}
               </Button>
+              {hasLoadedAccessReportForSelectedCourse && (
+                <Button type="button" variant="outline" onClick={handleExportAccessReport}>
+                  Descargar informe (Excel)
+                </Button>
+              )}
             </div>
           )}
           {hasLoadedAccessReportForSelectedCourse && (
@@ -997,6 +1071,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     ? 'Actualizar calificaciones'
                     : 'Cargar evaluaciones y calificaciones'}
               </Button>
+              {hasLoadedGradesReportForSelectedCourse && gradesReportData?.available && (
+                <Button type="button" variant="outline" onClick={handleExportGradesReport}>
+                  Descargar informe (Excel)
+                </Button>
+              )}
             </div>
           )}
 
