@@ -74,7 +74,7 @@ input:focus-visible {
   padding: 1.5rem 1rem 5rem;
   background:
     linear-gradient(0deg, rgba(1, 25, 50, 0.75), rgba(1, 25, 50, 0.85)),
-    url('./login-background.png') center/cover no-repeat;
+    url('./login-background.jpg') center/cover no-repeat;
 }
 
 .login-screen::before {
