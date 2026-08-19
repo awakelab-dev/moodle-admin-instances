@@ -1,5 +1,10 @@
 function escapeCsvCell(value) {
   const text = value === null || value === undefined ? '' : String(value);
+  // Valores tipo "7/20" o "23/24" (completadas/total) los interpreta Excel
+  // como fechas día/mes ("jul-20", "mar-24") si no se fuerzan a texto.
+  if (/^\d{1,3}\/\d{1,3}$/.test(text)) {
+    return `="${text}"`;
+  }
   if (/[";\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
