@@ -45,6 +45,12 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // Render pone un proxy delante del backend: sin esto, req.ip devuelve la
+  // IP interna del proxy (la misma para todo el trafico) en vez de la IP
+  // real de cada cliente, y el limitador de login de abajo trataria a
+  // todos los usuarios como si fueran uno solo compartiendo el mismo
+  // contador de intentos.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.use(
     cors({
       origin: CORS_ORIGIN,
