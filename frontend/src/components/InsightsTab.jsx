@@ -37,7 +37,9 @@ function truncateLabel(value, maxLength = 24) {
 
 function formatGradePercent(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return null;
-  return `${Number(value).toFixed(1)}%`;
+  // Los datos se guardan como porcentaje (0-100), pero se muestran como nota
+  // sobre 10, que es la escala habitual en calificaciones.
+  return (Number(value) / 10).toFixed(2).replace('.', ',');
 }
 
 function compareValues(a, b) {
@@ -439,7 +441,7 @@ export default function InsightsTab({ moodleSource, platformName }) {
                     ticks: {
                       color: '#C9D6EA',
                       font: { size: 11, family: CHART_FONT_FAMILY },
-                      callback: (value) => `${value}%`,
+                      callback: (value) => (Number(value) / 10).toFixed(1).replace('.', ','),
                     },
                     grid: { color: 'rgba(240, 243, 252, 0.10)' },
                     border: { display: false },
