@@ -914,12 +914,12 @@ input:focus-visible {
   display: block;
   min-width: 240px;
   width: min(100%, 300px);
-  margin-bottom: 0.9rem;
+  margin-bottom: 1.6rem;
   border: 1px solid var(--color-border-soft);
   background: var(--color-surface);
   color: var(--color-brand);
-  padding: 0.62rem 0.75rem;
-  font-size: 0.8rem;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.85rem;
   transition: border-color 0.16s ease;
 }
 
