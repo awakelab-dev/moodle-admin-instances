@@ -463,6 +463,13 @@ export default function CoursesStudentsPage() {
       .finally(() => setStudentGradesLoading(false));
   }
 
+  function backToPlatforms() {
+    setLevel('platforms');
+    setSelectedPlatform(null);
+    setSelectedCourse(null);
+    setSelectedStudent(null);
+  }
+
   function backToCourses() {
     setLevel('courses');
     setSelectedCourse(null);
@@ -474,7 +481,9 @@ export default function CoursesStudentsPage() {
     setSelectedStudent(null);
   }
 
-  const breadcrumbItems = [{ label: 'Plataformas' }];
+  const breadcrumbItems = [
+    { label: 'Plataformas', onClick: level !== 'platforms' ? backToPlatforms : undefined },
+  ];
   if (selectedPlatform) {
     breadcrumbItems.push({
       label: formatPlatformDisplayName(selectedPlatform.name),
@@ -736,7 +745,13 @@ export default function CoursesStudentsPage() {
                 </button>
               </div>
               {accessReportLoading ? (
-                <TableSkeleton columns={6} />
+                <>
+                  <p className="cs-detail-loading-note">
+                    Consultando alumnos en vivo — en plataformas con muchos alumnos puede
+                    tardar un poco en cargar.
+                  </p>
+                  <TableSkeleton columns={6} />
+                </>
               ) : accessReportError ? (
                 <ErrorRetry
                   message={accessReportError}
@@ -863,10 +878,13 @@ export default function CoursesStudentsPage() {
                           >
                             Último acceso (curso){globalSortIcon('lastCourseAccess')}
                           </TableHead>
+                          <TableHead>Tiempo acumulado</TableHead>
                           <TableHead>Actividades de aprendizaje</TableHead>
                           <TableHead>Nota final</TableHead>
                           <TableHead>Evaluaciones</TableHead>
+                          <TableHead>Correos</TableHead>
                           <TableHead>Mensajes Foro</TableHead>
+                          <TableHead>Mensajes chats</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -885,6 +903,7 @@ export default function CoursesStudentsPage() {
                             <TableCell>{student.email || '—'}</TableCell>
                             <TableCell>{formatUnixSeconds(student.firstAccess)}</TableCell>
                             <TableCell>{formatUnixSeconds(student.lastCourseAccess)}</TableCell>
+                            <TableCell className="muted" title="No disponible por Web Services">—</TableCell>
                             <TableCell>
                               {student.activitiesTotal === null ? (
                                 <span className="muted" title="Requiere 'Finalización de actividades' activada en el curso">
@@ -912,6 +931,7 @@ export default function CoursesStudentsPage() {
                                 `${student.evaluationsCompleted}/${student.evaluationsTotal}`
                               )}
                             </TableCell>
+                            <TableCell className="muted" title="No disponible por Web Services">—</TableCell>
                             <TableCell>
                               {student.forumMessageCount === null ? (
                                 <span className="muted" title="No hay foros disponibles en este curso">
@@ -921,6 +941,7 @@ export default function CoursesStudentsPage() {
                                 student.forumMessageCount
                               )}
                             </TableCell>
+                            <TableCell className="muted" title="No disponible por Web Services">—</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -929,7 +950,10 @@ export default function CoursesStudentsPage() {
                   <p className="history-note">
                     "Registros", "Tiempo acumulado", "Correos" y "Mensajes chats" no están
                     disponibles por Web Services de Moodle — solo existen dentro de plugins de
-                    informes (como block_advanced_reports), que no exponen API.
+                    informes (como block_advanced_reports), que no exponen API. "Actividades de
+                    aprendizaje" necesita que el curso tenga activada la "Finalización de
+                    actividades"; "Nota final" necesita el permiso de calificaciones habilitado;
+                    "Mensajes Foro" necesita que el curso tenga al menos un foro.
                   </p>
                 </>
               )}
