@@ -558,7 +558,7 @@ export default function CoursesStudentsPage() {
       <Breadcrumb items={breadcrumbItems} />
 
       {level === 'platforms' && (
-        <Card className="p-4">
+        <Card className="p-4 min-w-0">
           {platformsLoading ? (
             <ListSkeleton rows={8} />
           ) : !platforms.length ? (
@@ -586,7 +586,7 @@ export default function CoursesStudentsPage() {
       )}
 
       {level === 'courses' && (
-        <Card className="p-4">
+        <Card className="p-4 min-w-0">
           <div className="table-header-row">
             <h3 className="card-title table-title">
               Cursos de {formatPlatformDisplayName(selectedPlatform.name)} ({filteredCourses.length})
@@ -667,7 +667,7 @@ export default function CoursesStudentsPage() {
       )}
 
       {level === 'course' && selectedCourse && (
-        <Card className="p-4">
+        <Card className="p-4 min-w-0">
           <div className="table-header-row">
             <div>
               <h3 className="card-title table-title">{selectedCourse.course_name}</h3>
@@ -1111,7 +1111,7 @@ export default function CoursesStudentsPage() {
       )}
 
       {level === 'student' && selectedStudent && (
-        <Card className="p-4">
+        <Card className="p-4 min-w-0">
           <h3 className="card-title table-title">
             {selectedStudent.firstname} {selectedStudent.lastname}
           </h3>
