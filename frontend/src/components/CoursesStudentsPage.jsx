@@ -24,6 +24,19 @@ function isTemplateCourse(course) {
   return /plantilla/i.test(course.category_name || '');
 }
 
+// Cualquier rol distinto de "student" (teacher, editingteacher, manager…)
+// se trata como profesor/tutor de cara al filtro y a la etiqueta.
+function isTeacherRole(student) {
+  return Array.isArray(student.roles) && student.roles.length > 0 && !student.roles.includes('student');
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('es-CL');
+}
+
 function ListSkeleton({ rows = 6 }) {
   return (
     <div className="cs-list">
@@ -80,6 +93,7 @@ export default function CoursesStudentsPage() {
   const [accessReportLoading, setAccessReportLoading] = useState(false);
   const [accessReportError, setAccessReportError] = useState(null);
   const [studentSearch, setStudentSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all'); // 'all' | 'students' | 'teachers'
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentGrades, setStudentGrades] = useState(null);
@@ -260,11 +274,12 @@ export default function CoursesStudentsPage() {
       .finally(() => setAccessReportLoading(false));
   }
 
-  function loadBreakdown(courseId) {
-    if (breakdownData || breakdownLoading) return;
+  function loadBreakdown(courseId, { refresh = false } = {}) {
+    if (breakdownLoading) return;
+    if (breakdownData && !refresh) return;
     setBreakdownLoading(true);
     setBreakdownError(null);
-    getCourseBreakdown(courseId, { moodleSource: selectedPlatform.source })
+    getCourseBreakdown(courseId, { moodleSource: selectedPlatform.source, ...(refresh ? { refresh: 1 } : {}) })
       .then((response) => setBreakdownData(response))
       .catch(() => {
         setBreakdownData(null);
@@ -273,18 +288,24 @@ export default function CoursesStudentsPage() {
       .finally(() => setBreakdownLoading(false));
   }
 
+  const allStudents = accessReportData?.students || [];
+  const studentsCount = useMemo(() => allStudents.filter((s) => !isTeacherRole(s)).length, [allStudents]);
+  const teachersCount = useMemo(() => allStudents.filter(isTeacherRole).length, [allStudents]);
+
   const filteredStudents = useMemo(() => {
-    const students = accessReportData?.students || [];
-    if (!studentSearch.trim()) return students;
+    let list = allStudents;
+    if (roleFilter === 'students') list = list.filter((s) => !isTeacherRole(s));
+    if (roleFilter === 'teachers') list = list.filter(isTeacherRole);
+    if (!studentSearch.trim()) return list;
     const term = studentSearch.toLowerCase();
-    return students.filter(
+    return list.filter(
       (s) =>
         s.firstname.toLowerCase().includes(term) ||
         s.lastname.toLowerCase().includes(term) ||
         s.username.toLowerCase().includes(term) ||
         s.email.toLowerCase().includes(term)
     );
-  }, [accessReportData, studentSearch]);
+  }, [allStudents, roleFilter, studentSearch]);
 
   function openStudent(student) {
     setSelectedStudent(student);
@@ -492,8 +513,31 @@ export default function CoursesStudentsPage() {
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
               />
+              <div className="cs-role-filter">
+                <button
+                  type="button"
+                  className={`cs-role-chip ${roleFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setRoleFilter('all')}
+                >
+                  Todos ({studentsCount + teachersCount})
+                </button>
+                <button
+                  type="button"
+                  className={`cs-role-chip ${roleFilter === 'students' ? 'active' : ''}`}
+                  onClick={() => setRoleFilter('students')}
+                >
+                  Alumnos ({studentsCount})
+                </button>
+                <button
+                  type="button"
+                  className={`cs-role-chip ${roleFilter === 'teachers' ? 'active' : ''}`}
+                  onClick={() => setRoleFilter('teachers')}
+                >
+                  Profesores/tutores ({teachersCount})
+                </button>
+              </div>
               {accessReportLoading ? (
-                <TableSkeleton columns={5} />
+                <TableSkeleton columns={6} />
               ) : accessReportError ? (
                 <ErrorRetry
                   message={accessReportError}
@@ -510,6 +554,7 @@ export default function CoursesStudentsPage() {
                         <th>Apellidos</th>
                         <th>Usuario</th>
                         <th>Email</th>
+                        <th>Rol</th>
                         <th>Nota final</th>
                       </tr>
                     </thead>
@@ -524,6 +569,11 @@ export default function CoursesStudentsPage() {
                           <td>{student.lastname || '—'}</td>
                           <td className="mono">{student.username}</td>
                           <td>{student.email || '—'}</td>
+                          <td>
+                            <Badge variant={isTeacherRole(student) ? 'outline' : 'secondary'}>
+                              {isTeacherRole(student) ? 'Profesor/tutor' : 'Alumno'}
+                            </Badge>
+                          </td>
                           <td>{student.finalGrade ?? '—'}</td>
                         </tr>
                       ))}
@@ -552,6 +602,20 @@ export default function CoursesStudentsPage() {
             />
           ) : breakdownData ? (
             <div className="cs-detail-card">
+              <div className="cs-detail-meta-row">
+                <p className={`course-breakdown-meta course-breakdown-meta-${breakdownData.source || 'live'}`}>
+                  {breakdownData.source === 'cache' ? 'Detalle cargado desde caché' : 'Detalle recalculado en vivo'} ·
+                  {' '}Calculado: {formatDateTime(breakdownData.calculatedAt)}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={breakdownLoading}
+                  onClick={() => loadBreakdown(selectedCourse.course_id, { refresh: true })}
+                >
+                  Recalcular
+                </Button>
+              </div>
               <StatRow label="Contenido" value={formatBytes(breakdownData.course.size_bytes)} />
               <StatRow
                 label="Entregas"

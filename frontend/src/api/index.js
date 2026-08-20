@@ -14,6 +14,34 @@ function buildPath(path, params = {}) {
   return query ? `${path}?${query}` : path;
 }
 
+// Caché en memoria de corta duración para listados que casi no cambian
+// entre navegaciones (plataformas, cursos) — evita repetir la misma
+// petición cada vez que el usuario cambia de pestaña. Se invalida sola
+// al expirar el TTL, y a mano cuando una acción puede haber cambiado los
+// datos (crear/editar/borrar plataforma, lanzar una sincronización).
+const memoryCache = new Map();
+const CACHE_TTL_MS = 60_000;
+
+function cachedRequest(key, fetcher, ttlMs = CACHE_TTL_MS) {
+  const now = Date.now();
+  const entry = memoryCache.get(key);
+  if (entry && entry.expiresAt > now) {
+    return entry.promise;
+  }
+  const promise = fetcher().catch((err) => {
+    memoryCache.delete(key);
+    throw err;
+  });
+  memoryCache.set(key, { promise, expiresAt: now + ttlMs });
+  return promise;
+}
+
+export function invalidateCache(prefix) {
+  for (const key of memoryCache.keys()) {
+    if (!prefix || key.startsWith(prefix)) memoryCache.delete(key);
+  }
+}
+
 async function request(path, options = {}) {
   const session = getStoredAuthSession();
   const res = await fetch(`${BASE}${path}`, {
@@ -103,7 +131,8 @@ export const getGlobalStorageHistory = () =>
   request('/dashboard/platforms/history/global-storage', {
     cache: 'no-store',
   });
-export const getCourses = (params = {}) => request(buildPath('/dashboard/courses', params));
+export const getCourses = (params = {}) =>
+  cachedRequest(`courses:${JSON.stringify(params)}`, () => request(buildPath('/dashboard/courses', params)));
 export const getCourseBreakdown = (courseId, params = {}) =>
   request(buildPath(`/dashboard/courses/${courseId}/breakdown`, params), {
     cache: 'no-store',
@@ -124,12 +153,22 @@ export const getInsights = (params = {}) =>
   });
 
 /* ─── Platforms ─── */
-export const getPlatforms = () => request('/platforms', { cache: 'no-store' });
+export const getPlatforms = () => cachedRequest('platforms', () => request('/platforms', { cache: 'no-store' }));
 export const addPlatform = (data) =>
-  request('/platforms', { method: 'POST', body: JSON.stringify(data) });
+  request('/platforms', { method: 'POST', body: JSON.stringify(data) }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });
 export const updatePlatform = (id, data) =>
-  request(`/platforms/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  request(`/platforms/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });
 export const deletePlatform = (id) =>
-  request(`/platforms/${id}`, { method: 'DELETE' });
+  request(`/platforms/${id}`, { method: 'DELETE' }).then((result) => {
+    invalidateCache('platforms');
+    invalidateCache('courses:');
+    return result;
+  });
 export const testPlatform = (id) =>
   request(`/platforms/${id}/test`, { method: 'POST' });

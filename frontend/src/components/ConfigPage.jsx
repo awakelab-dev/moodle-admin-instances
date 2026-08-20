@@ -8,6 +8,7 @@ import {
   triggerPlatformSync,
   cancelSync,
   getSyncStatus,
+  invalidateCache,
 } from '../api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -189,6 +190,8 @@ export default function ConfigPage() {
     setSyncProgress((prev) => ({ ...prev, [platform.id]: null }));
     try {
       const status = await pollSyncStatus(platform.id);
+      invalidateCache('platforms');
+      invalidateCache('courses:');
       await load();
       const lastError = status?.sync_errors?.[status.sync_errors.length - 1];
       if (status?.status === 'failed' && lastError) {

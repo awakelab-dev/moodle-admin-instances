@@ -13,6 +13,7 @@ import { getCourseBreakdown, getCourseAccessReport, getCourseGradesReport, getCo
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatBytes, formatUnixSeconds } from '@/lib/formatters';
 import { downloadXlsx } from '@/lib/excel';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -651,57 +652,57 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
         </div>
 
         <div className="table-wrapper inventory-table-wrapper">
-          <table className="course-table">
-            <thead>
-              <tr>
-                <th style={{ width: '40px' }}>#</th>
-                <th
+          <Table className="course-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead style={{ width: '40px' }}>#</TableHead>
+                <TableHead
                   className="sortable"
                   onClick={() => handleSort('course_name')}
                 >
                   Curso{sortIcon('course_name')}
-                </th>
-                <th
+                </TableHead>
+                <TableHead
                   className="sortable"
                   onClick={() => handleSort('category_name')}
                 >
                   Categoría{sortIcon('category_name')}
-                </th>
-                <th
+                </TableHead>
+                <TableHead
                   className="sortable right"
                   onClick={() => handleSort('size_bytes')}
                 >
                   Contenido{sortIcon('size_bytes')}
-                </th>
-                <th
+                </TableHead>
+                <TableHead
                   className="sortable right"
                   onClick={() => handleSort('assignment_size_bytes')}
                 >
                   Entregas{sortIcon('assignment_size_bytes')}
-                </th>
-                <th
+                </TableHead>
+                <TableHead
                   className="sortable right"
                   onClick={() => handleSort('forum_size_bytes')}
                 >
                   Foros{sortIcon('forum_size_bytes')}
-                </th>
-                <th
+                </TableHead>
+                <TableHead
                   className="sortable right"
                   onClick={() => handleSort('backup_size_bytes')}
                 >
                   Backups{sortIcon('backup_size_bytes')}
-                </th>
-                <th
+                </TableHead>
+                <TableHead
                   className="sortable right"
                   onClick={() => handleSort('total_bytes')}
                 >
                   Total{sortIcon('total_bytes')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {tableCourses.map((course, idx) => (
-                <tr
+                <TableRow
                   key={`${course.moodle_source}-${course.course_id ?? idx}`}
                   className={course.course_id === selectedCourseId ? 'course-row-selected' : ''}
                   onClick={() => handleRowSelect(course.course_id)}
@@ -713,19 +714,19 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                   }}
                   tabIndex={0}
                 >
-                  <td className="row-num">{idx + 1}</td>
-                  <td>
+                  <TableCell className="row-num">{idx + 1}</TableCell>
+                  <TableCell>
                     <div className="course-cell">
                       <span className="course-name-text">{course.course_name}</span>
                       {course.shortname && (
                         <span className="course-short">{course.shortname}</span>
                       )}
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <span className="cat-badge">{course.category_name}</span>
-                  </td>
-                  <td className="right mono">
+                  </TableCell>
+                  <TableCell className="right mono">
                     {course.size_bytes > 0 ? (
                       <span className="metric-value metric-value-content">
                         {formatBytes(course.size_bytes)}
@@ -733,8 +734,8 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     ) : (
                       <span className="muted">—</span>
                     )}
-                  </td>
-                  <td className="right mono">
+                  </TableCell>
+                  <TableCell className="right mono">
                     {course.assignment_size_bytes > 0 ? (
                       <span className="metric-value metric-value-assignment">
                         {formatBytes(course.assignment_size_bytes)}
@@ -742,8 +743,8 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     ) : (
                       <span className="muted">—</span>
                     )}
-                  </td>
-                  <td className="right mono">
+                  </TableCell>
+                  <TableCell className="right mono">
                     {course.forum_size_bytes > 0 ? (
                       <span className="metric-value metric-value-forum">
                         {formatBytes(course.forum_size_bytes)}
@@ -751,8 +752,8 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     ) : (
                       <span className="muted">—</span>
                     )}
-                  </td>
-                  <td className="right mono">
+                  </TableCell>
+                  <TableCell className="right mono">
                     {course.backup_size_bytes > 0 ? (
                       <span className="metric-value metric-value-backup">
                         {formatBytes(course.backup_size_bytes)}
@@ -760,21 +761,21 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     ) : (
                       <span className="muted">—</span>
                     )}
-                  </td>
-                  <td className="right mono bold">
+                  </TableCell>
+                  <TableCell className="right mono bold">
                     <span className="metric-total">{formatBytes(course.total_bytes)}</span>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
               {tableCourses.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="empty">
+                <TableRow>
+                  <TableCell colSpan={8} className="empty">
                     No se encontraron cursos.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         <div className="course-breakdown-panel">
@@ -861,36 +862,36 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
             </p>
           ) : (
             <div className="table-wrapper course-breakdown-table-wrapper">
-              <table className="course-table course-breakdown-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '40px' }}>#</th>
-                    <th>Componente</th>
-                    <th>Filearea</th>
-                    <th className="right">% curso</th>
-                    <th className="right">Tamaño</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table className="course-table course-breakdown-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead style={{ width: '40px' }}>#</TableHead>
+                    <TableHead>Componente</TableHead>
+                    <TableHead>Filearea</TableHead>
+                    <TableHead className="right">% curso</TableHead>
+                    <TableHead className="right">Tamaño</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {breakdownData.rows.map((row, idx) => (
-                    <tr key={`${row.component}-${row.filearea}-${idx}`}>
-                      <td className="row-num">{idx + 1}</td>
-                      <td>
+                    <TableRow key={`${row.component}-${row.filearea}-${idx}`}>
+                      <TableCell className="row-num">{idx + 1}</TableCell>
+                      <TableCell>
                         <span className="breakdown-chip">{row.component || '—'}</span>
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         <span className="breakdown-chip breakdown-chip-secondary">
                           {row.filearea || '—'}
                         </span>
-                      </td>
-                      <td className="right mono">
+                      </TableCell>
+                      <TableCell className="right mono">
                         {formatPercentage(row.size_bytes || 0, breakdownData.course?.total_bytes || 0)}
-                      </td>
-                      <td className="right mono bold">{formatBytes(row.size_bytes || 0)}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="right mono bold">{formatBytes(row.size_bytes || 0)}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>
@@ -962,58 +963,58 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                 onChange={(e) => setAccessSearchTerm(e.target.value)}
               />
               <div className="table-wrapper insights-table-wrapper">
-                <table className="course-table access-report-table">
-                  <thead>
-                    <tr>
-                      <th className="sortable" onClick={() => handleAccessSort('firstname')}>
+                <Table className="course-table access-report-table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="sortable" onClick={() => handleAccessSort('firstname')}>
                         Nombre{accessSortIcon('firstname')}
-                      </th>
-                      <th className="sortable" onClick={() => handleAccessSort('lastname')}>
+                      </TableHead>
+                      <TableHead className="sortable" onClick={() => handleAccessSort('lastname')}>
                         Apellidos{accessSortIcon('lastname')}
-                      </th>
-                      <th>Matrícula activa</th>
-                      <th className="sortable" onClick={() => handleAccessSort('username')}>
+                      </TableHead>
+                      <TableHead>Matrícula activa</TableHead>
+                      <TableHead className="sortable" onClick={() => handleAccessSort('username')}>
                         Usuario{accessSortIcon('username')}
-                      </th>
-                      <th className="sortable" onClick={() => handleAccessSort('email')}>
+                      </TableHead>
+                      <TableHead className="sortable" onClick={() => handleAccessSort('email')}>
                         Email{accessSortIcon('email')}
-                      </th>
-                      <th className="sortable" onClick={() => handleAccessSort('firstAccess')}>
+                      </TableHead>
+                      <TableHead className="sortable" onClick={() => handleAccessSort('firstAccess')}>
                         Primer acceso (sitio){accessSortIcon('firstAccess')}
-                      </th>
-                      <th
+                      </TableHead>
+                      <TableHead
                         className="sortable"
                         onClick={() => handleAccessSort('lastCourseAccess')}
                       >
                         Último acceso (curso){accessSortIcon('lastCourseAccess')}
-                      </th>
-                      <th>Tiempo acumulado</th>
-                      <th>Actividades de aprendizaje</th>
-                      <th>Nota final</th>
-                      <th>Evaluaciones</th>
-                      <th>Correos</th>
-                      <th>Mensajes Foro</th>
-                      <th>Mensajes chats</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      </TableHead>
+                      <TableHead>Tiempo acumulado</TableHead>
+                      <TableHead>Actividades de aprendizaje</TableHead>
+                      <TableHead>Nota final</TableHead>
+                      <TableHead>Evaluaciones</TableHead>
+                      <TableHead>Correos</TableHead>
+                      <TableHead>Mensajes Foro</TableHead>
+                      <TableHead>Mensajes chats</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {accessReportRows.map((student) => (
-                      <tr key={student.userId}>
-                        <td>{student.firstname || '—'}</td>
-                        <td>{student.lastname || '—'}</td>
-                        <td>
+                      <TableRow key={student.userId}>
+                        <TableCell>{student.firstname || '—'}</TableCell>
+                        <TableCell>{student.lastname || '—'}</TableCell>
+                        <TableCell>
                           {student.activeEnrollment === null
                             ? 'No disponible'
                             : student.activeEnrollment
                               ? 'Sí'
                               : 'No'}
-                        </td>
-                        <td className="mono">{student.username}</td>
-                        <td>{student.email || '—'}</td>
-                        <td>{formatUnixSeconds(student.firstAccess)}</td>
-                        <td>{formatUnixSeconds(student.lastCourseAccess)}</td>
-                        <td className="muted" title="No disponible por Web Services">—</td>
-                        <td>
+                        </TableCell>
+                        <TableCell className="mono">{student.username}</TableCell>
+                        <TableCell>{student.email || '—'}</TableCell>
+                        <TableCell>{formatUnixSeconds(student.firstAccess)}</TableCell>
+                        <TableCell>{formatUnixSeconds(student.lastCourseAccess)}</TableCell>
+                        <TableCell className="muted" title="No disponible por Web Services">—</TableCell>
+                        <TableCell>
                           {student.activitiesTotal === null ? (
                             <span className="muted" title="Requiere 'Finalización de actividades' activada en el curso">
                               No disponible
@@ -1021,8 +1022,8 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                           ) : (
                             `${student.activitiesCompleted}/${student.activitiesTotal}`
                           )}
-                        </td>
-                        <td>
+                        </TableCell>
+                        <TableCell>
                           {student.finalGrade === null ? (
                             <span className="muted" title="Requiere permiso de calificaciones habilitado">
                               No disponible
@@ -1030,8 +1031,8 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                           ) : (
                             student.finalGrade
                           )}
-                        </td>
-                        <td>
+                        </TableCell>
+                        <TableCell>
                           {student.evaluationsTotal === null ? (
                             <span className="muted" title="Requiere permiso de calificaciones habilitado">
                               No disponible
@@ -1039,9 +1040,9 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                           ) : (
                             `${student.evaluationsCompleted}/${student.evaluationsTotal}`
                           )}
-                        </td>
-                        <td className="muted" title="No disponible por Web Services">—</td>
-                        <td>
+                        </TableCell>
+                        <TableCell className="muted" title="No disponible por Web Services">—</TableCell>
+                        <TableCell>
                           {student.forumMessageCount === null ? (
                             <span className="muted" title="No hay foros disponibles en este curso">
                               No disponible
@@ -1049,12 +1050,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                           ) : (
                             student.forumMessageCount
                           )}
-                        </td>
-                        <td className="muted" title="No disponible por Web Services">—</td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="muted" title="No disponible por Web Services">—</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
               <p className="history-note">
                 "Tiempo acumulado", "Evaluaciones", "Correos" y "Mensajes chats" no están
@@ -1127,24 +1128,24 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
             <p className="empty">No hay calificaciones registradas para este curso todavía.</p>
           ) : (
             <div className="table-wrapper insights-table-wrapper">
-              <table className="course-table">
-                <thead>
-                  <tr>
-                    <th>Alumno</th>
-                    <th className="right">Evaluaciones</th>
-                    <th className="right">Nota curso (/10)</th>
-                    <th>Detalle</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table className="course-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Alumno</TableHead>
+                    <TableHead className="right">Evaluaciones</TableHead>
+                    <TableHead className="right">Nota curso (/10)</TableHead>
+                    <TableHead>Detalle</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {gradesReportData.students.map((student) => (
-                    <tr key={student.userId}>
-                      <td>{student.fullname || '—'}</td>
-                      <td className="right mono">
+                    <TableRow key={student.userId}>
+                      <TableCell>{student.fullname || '—'}</TableCell>
+                      <TableCell className="right mono">
                         {student.completedItems}/{student.totalItems}
-                      </td>
-                      <td className="right mono bold">{student.courseScoreOutOf10}</td>
-                      <td>
+                      </TableCell>
+                      <TableCell className="right mono bold">{student.courseScoreOutOf10}</TableCell>
+                      <TableCell>
                         {student.items.length ? (
                           <div className="grade-detail-cell">
                             {student.items.map((item, idx) => (
@@ -1159,11 +1160,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                         ) : (
                           '—'
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>
