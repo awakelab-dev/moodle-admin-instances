@@ -2,13 +2,17 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// Sin wrapper con su propio overflow: se delega el scroll (si hace falta)
+// al contenedor externo que ya envuelve cada uso de <Table> en la app
+// (.table-wrapper / .cs-report-box). Tener dos contenedores con scroll
+// anidados —este y el externo— hacía que la barra horizontal quedase
+// pegada al final de TODO el contenido en vez de al final de la zona
+// visible, así que solo aparecía al llegar al final del scroll vertical.
 const Table = React.forwardRef(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props} />
-  </div>
+  <table
+    ref={ref}
+    className={cn("w-full caption-bottom text-sm", className)}
+    {...props} />
 ))
 Table.displayName = "Table"
 
