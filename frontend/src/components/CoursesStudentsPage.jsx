@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, ChevronDown } from 'lucide-react';
 import {
   getPlatforms,
   getCourses,
@@ -10,11 +9,13 @@ import {
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatBytes, formatUnixSeconds } from '@/lib/formatters';
+import { downloadXlsx } from '@/lib/excel';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import Breadcrumb from './Breadcrumb';
 import ErrorRetry from './ErrorRetry';
 
@@ -106,9 +107,33 @@ export default function CoursesStudentsPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all'); // 'all' | 'students' | 'teachers'
 
+  // Búsqueda y orden propios de la pestaña "Informe global" (independientes
+  // de los de "Lista de alumnos", aunque ambas pestañas leen los mismos
+  // `accessReportData`, ya cargados al abrir el curso).
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+  const [globalSortKey, setGlobalSortKey] = useState('lastname');
+  const [globalSortDir, setGlobalSortDir] = useState('asc');
+
+  // Informe de calificaciones de TODOS los alumnos del curso (distinto del
+  // que se consulta para un solo alumno en el nivel "student"). Al ser una
+  // llamada costosa a Moodle, se carga solo bajo demanda con un botón,
+  // igual que el desglose de almacenamiento.
+  const [gradesReportData, setGradesReportData] = useState(null);
+  const [gradesReportLoading, setGradesReportLoading] = useState(false);
+  const [gradesReportError, setGradesReportError] = useState(null);
+  const [hasRequestedGradesReport, setHasRequestedGradesReport] = useState(false);
+
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentGrades, setStudentGrades] = useState(null);
   const [studentGradesLoading, setStudentGradesLoading] = useState(false);
+
+  // Selector de plataforma con buscador (sustituye al <Select> simple):
+  // `pickerOpen` controla si el desplegable está abierto y `platformSearch`
+  // filtra la lista mientras se escribe. `pickerRef` se usa para cerrar el
+  // desplegable al hacer clic fuera de él.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [platformSearch, setPlatformSearch] = useState('');
+  const pickerRef = useRef(null);
 
   // Snapshot de la navegación guardada (leído una sola vez al montar). Se va
   // consumiendo nivel por nivel en los tres useEffect de restauración
@@ -123,6 +148,17 @@ export default function CoursesStudentsPage() {
       }
     })()
   );
+
+  // Cierra el desplegable de plataforma si se hace clic fuera de él.
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+        setPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,11 +195,11 @@ export default function CoursesStudentsPage() {
       return;
     }
 
-    // Sin plataforma restaurable: igual que el Dashboard, se selecciona la
-    // primera por defecto en vez de mostrar una pantalla vacía de elección.
+    // Sin plataforma restaurable: a diferencia del Dashboard, aquí no se
+    // auto-selecciona ninguna — se pide elegir explícitamente (queda en
+    // level === 'platforms' mostrando el selector como primera pantalla).
     pendingRestoreRef.current = null;
     setRestoring(false);
-    if (platforms.length) openPlatform(platforms[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platformsLoading, platforms]);
 
@@ -255,6 +291,20 @@ export default function CoursesStudentsPage() {
     return list;
   }, [courseData]);
 
+  // Lista de plataformas que se muestra en el desplegable con buscador,
+  // filtrada por lo que se va escribiendo en `platformSearch`.
+  const filteredPickerPlatforms = useMemo(() => {
+    if (!platformSearch.trim()) return platforms;
+    const term = platformSearch.toLowerCase();
+    return platforms.filter((p) => formatPlatformDisplayName(p.name).toLowerCase().includes(term));
+  }, [platforms, platformSearch]);
+
+  function selectPlatformFromPicker(platform) {
+    openPlatform(platform);
+    setPickerOpen(false);
+    setPlatformSearch('');
+  }
+
   const templateCount = useMemo(
     () => allCourses.filter(isTemplateCourse).length,
     [allCourses]
@@ -282,6 +332,10 @@ export default function CoursesStudentsPage() {
     setAccessReportData(null);
     setAccessReportError(null);
     setStudentSearch('');
+    setGlobalSearchTerm('');
+    setGradesReportData(null);
+    setGradesReportError(null);
+    setHasRequestedGradesReport(false);
     setLevel('course');
     loadAccessReport(course.course_id);
   }
@@ -316,9 +370,165 @@ export default function CoursesStudentsPage() {
       .finally(() => setBreakdownLoading(false));
   }
 
+  // Carga el detalle de calificaciones por alumno (gradereport_user_get_grade_items
+  // de Moodle) en vivo, para TODOS los alumnos del curso a la vez; puede venir
+  // marcado como no disponible si la plataforma no tiene esa función
+  // habilitada en su Web Service externo.
+  function loadGradesReport() {
+    if (!selectedCourse || !selectedPlatform) return;
+    setHasRequestedGradesReport(true);
+    setGradesReportLoading(true);
+    setGradesReportError(null);
+    getCourseGradesReport(selectedCourse.course_id, { moodleSource: selectedPlatform.source })
+      .then((response) => setGradesReportData(response))
+      .catch(() => {
+        setGradesReportData(null);
+        setGradesReportError('No se pudo cargar el informe de calificaciones de este curso.');
+      })
+      .finally(() => setGradesReportLoading(false));
+  }
+
+  function handleGlobalSort(key) {
+    if (globalSortKey === key) {
+      setGlobalSortDir((direction) => (direction === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setGlobalSortKey(key);
+      setGlobalSortDir('asc');
+    }
+  }
+
+  function globalSortIcon(key) {
+    if (globalSortKey !== key) return ' ↕';
+    return globalSortDir === 'asc' ? ' ↑' : ' ↓';
+  }
+
+  // Exporta la ficha de alumnos ("Informe global") a un .xlsx real usando
+  // downloadXlsx, con las mismas columnas que se ven en la pestaña.
+  function handleExportGlobalReport() {
+    if (!globalReportRows.length) return;
+
+    const columns = [
+      { header: 'Nombre', key: 'nombre', width: 16 },
+      { header: 'Apellidos', key: 'apellidos', width: 20 },
+      { header: 'Matrícula activa', key: 'matricula', width: 14 },
+      { header: 'Usuario', key: 'usuario', width: 14 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Primer acceso (sitio)', key: 'primerAcceso', width: 18 },
+      { header: 'Último acceso (curso)', key: 'ultimoAcceso', width: 18 },
+      { header: 'Actividades de aprendizaje', key: 'actividades', width: 15 },
+      { header: 'Nota final', key: 'notaFinal', width: 12 },
+      { header: 'Evaluaciones', key: 'evaluaciones', width: 13 },
+      { header: 'Mensajes Foro', key: 'mensajesForo', width: 13 },
+    ];
+
+    const rows = globalReportRows.map((student) => ({
+      nombre: student.firstname || '',
+      apellidos: student.lastname || '',
+      matricula: student.activeEnrollment === null ? 'No disponible' : student.activeEnrollment ? 'Sí' : 'No',
+      usuario: student.username,
+      email: student.email || '',
+      primerAcceso: formatUnixSeconds(student.firstAccess),
+      ultimoAcceso: formatUnixSeconds(student.lastCourseAccess),
+      actividades:
+        student.activitiesTotal === null
+          ? 'No disponible'
+          : `${student.activitiesCompleted}/${student.activitiesTotal}`,
+      notaFinal: student.finalGrade === null ? 'No disponible' : student.finalGrade,
+      evaluaciones:
+        student.evaluationsTotal === null
+          ? 'No disponible'
+          : `${student.evaluationsCompleted}/${student.evaluationsTotal}`,
+      mensajesForo: student.forumMessageCount === null ? 'No disponible' : student.forumMessageCount,
+    }));
+
+    const courseLabel = selectedCourse?.shortname || selectedCourse?.course_name || 'curso';
+    downloadXlsx({
+      filename: `informe-global-${courseLabel}.xlsx`,
+      sheetName: 'Ficha de alumnos',
+      columns,
+      rows,
+    });
+  }
+
+  // Exporta el detalle de calificaciones a .xlsx. Cada alumno puede ocupar
+  // varias filas (una por ítem evaluable); `groupStartRows` marca la fila
+  // donde empieza cada alumno para que downloadXlsx la resalte visualmente.
+  function handleExportGradesReport() {
+    if (!gradesReportData?.students?.length) return;
+
+    const columns = [
+      { header: 'Alumno', key: 'alumno', width: 26 },
+      { header: 'Evaluaciones', key: 'evaluaciones', width: 14 },
+      { header: 'Nota curso (/10)', key: 'notaCurso', width: 15 },
+      { header: 'Ítem evaluable', key: 'item', width: 42, wrap: true },
+      { header: 'Nota del ítem', key: 'notaItem', width: 14 },
+      { header: 'Nota (/10)', key: 'notaItem10', width: 12 },
+    ];
+
+    const rows = [];
+    const groupStartRows = [];
+
+    for (const student of gradesReportData.students) {
+      groupStartRows.push(rows.length + 2); // +1 fila de cabecera, +1 base 1
+
+      const base = {
+        alumno: student.fullname,
+        evaluaciones: `${student.completedItems}/${student.totalItems}`,
+        notaCurso: student.courseScoreOutOf10,
+      };
+
+      if (!student.items.length) {
+        rows.push({ ...base, item: '', notaItem: '', notaItem10: '' });
+        continue;
+      }
+
+      student.items.forEach((item, idx) => {
+        rows.push({
+          ...(idx === 0 ? base : { alumno: '', evaluaciones: '', notaCurso: '' }),
+          item: item.itemName,
+          notaItem: item.gradeFormatted,
+          notaItem10: item.scoreOutOf10,
+        });
+      });
+    }
+
+    const courseLabel = selectedCourse?.shortname || selectedCourse?.course_name || 'curso';
+    downloadXlsx({
+      filename: `calificaciones-${courseLabel}.xlsx`,
+      sheetName: 'Detalle de calificaciones',
+      columns,
+      rows,
+      groupStartRows,
+    });
+  }
+
   const allStudents = accessReportData?.students || [];
   const studentsCount = useMemo(() => allStudents.filter((s) => !isTeacherRole(s)).length, [allStudents]);
   const teachersCount = useMemo(() => allStudents.filter(isTeacherRole).length, [allStudents]);
+
+  // Filas de la pestaña "Informe global": mismos datos que "Lista de
+  // alumnos" pero con su propia búsqueda y orden por columna.
+  const globalReportRows = useMemo(() => {
+    let filtered = allStudents;
+    if (globalSearchTerm.trim()) {
+      const term = globalSearchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (s) =>
+          s.firstname.toLowerCase().includes(term) ||
+          s.lastname.toLowerCase().includes(term) ||
+          s.username.toLowerCase().includes(term) ||
+          s.email.toLowerCase().includes(term)
+      );
+    }
+    return [...filtered].sort((a, b) => {
+      const valA = a[globalSortKey] ?? 0;
+      const valB = b[globalSortKey] ?? 0;
+      if (typeof valA === 'string') {
+        return globalSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return globalSortDir === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [allStudents, globalSearchTerm, globalSortKey, globalSortDir]);
 
   const filteredStudents = useMemo(() => {
     let list = allStudents;
@@ -390,24 +600,47 @@ export default function CoursesStudentsPage() {
           </p>
         </div>
         {!platformsLoading && platforms.length > 0 && (
-          <Select
-            value={selectedPlatform?.source || ''}
-            onValueChange={(value) => {
-              const platform = platforms.find((p) => p.source === value);
-              if (platform) openPlatform(platform);
-            }}
-          >
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Selecciona una plataforma" />
-            </SelectTrigger>
-            <SelectContent>
-              {platforms.map((p) => (
-                <SelectItem key={p.source} value={p.source}>
-                  {formatPlatformDisplayName(p.name)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="cs-platform-picker" ref={pickerRef}>
+            <button
+              type="button"
+              className="cs-platform-trigger"
+              onClick={() => setPickerOpen((open) => !open)}
+            >
+              <span>
+                {selectedPlatform ? formatPlatformDisplayName(selectedPlatform.name) : 'Selecciona una plataforma'}
+              </span>
+              <ChevronDown size={16} className={`cs-platform-chevron ${pickerOpen ? 'open' : ''}`} />
+            </button>
+            {pickerOpen && (
+              <div className="cs-platform-dropdown">
+                <div className="cs-platform-search">
+                  <Search size={14} />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Buscar plataforma…"
+                    value={platformSearch}
+                    onChange={(e) => setPlatformSearch(e.target.value)}
+                  />
+                </div>
+                <div className="cs-platform-options">
+                  {filteredPickerPlatforms.map((p) => (
+                    <button
+                      key={p.source}
+                      type="button"
+                      className={`cs-platform-option ${selectedPlatform?.source === p.source ? 'active' : ''}`}
+                      onClick={() => selectPlatformFromPicker(p)}
+                    >
+                      {formatPlatformDisplayName(p.name)}
+                    </button>
+                  ))}
+                  {!filteredPickerPlatforms.length && (
+                    <p className="cs-platform-empty">Sin resultados.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -415,7 +648,29 @@ export default function CoursesStudentsPage() {
 
       {level === 'platforms' && (
         <Card className="p-4">
-          {platformsLoading ? <ListSkeleton rows={8} /> : <p className="empty">Cargando…</p>}
+          {platformsLoading ? (
+            <ListSkeleton rows={8} />
+          ) : !platforms.length ? (
+            <p className="empty">No hay plataformas configuradas todavía.</p>
+          ) : (
+            <>
+              <p className="panel-description cs-platform-prompt">
+                Elige una plataforma arriba para ver sus cursos y alumnos.
+              </p>
+              <div className="cs-platform-grid">
+                {platforms.map((p) => (
+                  <button
+                    key={p.source}
+                    type="button"
+                    className="cs-platform-card"
+                    onClick={() => openPlatform(p)}
+                  >
+                    {formatPlatformDisplayName(p.name)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </Card>
       )}
 
@@ -522,6 +777,20 @@ export default function CoursesStudentsPage() {
             </button>
             <button
               type="button"
+              className={`cs-tab ${courseTab === 'global' ? 'active' : ''}`}
+              onClick={() => setCourseTab('global')}
+            >
+              Informe global
+            </button>
+            <button
+              type="button"
+              className={`cs-tab ${courseTab === 'grades' ? 'active' : ''}`}
+              onClick={() => setCourseTab('grades')}
+            >
+              Calificaciones
+            </button>
+            <button
+              type="button"
               className={`cs-tab ${courseTab === 'detail' ? 'active' : ''}`}
               onClick={() => {
                 setCourseTab('detail');
@@ -532,7 +801,7 @@ export default function CoursesStudentsPage() {
             </button>
           </div>
 
-          {courseTab === 'students' ? (
+          {courseTab === 'students' && (
             <>
               <Input
                 type="text"
@@ -610,57 +879,280 @@ export default function CoursesStudentsPage() {
                 </div>
               )}
             </>
-          ) : breakdownLoading ? (
-            <div className="cs-detail-card">
-              <p className="cs-detail-loading-note">
-                Calculando el detalle en vivo, archivo por archivo — puede tardar hasta un
-                minuto en cursos con mucho contenido.
-              </p>
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <div key={idx} className="cs-stat-row">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-              ))}
-            </div>
-          ) : breakdownError ? (
-            <ErrorRetry
-              message={breakdownError}
-              onRetry={() => loadBreakdown(selectedCourse.course_id)}
-            />
-          ) : breakdownData ? (
-            <div className="cs-detail-card">
-              <div className="cs-detail-meta-row">
-                <p className={`course-breakdown-meta course-breakdown-meta-${breakdownData.source || 'live'}`}>
-                  {breakdownData.source === 'cache' ? 'Detalle cargado desde caché' : 'Detalle recalculado en vivo'} ·
-                  {' '}Calculado: {formatDateTime(breakdownData.calculatedAt)}
+          )}
+
+          {courseTab === 'global' && (
+            <>
+              <div className="table-header-row">
+                <p className="panel-description">
+                  Matrícula, accesos, actividades completadas, nota final y mensajes de foro
+                  de cada alumno, según los datos que expone el Web Service de Moodle.
                 </p>
+                {Boolean(globalReportRows.length) && (
+                  <Button type="button" variant="outline" onClick={handleExportGlobalReport}>
+                    Descargar informe (Excel)
+                  </Button>
+                )}
+              </div>
+              <Input
+                type="text"
+                className="table-search"
+                placeholder="Buscar alumno, usuario o email"
+                value={globalSearchTerm}
+                onChange={(e) => setGlobalSearchTerm(e.target.value)}
+              />
+              {accessReportLoading ? (
+                <TableSkeleton columns={6} />
+              ) : accessReportError ? (
+                <ErrorRetry
+                  message={accessReportError}
+                  onRetry={() => loadAccessReport(selectedCourse.course_id)}
+                />
+              ) : !globalReportRows.length ? (
+                <p className="empty">No hay alumnos matriculados en este curso.</p>
+              ) : (
+                <>
+                  <div className="table-wrapper insights-table-wrapper">
+                    <Table className="course-table access-report-table">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="sortable" onClick={() => handleGlobalSort('firstname')}>
+                            Nombre{globalSortIcon('firstname')}
+                          </TableHead>
+                          <TableHead className="sortable" onClick={() => handleGlobalSort('lastname')}>
+                            Apellidos{globalSortIcon('lastname')}
+                          </TableHead>
+                          <TableHead>Matrícula activa</TableHead>
+                          <TableHead className="sortable" onClick={() => handleGlobalSort('username')}>
+                            Usuario{globalSortIcon('username')}
+                          </TableHead>
+                          <TableHead className="sortable" onClick={() => handleGlobalSort('email')}>
+                            Email{globalSortIcon('email')}
+                          </TableHead>
+                          <TableHead className="sortable" onClick={() => handleGlobalSort('firstAccess')}>
+                            Primer acceso (sitio){globalSortIcon('firstAccess')}
+                          </TableHead>
+                          <TableHead
+                            className="sortable"
+                            onClick={() => handleGlobalSort('lastCourseAccess')}
+                          >
+                            Último acceso (curso){globalSortIcon('lastCourseAccess')}
+                          </TableHead>
+                          <TableHead>Actividades de aprendizaje</TableHead>
+                          <TableHead>Nota final</TableHead>
+                          <TableHead>Evaluaciones</TableHead>
+                          <TableHead>Mensajes Foro</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {globalReportRows.map((student) => (
+                          <TableRow key={student.userId}>
+                            <TableCell>{student.firstname || '—'}</TableCell>
+                            <TableCell>{student.lastname || '—'}</TableCell>
+                            <TableCell>
+                              {student.activeEnrollment === null
+                                ? 'No disponible'
+                                : student.activeEnrollment
+                                  ? 'Sí'
+                                  : 'No'}
+                            </TableCell>
+                            <TableCell className="mono">{student.username}</TableCell>
+                            <TableCell>{student.email || '—'}</TableCell>
+                            <TableCell>{formatUnixSeconds(student.firstAccess)}</TableCell>
+                            <TableCell>{formatUnixSeconds(student.lastCourseAccess)}</TableCell>
+                            <TableCell>
+                              {student.activitiesTotal === null ? (
+                                <span className="muted" title="Requiere 'Finalización de actividades' activada en el curso">
+                                  No disponible
+                                </span>
+                              ) : (
+                                `${student.activitiesCompleted}/${student.activitiesTotal}`
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {student.finalGrade === null ? (
+                                <span className="muted" title="Requiere permiso de calificaciones habilitado">
+                                  No disponible
+                                </span>
+                              ) : (
+                                student.finalGrade
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {student.evaluationsTotal === null ? (
+                                <span className="muted" title="Requiere permiso de calificaciones habilitado">
+                                  No disponible
+                                </span>
+                              ) : (
+                                `${student.evaluationsCompleted}/${student.evaluationsTotal}`
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {student.forumMessageCount === null ? (
+                                <span className="muted" title="No hay foros disponibles en este curso">
+                                  No disponible
+                                </span>
+                              ) : (
+                                student.forumMessageCount
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <p className="history-note">
+                    "Registros", "Tiempo acumulado", "Correos" y "Mensajes chats" no están
+                    disponibles por Web Services de Moodle — solo existen dentro de plugins de
+                    informes (como block_advanced_reports), que no exponen API.
+                  </p>
+                </>
+              )}
+            </>
+          )}
+
+          {courseTab === 'grades' && (
+            <>
+              <div className="table-header-row">
+                <p className="panel-description">
+                  Nota de cada tarea, examen y actividad evaluable por alumno matriculado,
+                  obtenida en vivo de Moodle (<span className="mono">gradereport_user_get_grade_items</span>).
+                </p>
+              </div>
+              <div className="course-breakdown-actions">
                 <Button
                   type="button"
-                  variant="outline"
-                  disabled={breakdownLoading}
-                  onClick={() => loadBreakdown(selectedCourse.course_id, { refresh: true })}
+                  className="course-breakdown-sync-btn"
+                  onClick={loadGradesReport}
+                  disabled={gradesReportLoading}
                 >
-                  Recalcular
+                  {gradesReportLoading
+                    ? 'Cargando calificaciones…'
+                    : hasRequestedGradesReport
+                      ? 'Actualizar calificaciones'
+                      : 'Cargar evaluaciones y calificaciones'}
                 </Button>
+                {Boolean(gradesReportData?.students?.length) && gradesReportData?.available && (
+                  <Button type="button" variant="outline" onClick={handleExportGradesReport}>
+                    Descargar informe (Excel)
+                  </Button>
+                )}
               </div>
-              <StatRow label="Contenido" value={formatBytes(breakdownData.course.size_bytes)} />
-              <StatRow
-                label="Entregas"
-                value={formatBytes(breakdownData.course.assignment_size_bytes)}
+
+              {!hasRequestedGradesReport ? (
+                <p className="empty">
+                  Presiona “Cargar evaluaciones y calificaciones” para consultar los datos en vivo.
+                </p>
+              ) : gradesReportLoading ? (
+                <p className="empty">Consultando calificaciones en vivo…</p>
+              ) : gradesReportError ? (
+                <ErrorRetry message={gradesReportError} onRetry={loadGradesReport} />
+              ) : gradesReportData?.available === false ? (
+                <p className="empty error">
+                  Esta plataforma todavía no tiene habilitada la función de calificaciones
+                  (<span className="mono">gradereport_user_get_grade_items</span>) en su Web
+                  Service — hay que pedirle al administrador de ese Moodle que la habilite en el
+                  servicio externo y añada la capacidad <span className="mono">moodle/grade:viewall</span>.
+                </p>
+              ) : !gradesReportData?.students?.length ? (
+                <p className="empty">No hay calificaciones registradas para este curso todavía.</p>
+              ) : (
+                <div className="table-wrapper insights-table-wrapper">
+                  <Table className="course-table">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Alumno</TableHead>
+                        <TableHead className="right">Evaluaciones</TableHead>
+                        <TableHead className="right">Nota curso (/10)</TableHead>
+                        <TableHead>Detalle</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {gradesReportData.students.map((student) => (
+                        <TableRow key={student.userId}>
+                          <TableCell>{student.fullname || '—'}</TableCell>
+                          <TableCell className="right mono">
+                            {student.completedItems}/{student.totalItems}
+                          </TableCell>
+                          <TableCell className="right mono bold">{student.courseScoreOutOf10}</TableCell>
+                          <TableCell>
+                            {student.items.length ? (
+                              <div className="grade-detail-cell">
+                                {student.items.map((item, idx) => (
+                                  <div key={idx} className="grade-detail-row">
+                                    <span className="grade-detail-name">{item.itemName}</span>
+                                    <span className="grade-detail-value mono">
+                                      {item.gradeFormatted} ({item.scoreOutOf10}/10)
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              '—'
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </>
+          )}
+
+          {courseTab === 'detail' && (
+            breakdownLoading ? (
+              <div className="cs-detail-card">
+                <p className="cs-detail-loading-note">
+                  Calculando el detalle en vivo, archivo por archivo — puede tardar hasta un
+                  minuto en cursos con mucho contenido.
+                </p>
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={idx} className="cs-stat-row">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            ) : breakdownError ? (
+              <ErrorRetry
+                message={breakdownError}
+                onRetry={() => loadBreakdown(selectedCourse.course_id)}
               />
-              <StatRow label="Foros" value={formatBytes(breakdownData.course.forum_size_bytes)} />
-              <StatRow
-                label="Backups"
-                value={formatBytes(breakdownData.course.backup_size_bytes)}
-              />
-              <StatRow
-                label="Total"
-                value={formatBytes(breakdownData.course.total_bytes)}
-              />
-            </div>
-          ) : (
-            <p className="empty">Cargando…</p>
+            ) : breakdownData ? (
+              <div className="cs-detail-card">
+                <div className="cs-detail-meta-row">
+                  <p className={`course-breakdown-meta course-breakdown-meta-${breakdownData.source || 'live'}`}>
+                    {breakdownData.source === 'cache' ? 'Detalle cargado desde caché' : 'Detalle recalculado en vivo'} ·
+                    {' '}Calculado: {formatDateTime(breakdownData.calculatedAt)}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={breakdownLoading}
+                    onClick={() => loadBreakdown(selectedCourse.course_id, { refresh: true })}
+                  >
+                    Recalcular
+                  </Button>
+                </div>
+                <StatRow label="Contenido" value={formatBytes(breakdownData.course.size_bytes)} />
+                <StatRow
+                  label="Entregas"
+                  value={formatBytes(breakdownData.course.assignment_size_bytes)}
+                />
+                <StatRow label="Foros" value={formatBytes(breakdownData.course.forum_size_bytes)} />
+                <StatRow
+                  label="Backups"
+                  value={formatBytes(breakdownData.course.backup_size_bytes)}
+                />
+                <StatRow
+                  label="Total"
+                  value={formatBytes(breakdownData.course.total_bytes)}
+                />
+              </div>
+            ) : (
+              <p className="empty">Cargando…</p>
+            )
           )}
         </Card>
       )}
