@@ -109,10 +109,13 @@ export default function CoursesStudentsPage() {
 
   // Búsqueda y orden propios de la pestaña "Informe global" (independientes
   // de los de "Lista de alumnos", aunque ambas pestañas leen los mismos
-  // `accessReportData`, ya cargados al abrir el curso).
+  // `accessReportData`, ya cargados al abrir el curso). El informe en sí
+  // solo se muestra tras pulsar el botón, igual que "Calificaciones", en
+  // vez de aparecer ya generado al entrar en la pestaña.
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const [globalSortKey, setGlobalSortKey] = useState('lastname');
   const [globalSortDir, setGlobalSortDir] = useState('asc');
+  const [hasRequestedGlobalReport, setHasRequestedGlobalReport] = useState(false);
 
   // Informe de calificaciones de TODOS los alumnos del curso (distinto del
   // que se consulta para un solo alumno en el nivel "student"). Al ser una
@@ -333,6 +336,7 @@ export default function CoursesStudentsPage() {
     setAccessReportError(null);
     setStudentSearch('');
     setGlobalSearchTerm('');
+    setHasRequestedGlobalReport(false);
     setGradesReportData(null);
     setGradesReportError(null);
     setHasRequestedGradesReport(false);
@@ -888,20 +892,32 @@ export default function CoursesStudentsPage() {
                   Matrícula, accesos, actividades completadas, nota final y mensajes de foro
                   de cada alumno, según los datos que expone el Web Service de Moodle.
                 </p>
-                {Boolean(globalReportRows.length) && (
+              </div>
+              <div className="course-breakdown-actions">
+                <Button
+                  type="button"
+                  className="course-breakdown-sync-btn"
+                  onClick={() => setHasRequestedGlobalReport(true)}
+                  disabled={accessReportLoading}
+                >
+                  {accessReportLoading
+                    ? 'Cargando informe…'
+                    : hasRequestedGlobalReport
+                      ? 'Actualizar informe'
+                      : 'Generar informe global'}
+                </Button>
+                {hasRequestedGlobalReport && Boolean(globalReportRows.length) && (
                   <Button type="button" variant="outline" onClick={handleExportGlobalReport}>
                     Descargar informe (Excel)
                   </Button>
                 )}
               </div>
-              <Input
-                type="text"
-                className="table-search"
-                placeholder="Buscar alumno, usuario o email"
-                value={globalSearchTerm}
-                onChange={(e) => setGlobalSearchTerm(e.target.value)}
-              />
-              {accessReportLoading ? (
+
+              {!hasRequestedGlobalReport ? (
+                <p className="empty">
+                  Presiona “Generar informe global” para ver la ficha completa de alumnos.
+                </p>
+              ) : accessReportLoading ? (
                 <TableSkeleton columns={6} />
               ) : accessReportError ? (
                 <ErrorRetry
@@ -912,7 +928,14 @@ export default function CoursesStudentsPage() {
                 <p className="empty">No hay alumnos matriculados en este curso.</p>
               ) : (
                 <>
-                  <div className="table-wrapper insights-table-wrapper">
+                  <Input
+                    type="text"
+                    className="table-search"
+                    placeholder="Buscar alumno, usuario o email"
+                    value={globalSearchTerm}
+                    onChange={(e) => setGlobalSearchTerm(e.target.value)}
+                  />
+                  <div className="cs-report-box table-wrapper insights-table-wrapper">
                     <Table className="course-table access-report-table">
                       <TableHeader>
                         <TableRow>
@@ -1057,7 +1080,7 @@ export default function CoursesStudentsPage() {
               ) : !gradesReportData?.students?.length ? (
                 <p className="empty">No hay calificaciones registradas para este curso todavía.</p>
               ) : (
-                <div className="table-wrapper insights-table-wrapper">
+                <div className="cs-report-box table-wrapper insights-table-wrapper">
                   <Table className="course-table">
                     <TableHeader>
                       <TableRow>

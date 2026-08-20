@@ -465,6 +465,10 @@ input:focus-visible {
   border-radius: var(--radius-card);
   padding: 1rem 1.1rem;
   box-shadow: var(--shadow);
+  /* Sin esto, un hijo ancho (p. ej. una tabla con muchas columnas) puede
+     ensanchar el .card dentro de .section-stack (display: grid), porque
+     los items de grid no encogen por debajo de su contenido por defecto. */
+  min-width: 0;
 }
 
 .card::before {
@@ -944,6 +948,18 @@ input:focus-visible {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-accent) var(--color-surface-muted);
+}
+
+/* Recuadro de los informes con muchas columnas (Informe global,
+   Calificaciones): fuerza el scroll horizontal DENTRO de la caja en vez de
+   dejar que la tabla ancha empuje y desplace toda la página hacia los
+   lados. `min-width: 0` es necesario porque estas cajas cuelgan de un
+   contenedor flex/grid (Card), que por defecto no deja encoger a sus hijos
+   por debajo de su contenido, lo que rompe el overflow-x del wrapper. */
+.cs-report-box {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .insights-table-wrapper::-webkit-scrollbar {

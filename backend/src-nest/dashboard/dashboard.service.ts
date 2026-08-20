@@ -18,6 +18,13 @@ function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 }
 
+// El "gradeformatted" del ítem de tipo "course" (nota total) a veces trae,
+// tras quitar el HTML, una coletilla de si se ha superado el curso, del
+// tipo "6,33 (Superar (S))" — se recorta para dejar solo el número.
+function stripGradeAnnotation(value: string): string {
+  return value.replace(/\s*\(.*$/, '').trim();
+}
+
 // Cada ítem de Moodle puede tener su propia nota máxima (grademax) —
 // algunas actividades están configuradas sobre 10, otras sobre 100, etc.
 // Se normaliza a una nota sobre 10 para que todos los ítems se puedan
@@ -429,7 +436,7 @@ export class DashboardService {
       for (const ug of usergrades) {
         const courseItem = extractCourseGradeItem(ug.gradeitems);
         if (courseItem?.gradeformatted) {
-          const clean = stripHtml(courseItem.gradeformatted);
+          const clean = stripGradeAnnotation(stripHtml(courseItem.gradeformatted));
           if (clean) finalGradeByUserId.set(ug.userid, clean);
         }
 
@@ -619,7 +626,7 @@ export class DashboardService {
         completedItems: items.filter((i: any) => i.gradeFormatted !== '—' && i.gradeFormatted !== '-').length,
         coursePercentage:
           stripHtml(courseItem?.percentageformatted || '') ||
-          stripHtml(courseItem?.gradeformatted || '') ||
+          stripGradeAnnotation(stripHtml(courseItem?.gradeformatted || '')) ||
           '—',
         courseScoreOutOf10: formatScoreOutOf10(courseItem?.graderaw, courseItem?.grademax),
         items,
