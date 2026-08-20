@@ -1,5 +1,6 @@
 import { IsString, MinLength } from 'class-validator';
 
+// Credenciales del body de POST /auth/login.
 export class LoginDto {
   @IsString()
   @MinLength(1)

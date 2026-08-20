@@ -48,6 +48,13 @@ function formatDateTime(value) {
   return date.toLocaleString('es-CL');
 }
 
+// Pestaña "Tamaño del curso" dentro del Dashboard de una plataforma. Muestra
+// el inventario completo de cursos con su desglose de almacenamiento (top 10
+// en gráfico + tabla completa) y, al seleccionar un curso, tres paneles bajo
+// demanda: desglose de archivos por componente/filearea, ficha de alumnos
+// (accesos/actividades) e informe de calificaciones. Cada panel se consulta
+// en vivo a Moodle solo cuando el usuario lo pide explícitamente, porque son
+// llamadas costosas al Web Service.
 export default function CourseSizeTab({ moodleSource, platformName }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +67,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
   const [breakdownLoading, setBreakdownLoading] = useState(false);
   const [breakdownError, setBreakdownError] = useState(null);
   const [breakdownRequestedCourseId, setBreakdownRequestedCourseId] = useState(null);
+  // Contador de "petición vigente" para el desglose: cada llamada a
+  // handleLoadBreakdown incrementa este ref y solo la última respuesta que
+  // coincide con el valor guardado se aplica al estado. Evita que una
+  // respuesta lenta de un curso ya abandonado (usuario cambió de curso o
+  // pidió refrescar de nuevo) sobrescriba datos más recientes (race condition).
   const latestBreakdownRequestRef = useRef(0);
   const [accessReportData, setAccessReportData] = useState(null);
   const [accessReportLoading, setAccessReportLoading] = useState(false);
@@ -68,13 +80,21 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
   const [accessSearchTerm, setAccessSearchTerm] = useState('');
   const [accessSortKey, setAccessSortKey] = useState('lastname');
   const [accessSortDir, setAccessSortDir] = useState('asc');
+  // Mismo mecanismo anti-carrera que latestBreakdownRequestRef, aplicado al
+  // informe de accesos.
   const latestAccessReportRequestRef = useRef(0);
   const [gradesReportData, setGradesReportData] = useState(null);
   const [gradesReportLoading, setGradesReportLoading] = useState(false);
   const [gradesReportError, setGradesReportError] = useState(null);
   const [gradesReportRequestedCourseId, setGradesReportRequestedCourseId] = useState(null);
+  // Mismo mecanismo anti-carrera, aplicado al informe de calificaciones.
   const latestGradesReportRequestRef = useRef(0);
 
+  // Al cambiar de plataforma o de curso seleccionado, se invalidan los tres
+  // paneles bajo demanda (desglose, accesos, calificaciones): se incrementan
+  // sus refs de petición vigente para descartar cualquier respuesta pendiente
+  // del curso anterior y se limpia el estado para forzar que el usuario vuelva
+  // a pedir la carga explícitamente en el curso nuevo.
   useEffect(() => {
     latestBreakdownRequestRef.current += 1;
     setBreakdownData(null);
@@ -167,6 +187,11 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     }
   }, [allCourses, selectedCourseId]);
 
+  // Carga el desglose de almacenamiento (por componente/filearea) del curso
+  // seleccionado. `refresh: true` fuerza un recálculo en vivo contra Moodle;
+  // sin refresh, el backend puede devolver el resultado ya guardado ("de
+  // caché") si existe. `breakdownData.source` indica cuál de los dos ocurrió
+  // (ver breakdownSourceLabel más abajo).
   async function handleLoadBreakdown({ refresh = false } = {}) {
     if (!moodleSource || !selectedCourseId) return;
 
@@ -197,6 +222,9 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     }
   }
 
+  // Carga la ficha de alumnos (matrícula, accesos, actividades, nota final,
+  // mensajes de foro) consultando el Web Service de Moodle en vivo; no hay
+  // caché para este informe.
   async function handleLoadAccessReport() {
     if (!moodleSource || !selectedCourseId) return;
 
@@ -224,6 +252,9 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     }
   }
 
+  // Carga el detalle de calificaciones por alumno (gradereport_user_get_grade_items
+  // de Moodle) en vivo; puede venir marcado como no disponible si la
+  // plataforma no tiene esa función habilitada en su Web Service externo.
   async function handleLoadGradesReport() {
     if (!moodleSource || !selectedCourseId) return;
 
@@ -251,6 +282,8 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     }
   }
 
+  // Exporta la ficha de alumnos a un .xlsx real (no CSV) usando downloadXlsx,
+  // que genera el archivo en el navegador con formato de columnas propio.
   function handleExportAccessReport() {
     if (!accessReportData?.students?.length) return;
 
@@ -297,6 +330,12 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
     });
   }
 
+  // Exporta el detalle de calificaciones a .xlsx. A diferencia del informe de
+  // accesos, aquí cada alumno puede ocupar varias filas (una por ítem
+  // evaluable), por lo que se calcula `groupStartRows` con la fila donde
+  // empieza cada alumno: downloadXlsx usa esos índices para fusionar/agrupar
+  // visualmente las celdas repetidas (nombre, evaluaciones, nota curso) en la
+  // hoja de Excel en vez de repetirlas en cada fila.
   function handleExportGradesReport() {
     if (!gradesReportData?.students?.length) return;
 

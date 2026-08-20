@@ -3,6 +3,8 @@ import { PlatformsService } from './platforms.service';
 import { CreatePlatformDto } from './dto/create-platform.dto';
 import { UpdatePlatformDto } from './dto/update-platform.dto';
 
+// CRUD de plataformas Moodle configuradas más el endpoint de test de
+// conexión. Enrutamiento puro: la lógica vive en PlatformsService.
 @Controller('platforms')
 export class PlatformsController {
   constructor(private platformsService: PlatformsService) {}
@@ -27,6 +29,8 @@ export class PlatformsController {
     return this.platformsService.remove(id);
   }
 
+  // Dispara el test de conexión/permisos en vivo contra el Web Service de
+  // la plataforma (ver PlatformsService.testConnection).
   @Post(':id/test')
   test(@Param('id') id: string) {
     return this.platformsService.testConnection(id);

@@ -1,3 +1,6 @@
+// Migas de pan genéricas: recibe una lista de `items` ({ label, onClick? })
+// y renderiza cada segmento separado por un chevron; el último item sin
+// `onClick` se muestra como texto plano (posición actual).
 import { ChevronRight } from 'lucide-react';
 
 export default function Breadcrumb({ items }) {

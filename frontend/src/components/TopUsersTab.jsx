@@ -13,6 +13,8 @@ import { getTopUsers } from '../api';
 import { formatBytes } from '@/lib/formatters';
 import { Card } from '@/components/ui/card';
 
+// Pestaña de detalle de una plataforma: tabla/gráfico de los 10 alumnos que más
+// almacenamiento ocupan (ranking horizontal, de mayor a menor tamaño).
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const CHART_FONT_FAMILY = "'Poppins', sans-serif";

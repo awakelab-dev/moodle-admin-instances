@@ -3,6 +3,9 @@ import { DashboardService } from './dashboard.service';
 import { PlatformQueryDto } from './dto/platform-query.dto';
 import { CourseBreakdownQueryDto } from './dto/course-breakdown-query.dto';
 
+// Expone todos los endpoints de lectura que alimentan el dashboard (resumen
+// de plataformas, históricos, cursos, informes de curso, top de usuarios e
+// insights). Es solo enrutamiento: toda la lógica vive en DashboardService.
 @Controller('dashboard')
 export class DashboardController {
   constructor(private dashboardService: DashboardService) {}

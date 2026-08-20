@@ -1,3 +1,6 @@
+// Modal de confirmación genérico (borrar plataforma, cancelar sync, etc.).
+// No usa un primitivo Dialog de shadcn: es un overlay + Card propios,
+// controlado por la prop `open` (si es false no renderiza nada).
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 

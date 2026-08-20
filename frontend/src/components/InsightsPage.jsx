@@ -4,6 +4,9 @@ import InsightsTab from './InsightsTab';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+// Pantalla "Dashboard" de Moodle Insights (menú principal de la app). Carga la lista
+// de plataformas configuradas, deja elegir una con el selector superior y delega el
+// contenido (stats, gráficos y tablas de cursos/alumnos) a InsightsTab.
 export default function InsightsPage() {
   const [platforms, setPlatforms] = useState([]);
   const [loading, setLoading] = useState(true);

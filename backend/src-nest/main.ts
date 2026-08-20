@@ -1,3 +1,5 @@
+// Punto de entrada del backend: arranca NestJS, configura CORS, el
+// limitador de intentos de login y el prefijo global de rutas ("/api").
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -43,6 +45,8 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
   : true;
 
+// Crea la app Nest, aplica middlewares globales (CORS, rate limit, prefijo
+// "/api", validación de DTOs) y arranca el servidor HTTP.
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   // Render pone un proxy delante del backend: sin esto, req.ip devuelve la

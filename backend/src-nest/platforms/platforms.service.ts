@@ -5,15 +5,23 @@ import { UpdatePlatformDto } from './dto/update-platform.dto';
 import { normalizeUrl, slugifyPlatform, normalizeOptionalAmount } from '../common/platform-utils';
 import { MoodleClient } from '../sync/moodle-client.service';
 
+// El token completo nunca se expone al frontend, solo un fragmento (inicio
+// y final) para que el admin pueda reconocer cuál está guardado.
 function maskToken(token: string): string {
   if (!token) return '';
   return `${token.substring(0, 6)}...${token.slice(-4)}`;
 }
 
+// Quita el campo `data` (puede traer respuestas completas de Moodle) antes
+// de devolver el resultado de un check al frontend; solo se necesita el
+// dato crudo internamente, para extraer IDs de muestra (curso/tarea/foro).
 function toPublicCheck(check: any) {
   return { label: check.label, wsfunction: check.wsfunction, required: check.required, status: check.status, message: check.message };
 }
 
+// Ejecuta una función de Web Service y normaliza el resultado a un objeto
+// de estado uniforme (ok/error), sin lanzar la excepción hacia arriba, para
+// poder acumular todos los checks del test de conexión aunque alguno falle.
 async function runWsCheck({ label, wsfunction, required = true, execute }: any) {
   try {
     const data = await execute();
@@ -24,10 +32,16 @@ async function runWsCheck({ label, wsfunction, required = true, execute }: any) 
   }
 }
 
+// Marca un check como "no ejecutado" (en vez de error) cuando falta el dato
+// de entrada necesario (p. ej. no hay cursos de muestra para probar
+// "contenidos del curso"), para no confundir "falta permiso" con "no se
+// pudo probar por falta de datos previos".
 function makeSkippedCheck(label: string, wsfunction: string, required: boolean, message: string) {
   return { label, wsfunction, required, status: 'skipped', message };
 }
 
+// Toma hasta 5 IDs de curso reales de la plataforma para usarlos como
+// muestra en el resto de checks (contenidos, matrícula, tareas...).
 function pickSampleCourseIds(courses: any): number[] {
   return (Array.isArray(courses) ? courses : [])
     .map((c: any) => Number(c?.id))
@@ -35,6 +49,8 @@ function pickSampleCourseIds(courses: any): number[] {
     .slice(0, 5);
 }
 
+// Busca el primer ID de tarea real entre los cursos de muestra, para poder
+// probar a continuación "entregas de tareas" (mod_assign_get_submissions).
 function findFirstAssignmentId(assignmentsData: any): number | null {
   const courses = assignmentsData?.courses || [];
   for (const course of courses) {
@@ -46,6 +62,8 @@ function findFirstAssignmentId(assignmentsData: any): number | null {
   return null;
 }
 
+// Busca el primer ID de foro real, para poder probar a continuación
+// "discusiones de foro" (mod_forum_get_forum_discussions).
 function findFirstForumId(forumsData: any): number | null {
   const forums = Array.isArray(forumsData) ? forumsData : [];
   for (const forum of forums) {
@@ -55,6 +73,8 @@ function findFirstForumId(forumsData: any): number | null {
   return null;
 }
 
+// Busca el primer ID de discusión real, para poder probar a continuación
+// "posts de discusión" (mod_forum_get_discussion_posts).
 function findFirstDiscussionId(discussionsData: any): number | null {
   const discussions = discussionsData?.discussions || [];
   for (const d of discussions) {
@@ -64,6 +84,10 @@ function findFirstDiscussionId(discussionsData: any): number | null {
   return null;
 }
 
+// Traduce el resultado de todos los checks (requeridos y opcionales) a un
+// mensaje legible para el admin: distingue entre "no conecta", "conecta
+// pero faltan permisos requeridos" y "todo OK, con o sin funciones
+// opcionales disponibles".
 function buildTestSummary(connectionOk: boolean, requiredChecks: any[], optionalChecks: any[]): string {
   if (!connectionOk) return 'No fue posible conectarse al Web Service de Moodle.';
 
@@ -90,10 +114,16 @@ function buildTestSummary(connectionOk: boolean, requiredChecks: any[], optional
   return summary;
 }
 
+// Gestiona el CRUD de plataformas Moodle configuradas (tabla `platform` en
+// Postgres) y el test de conexión/permisos contra el Web Service real de
+// cada una. No sincroniza cursos/usuarios (eso lo hace SyncModule); aquí
+// solo se administra la configuración de la plataforma.
 @Injectable()
 export class PlatformsService {
   constructor(private prisma: PrismaService) {}
 
+  // Devuelve todas las plataformas configuradas (activas o no), con el
+  // token enmascarado, para listarlas en la pantalla de configuración.
   async findAll() {
     const platforms = await this.prisma.platform.findMany({ orderBy: { createdAt: 'asc' } });
     return platforms.map((p) => ({
@@ -119,6 +149,9 @@ export class PlatformsService {
     return platform;
   }
 
+  // Crea una nueva plataforma, validando que la URL no esté duplicada
+  // (normalizada) y que el monto de cobro mensual, si viene, sea válido.
+  // Devuelve el id de la plataforma creada.
   async create(dto: CreatePlatformDto) {
     const normalizedUrl = normalizeUrl(dto.url);
     const existing = await this.prisma.platform.findFirst({ where: { url: normalizedUrl } });
@@ -143,6 +176,10 @@ export class PlatformsService {
     return { message: 'Plataforma agregada.', id: created.id };
   }
 
+  // Actualiza parcialmente una plataforma existente: solo toca los campos
+  // presentes en el DTO. El token solo se reemplaza si viene no vacío (para
+  // no forzar a reescribirlo en cada edición); monthlyCharge acepta `null`
+  // explícito para borrar la configuración financiera.
   async update(id: string, dto: UpdatePlatformDto) {
     const platform = await this.getOrThrow(id);
     const data: any = {};
@@ -183,12 +220,19 @@ export class PlatformsService {
     return { message: 'Plataforma actualizada.' };
   }
 
+  // Elimina una plataforma (y, por relación en cascada, sus cursos/usuarios
+  // sincronizados) de la base de datos.
   async remove(id: string) {
     const platform = await this.getOrThrow(id);
     await this.prisma.platform.delete({ where: { id: platform.id } });
     return { message: `Plataforma "${platform.name}" eliminada.` };
   }
 
+  // Prueba en vivo la conexión y los permisos del Web Service de una
+  // plataforma: ejecuta una batería de llamadas reales a Moodle (categorías,
+  // cursos, contenidos, matrícula, tareas, foros...) usando IDs de muestra
+  // sacados de la propia respuesta de Moodle, y devuelve qué funciones
+  // requeridas/opcionales están disponibles junto con un resumen legible.
   async testConnection(id: string) {
     const platform = await this.getOrThrow(id);
     const client = new MoodleClient(platform.url, platform.token);

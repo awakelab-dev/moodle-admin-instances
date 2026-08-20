@@ -77,6 +77,10 @@ function formatElapsed(ms) {
   return minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`;
 }
 
+// Página "Configuración": alta/edición/baja de plataformas Moodle, prueba de
+// conexión con cada una (test de permisos del Web Service) y disparo de
+// sincronizaciones manuales, con seguimiento en vivo del progreso de la
+// sincronización en curso (propia o iniciada desde otra sesión/pestaña).
 export default function ConfigPage() {
   const [platforms, setPlatforms] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -165,6 +169,9 @@ export default function ConfigPage() {
     });
   }
 
+  // Sondea el endpoint de estado de sincronización cada 1.5s hasta que deja
+  // de estar "running", actualizando el progreso (porcentaje y paso actual)
+  // de la plataforma indicada. Devuelve el estado final (completado/fallido).
   async function pollSyncStatus(platformId) {
     let status;
     do {
@@ -184,6 +191,10 @@ export default function ConfigPage() {
     return status;
   }
 
+  // Activa el seguimiento visual (barra de progreso) de la sincronización de
+  // una plataforma y espera a que termine vía pollSyncStatus. Al terminar,
+  // invalida las cachés de plataformas/cursos y recarga la lista para
+  // reflejar los datos recién sincronizados.
   async function trackSync(platform, startedAtMs) {
     setSyncLoading((prev) => ({ ...prev, [platform.id]: true }));
     setSyncStartedAt((prev) => ({ ...prev, [platform.id]: startedAtMs }));
@@ -306,6 +317,9 @@ export default function ConfigPage() {
       }));
     }
   }
+  // Evita enganchar el seguimiento (trackSync) más de una vez para la misma
+  // plataforma si, por ejemplo, tanto el vigía continuo como handleSyncOne
+  // detectan la misma sincronización en curso casi al mismo tiempo.
   function trackSyncOnce(platform, startedAtMs) {
     if (trackedSyncIdsRef.current.has(platform.id)) return;
     trackedSyncIdsRef.current.add(platform.id);
@@ -326,6 +340,11 @@ export default function ConfigPage() {
     }
   }
 
+  // Dispara la sincronización manual de una plataforma. El backend solo
+  // permite una sincronización global a la vez: si ya hay una en curso
+  // (HTTP 409), se comprueba si es justo la de esta plataforma (para
+  // simplemente reenganchar el seguimiento) o de otra distinta (para avisar
+  // al usuario que debe esperar).
   async function handleSyncOne(p) {
     try {
       await triggerPlatformSync(p.id);

@@ -1,3 +1,8 @@
+// Cliente HTTP del frontend: envuelve `fetch` con la URL base del backend,
+// el token de sesión (Authorization Bearer) y el manejo de sesión expirada
+// (401 dispara el evento `auth:expired` que App.jsx escucha para desloguear).
+// También expone helpers de sesión (localStorage) y todos los endpoints
+// de la API agrupados por área (auth, sync, dashboard, platforms).
 const BASE = `${import.meta.env.VITE_API_URL || ''}/api`;
 const AUTH_STORAGE_KEY = 'moodle-admin-session';
 

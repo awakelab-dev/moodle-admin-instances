@@ -1,3 +1,8 @@
+// Funciones de formato compartidas (fechas, tamaños, moneda, periodos) que
+// usan los distintos paneles/tablas del dashboard.
+
+// Convierte un timestamp Unix en segundos (formato típico de Moodle) a
+// fecha+hora local es-CL; sin valor o inválido devuelve "Nunca".
 export function formatUnixSeconds(value) {
   if (!value) return 'Nunca';
   const date = new Date(value * 1000);
@@ -9,6 +14,7 @@ export function formatUnixSeconds(value) {
   );
 }
 
+// Formatea bytes crudos a la unidad más legible (B/KB/MB/GB/TB) con 2 decimales.
 export function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -16,6 +22,7 @@ export function formatBytes(bytes) {
   return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
 }
 
+// Formatea un valor ya expresado en GB (no bytes) con separador de miles es-CL.
 export function formatGigabytes(value) {
   return `${new Intl.NumberFormat('es-CL', {
     minimumFractionDigits: 0,
@@ -41,6 +48,8 @@ export function formatCurrency(value, currency = 'USD') {
   }
 }
 
+// Obtiene solo el símbolo/prefijo de moneda (p. ej. "$", "US$") sin el
+// monto, para poder anteponerlo manualmente en `formatCurrencyCompact`.
 function getCurrencyPrefix(currency = 'USD') {
   try {
     const formatter = new Intl.NumberFormat('es-CL', {
@@ -60,6 +69,8 @@ function getCurrencyPrefix(currency = 'USD') {
   }
 }
 
+// Igual que formatCurrency pero en notación compacta (1.2K, 3.4M), usada en
+// gráficos donde no cabe el monto completo.
 export function formatCurrencyCompact(value, currency = 'USD') {
   if (!Number.isFinite(Number(value))) return '—';
 
@@ -73,11 +84,13 @@ export function formatCurrencyCompact(value, currency = 'USD') {
   return `${amount < 0 ? '-' : ''}${prefix}${compact}`;
 }
 
+// Parsea una clave de mes "YYYY-MM" a Date (día 1); null si no es válida.
 export function parseMonthKey(month) {
   const date = new Date(`${month}-01T00:00:00`);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+// "YYYY-MM" -> etiqueta corta legible, p. ej. "ene 2026".
 export function formatMonthLabel(month) {
   const date = parseMonthKey(month);
   if (!date) return month;
@@ -88,6 +101,8 @@ export function formatMonthLabel(month) {
   }).format(date);
 }
 
+// Agrupa una clave de mes en su trimestre: "YYYY-MM" -> "YYYY-Qn". Se usa
+// para las agregaciones por trimestre de las series históricas.
 export function getQuarterKey(month) {
   const date = parseMonthKey(month);
   if (!date) return month;
@@ -96,6 +111,7 @@ export function getQuarterKey(month) {
   return `${date.getFullYear()}-Q${quarter}`;
 }
 
+// "YYYY-Qn" -> etiqueta legible "Qn YYYY".
 export function formatQuarterLabel(quarterKey) {
   const match = /^(\d{4})-Q([1-4])$/.exec(quarterKey);
   if (!match) return quarterKey;
@@ -103,6 +119,7 @@ export function formatQuarterLabel(quarterKey) {
   return `Q${match[2]} ${match[1]}`;
 }
 
+// Agrupa una clave de mes en su año, para la agregación anual de series históricas.
 export function getYearKey(month) {
   const date = parseMonthKey(month);
   if (!date) return String(month).slice(0, 4);
@@ -110,12 +127,16 @@ export function getYearKey(month) {
   return String(date.getFullYear());
 }
 
+// Formatea una clave de periodo (mes/trimestre/año) según el nivel de
+// agrupación elegido en el selector de granularidad del gráfico.
 export function formatPeriodLabel(periodKey, groupBy) {
   if (groupBy === 'quarter') return formatQuarterLabel(periodKey);
   if (groupBy === 'year') return periodKey;
   return formatMonthLabel(periodKey);
 }
 
+// Indica si un punto de la serie tiene datos de margen financiero válidos
+// (requiere configuración financiera completa o parcial en la plataforma).
 export function hasMarginData(point) {
   return (
     Number.isFinite(Number(point?.margin)) &&

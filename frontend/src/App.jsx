@@ -1,3 +1,7 @@
+// Componente raíz de la app: maneja la sesión de autenticación (login,
+// restauración de sesión guardada y expiración), el enrutado manual entre
+// vistas (sin react-router, solo estado local `view`) y el sidebar con sus
+// tres categorías colapsables.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap } from 'lucide-react';
 import {
@@ -31,6 +35,12 @@ export default function App() {
   const [view, setView] = useState('insights');
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  // El sidebar se organiza en tres categorías (Storage, Moodle Insights,
+  // Configuración), cada una con su propio ítem o grupo de ítems debajo.
+  // Cada categoría se puede colapsar/expandir de forma independiente, por
+  // eso hay un booleano de "expandido" separado por categoría en vez de un
+  // único estado compartido: así el usuario puede cerrar, por ejemplo,
+  // "Configuración" sin que eso afecte a "Storage" o "Moodle Insights".
   const [storageNavExpanded, setStorageNavExpanded] = useState(true);
   const [insightsNavExpanded, setInsightsNavExpanded] = useState(true);
   const [configNavExpanded, setConfigNavExpanded] = useState(true);

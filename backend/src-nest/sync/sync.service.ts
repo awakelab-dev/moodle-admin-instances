@@ -13,14 +13,20 @@ import {
   upsertUserAccumulator,
 } from './sync-helpers';
 
+// Límites de llamadas simultáneas a la Web Service de Moodle por cada tipo de
+// dato (contenido, backups, matrículas, calificaciones, foros). Se mantienen
+// separados por si en el futuro hace falta ajustar uno sin afectar a los demás,
+// aunque hoy todos valen 10.
 const CONTENT_CONCURRENCY = 10;
 const BACKUP_CONCURRENCY = 10;
 const ENROL_CONCURRENCY = 10;
 const GRADES_CONCURRENCY = 10;
 const FORUM_CONCURRENCY = 10;
+// Tamaño de lote al paginar IDs de curso/assignment en llamadas que aceptan arrays (courseids[], assignmentids[]).
 const CHUNK = 50;
 const DB_WRITE_CONCURRENCY = 20;
 
+/** Señala que el usuario pidió cancelar la sincronización desde el endpoint POST /sync/cancel. */
 class SyncCancelledError extends Error {
   constructor() {
     super('Sincronización cancelada por el usuario.');
@@ -28,6 +34,13 @@ class SyncCancelledError extends Error {
   }
 }
 
+/**
+ * Ejecuta fn() sobre items en lotes de tamaño `concurrency` (en paralelo
+ * dentro de cada lote, secuencial entre lotes) en vez de lanzar todas las
+ * promesas a la vez, para no saturar el Moodle de origen con demasiadas
+ * peticiones simultáneas. Si se pasa ensureNotCancelled, se comprueba antes
+ * de cada lote (y al final) para poder abortar pronto si el usuario cancela.
+ */
 async function runInBatches<T>(
   items: T[],
   concurrency: number,
@@ -41,6 +54,12 @@ async function runInBatches<T>(
   ensureNotCancelled?.();
 }
 
+/**
+ * Orquesta la sincronización completa de una plataforma Moodle: trae cursos,
+ * usuarios, tamaños de contenido/backups/tareas/foros y calificaciones vía
+ * Web Services, y persiste el resultado en Postgres (tablas course,
+ * moodleUser, courseEnrollment y platformSnapshot).
+ */
 @Injectable()
 export class SyncService {
   constructor(
@@ -48,6 +67,12 @@ export class SyncService {
     private progress: SyncProgressService,
   ) {}
 
+  /**
+   * Sincroniza una plataforma Moodle completa: recorre todos sus cursos y
+   * usuarios contra la Web Service REST, calcula tamaños de almacenamiento y
+   * calificaciones, y guarda todo en Postgres. Devuelve un resumen
+   * ({ courses, users, totalBytes }) al terminar.
+   */
   async syncPlatform(platform: { id: string; url: string; token: string; name: string; monthlyCharge: any }) {
     const client = new MoodleClient(platform.url, platform.token);
 
@@ -66,6 +91,11 @@ export class SyncService {
     const backupWsAvailable = await detectBackupWsAvailability(client, courseIds);
     const gradesWsAvailable = await detectGradesWsAvailability(client, courseIds);
 
+    // Estima cuántas "unidades de trabajo" tendrá la sincronización para poder
+    // mostrar un progreso realista en el frontend: cada curso pasa siempre por
+    // el paso de contenido y el de usuarios matriculados (2), más los pasos de
+    // backup/calificaciones si esas wsfunctions están disponibles en esta
+    // plataforma. El `|| 1` evita dividir por/comparar contra 0 si no hay cursos.
     const progressUnitsTotal =
       courses.length * (2 + (backupWsAvailable ? 1 : 0) + (gradesWsAvailable ? 1 : 0)) || 1;
     let progressUnitsDone = 0;
@@ -415,6 +445,14 @@ export class SyncService {
     return { courses: courses.length, users: userIds.length, totalBytes };
   }
 
+  /**
+   * Punto de entrada usado por el controlador para lanzar la sincronización
+   * de una plataforma sin bloquear la respuesta HTTP: inicializa el progreso
+   * compartido (SyncProgressService), corre syncPlatform() y al terminar
+   * marca el resultado como 'completed' o 'failed'. Los errores se capturan
+   * aquí para que una promesa rota no quede sin manejar (ver el .catch en el
+   * controlador, que solo cubre un fallo antes de llegar a este try/catch).
+   */
   async runSinglePlatformInBackground(platformId: string) {
     const platform = await this.prisma.platform.findUniqueOrThrow({ where: { id: platformId } });
 

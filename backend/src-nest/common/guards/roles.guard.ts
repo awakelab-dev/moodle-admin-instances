@@ -2,6 +2,10 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
+// Guard global (registrado en AppModule vía APP_GUARD, después de
+// AuthGuard): si la ruta tiene @Roles(...), exige que el usuario ya
+// autenticado tenga uno de esos roles. Sin @Roles(), deja pasar a
+// cualquier usuario autenticado.
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}

@@ -6,6 +6,10 @@ import Breadcrumb from './Breadcrumb';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatPlatformDisplayName } from '@/lib/utils';
 
+// Vista de detalle de una plataforma Moodle: se abre al hacer clic en una
+// plataforma desde la pestaña "Storage". Solo organiza la navegación por
+// pestañas (tamaño de curso, top usuarios, histórico); cada pestaña carga
+// sus propios datos de forma independiente.
 export default function Dashboard({ selectedPlatform, userRole, onBackToStorage }) {
   const [tab, setTab] = useState('courses');
 

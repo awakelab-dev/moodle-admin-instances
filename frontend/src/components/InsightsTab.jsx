@@ -27,6 +27,9 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+// Contenido de la pestaña "Moodle Insights" para una plataforma concreta (usado por
+// InsightsPage): stats generales, gráficos top-10 de categorías/calificaciones y las
+// tablas paginables de cursos y alumnos.
 const CHART_FONT_FAMILY = "'Poppins', sans-serif";
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 500, 1000];
 
@@ -441,6 +444,8 @@ export default function InsightsTab({ moodleSource, platformName }) {
                     ticks: {
                       color: '#C9D6EA',
                       font: { size: 11, family: CHART_FONT_FAMILY },
+                      // Los valores del eje llegan en porcentaje (0-100, ver formatGradePercent),
+                      // se dividen entre 10 para etiquetar el eje con la escala de nota /10.
                       callback: (value) => (Number(value) / 10).toFixed(1).replace('.', ','),
                     },
                     grid: { color: 'rgba(240, 243, 252, 0.10)' },

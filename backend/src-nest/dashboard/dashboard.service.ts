@@ -10,6 +10,10 @@ import {
 } from '../sync/sync-helpers';
 import { bytesToGigabytes, calculateFinancialMetrics, normalizeUrl } from '../common/platform-utils';
 
+// Moodle devuelve varios campos "formatted" (nota, feedback, porcentaje) ya
+// renderizados como HTML (p. ej. envueltos en <span>, con &nbsp;). Como el
+// dashboard los muestra como texto plano en tablas, se limpian las etiquetas
+// y entidades antes de exponerlos en la respuesta.
 function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 }
@@ -25,12 +29,18 @@ function formatScoreOutOf10(graderaw: unknown, grademax: unknown): string {
   return ((raw / max) * 10).toFixed(2).replace('.', ',');
 }
 
+// El query param "refresh" llega siempre como string (o undefined) desde la
+// URL, nunca como boolean real, por eso hace falta parsearlo a mano.
 function parseBooleanFlag(value?: string): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
   return ['1', 'true', 'yes', 'y', 'on'].includes(normalized);
 }
 
+// El desglose detallado se guarda en BD como JSON (detailedStorageBreakdown)
+// y puede venir con forma inesperada (datos antiguos, nulls, etc.), por eso
+// se sanea/filtra/ordena antes de usarlo, tanto si viene de caché como si
+// se acaba de calcular en vivo.
 function normalizeBreakdownRows(rows: any = []): any[] {
   if (!Array.isArray(rows)) return [];
   return rows
@@ -43,15 +53,25 @@ function normalizeBreakdownRows(rows: any = []): any[] {
     .sort((a, b) => b.size_bytes - a.size_bytes);
 }
 
+// Servicio que arma todas las respuestas del dashboard. La mayoría de
+// métodos leen únicamente lo que ya se sincronizó en Postgres (rápido, no
+// depende de que Moodle esté disponible); solo getCourseBreakdown (en modo
+// live/refresh) y getCourseAccessReport/getCourseGradesReport consultan los
+// Web Services de Moodle en vivo, cada método lo indica explícitamente.
 @Injectable()
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
+  // Busca la plataforma ya sincronizada por su URL (normalizada sin barra
+  // final), no hace ninguna llamada a Moodle.
   private async findPlatformByUrl(moodleSource: string) {
     const url = normalizeUrl(moodleSource);
     return this.prisma.platform.findFirst({ where: { url } });
   }
 
+  // Datos ya sincronizados: agrega el tamaño total de cursos por plataforma
+  // y calcula las métricas financieras (ingreso/costo/margen) de cada una.
+  // Devuelve un resumen por plataforma, ordenado por tamaño descendente.
   async getPlatformSummary(moodleSource?: string) {
     const normalizedFilter = moodleSource ? normalizeUrl(moodleSource) : '';
 
@@ -92,6 +112,9 @@ export class DashboardService {
     return summaries.sort((a, b) => (b.totalBytes !== a.totalBytes ? b.totalBytes - a.totalBytes : a.name.localeCompare(b.name)));
   }
 
+  // Datos ya sincronizados: devuelve la serie histórica mensual de tamaño y
+  // métricas financieras de una plataforma, a partir de los snapshots
+  // guardados en cada sincronización.
   async getPlatformHistory(moodleSource?: string) {
     if (!moodleSource) {
       throw new BadRequestException('moodleSource es requerido para consultar el histórico.');
@@ -126,6 +149,9 @@ export class DashboardService {
     };
   }
 
+  // Datos ya sincronizados: combina el histórico de snapshots de todas las
+  // plataformas activas en dos series: el total global por mes y el
+  // desglose por plataforma, ambas ordenadas cronológicamente.
   async getGlobalStorageHistory() {
     const snapshots = await this.prisma.platformSnapshot.findMany({
       orderBy: [{ month: 'asc' }, { moodleName: 'asc' }],
@@ -184,6 +210,9 @@ export class DashboardService {
     };
   }
 
+  // Datos ya sincronizados: agrupa los cursos de una plataforma (o de
+  // todas, si no se filtra) por categoría, sumando los distintos tipos de
+  // tamaño (contenido, backups, tareas, foros) a nivel de categoría y total.
   async getCourses(moodleSource?: string) {
     const url = moodleSource ? normalizeUrl(moodleSource) : '';
     const platform = url ? await this.findPlatformByUrl(url) : null;
@@ -238,6 +267,14 @@ export class DashboardService {
     return { moodleSource: url || null, platformName, totalBytes, totalContentBytes, totalBackupBytes, totalAssignmentBytes, totalForumBytes, categories };
   }
 
+  // Detalle de almacenamiento de un curso por componente/filearea. Calcular
+  // esto en vivo recorre archivo por archivo vía Web Services (lento, una
+  // llamada por carpeta), por eso el resultado se persiste en la fila del
+  // curso (detailedStorageBreakdown/detailedCalculatedAt) la primera vez que
+  // se pide, y las siguientes veces se sirve desde esa caché en BD en vez de
+  // recalcular. El flag `refresh` (query param) permite forzar el
+  // recálculo en vivo cuando el admin quiere datos actualizados. Devuelve
+  // `source: 'cache'` o `source: 'live'` según de dónde vino el resultado.
   async getCourseBreakdown(courseId: number, moodleSource: string, refreshFlag?: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar el detalle del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
@@ -250,6 +287,9 @@ export class DashboardService {
 
     const refresh = parseBooleanFlag(refreshFlag);
     const cachedRows = normalizeBreakdownRows(course.detailedStorageBreakdown);
+    // Solo se usa la caché si no se pidió refresh explícito, existe una
+    // fecha de cálculo previa y hay filas guardadas; si falta cualquiera de
+    // esas condiciones, se recalcula en vivo más abajo.
     const hasCachedBreakdown = !refresh && Boolean(course.detailedCalculatedAt) && cachedRows.length > 0;
 
     if (hasCachedBreakdown) {
@@ -289,6 +329,7 @@ export class DashboardService {
       throw new NotFoundException('La plataforma seleccionada no está configurada para calcular el detalle en vivo.');
     }
 
+    // A partir de aquí se calcula en vivo contra Moodle (Web Services).
     const client = new MoodleClient(platform.url, platform.token);
     const fileBrowserAvailable = await detectFileBrowserAvailability(client, [courseId]);
     if (!fileBrowserAvailable) {
@@ -300,6 +341,9 @@ export class DashboardService {
     const totalBytes = derivedTotals.content + derivedTotals.backup + derivedTotals.assignments + derivedTotals.forums;
     const calculatedAt = new Date();
 
+    // Se guarda el resultado como caché para la próxima consulta. Si falla
+    // el guardado no se rompe la respuesta al usuario, solo se registra el
+    // aviso: el dato en vivo ya se calculó y es lo que importa devolver.
     try {
       await this.prisma.course.update({
         where: { id: course.id },
@@ -338,6 +382,10 @@ export class DashboardService {
     };
   }
 
+  // Consulta en vivo contra Moodle (Web Services): combina matrícula,
+  // acceso, nota final, evaluaciones y mensajes de foro por alumno para un
+  // curso. No usa caché en BD porque son datos que cambian constantemente
+  // (accesos, mensajes) y se piden puntualmente, no en cada sincronización.
   async getCourseAccessReport(courseId: number, moodleSource: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar el informe del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
@@ -504,6 +552,10 @@ export class DashboardService {
     };
   }
 
+  // Consulta en vivo contra Moodle (Web Services): informe de calificaciones
+  // por alumno, con la nota de cada ítem normalizada además a escala /10
+  // (ver formatScoreOutOf10) para poder compararlas entre sí sin importar
+  // la nota máxima configurada en cada actividad.
   async getCourseGradesReport(courseId: number, moodleSource: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar las calificaciones del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
@@ -588,6 +640,10 @@ export class DashboardService {
     };
   }
 
+  // Datos ya sincronizados: top 10 usuarios por espacio ocupado. Si se
+  // filtra por plataforma se usa directamente el tamaño guardado por
+  // usuario; si no, se agregan los tamaños del mismo username a través de
+  // todas las plataformas (un mismo alumno puede estar en varias).
   async getTopUsers(moodleSource?: string) {
     const url = moodleSource ? normalizeUrl(moodleSource) : '';
 
@@ -630,6 +686,10 @@ export class DashboardService {
       .map((u) => ({ username: u.username, fullname: u.fullname, total_size_bytes: u.total_size_bytes, platforms: Array.from(u.platforms) }));
   }
 
+  // Datos ya sincronizados: estadísticas agregadas de una plataforma
+  // (cursos, alumnos, matrículas, notas promedio) más los rankings de
+  // categorías y cursos con mejor nota, todo calculado sobre lo que ya está
+  // en Postgres, sin tocar Moodle.
   async getInsights(moodleSource: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar los insights.');
 

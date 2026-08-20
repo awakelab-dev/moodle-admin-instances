@@ -37,6 +37,9 @@ ChartJS.register(
   Legend
 );
 
+// Pestaña de detalle de una plataforma: histórico mensual/trimestral/anual de
+// almacenamiento y margen (basado en los snapshots guardados), con selector de rango
+// y de granularidad. Vive dentro del detalle de plataforma, junto a Insights y Top Users.
 const CHART_FONT_FAMILY = "'Poppins', sans-serif";
 const GROUP_BY_OPTIONS = [
   { value: 'month', label: 'Mes' },
@@ -48,6 +51,10 @@ function getMarginColor(value) {
   return value < 0 ? '#34547A' : '#4E7EA5';
 }
 
+// Agrupa los snapshots mensuales en trimestres o años cuando groupBy no es 'month'.
+// Cada grupo se queda con el último snapshot de almacenamiento del período (totalGb)
+// y suma los valores financieros (income/cost/margin) solo de los meses que tenían
+// configuración financiera completa, para no falsear el margen con meses sin cobro.
 function buildGroupedPoints(points, groupBy) {
   if (groupBy === 'month') {
     return points.map((point) => ({

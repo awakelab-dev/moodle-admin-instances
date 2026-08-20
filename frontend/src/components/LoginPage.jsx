@@ -1,3 +1,6 @@
+// Pantalla de login: formulario de usuario/contraseña que delega la
+// autenticación real en `onLogin` (recibido desde App.jsx) y muestra
+// errores o avisos (p. ej. sesión expirada) en un banner.
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';

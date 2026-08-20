@@ -38,6 +38,10 @@ ChartJS.register(
   Legend
 );
 
+// Vista "Storage": panel global que compara todas las plataformas Moodle configuradas
+// (almacenamiento actual, histórico de almacenamiento y margen financiero por rango de
+// fechas). Es la pantalla principal a la que se llega desde el sidebar; desde aquí se
+// navega al detalle de una plataforma (Insights/Histórico/Top Users) o a Configuración.
 const CHART_FONT_FAMILY = "'Poppins', sans-serif";
 const PLATFORM_COLORS = [
   '#19F7F1',
@@ -116,6 +120,9 @@ const GLOBAL_HISTORY_GROUP_BY_OPTIONS = [
   { value: 'year', label: 'Año' },
 ];
 
+// Agrupa los puntos globales de almacenamiento (suma de todas las plataformas) en
+// trimestres o años. Igual que en PlatformHistoryTab, pero sin datos financieros: cada
+// grupo se queda con totalGb/platformCount del último punto del período.
 function buildGroupedGlobalStoragePoints(points, groupBy) {
   const sortedPoints = [...points].sort((a, b) =>
     String(a.month || '').localeCompare(String(b.month || ''))
@@ -157,6 +164,8 @@ function buildGroupedGlobalStoragePoints(points, groupBy) {
   return Array.from(groups.values());
 }
 
+// Igual que buildGroupedGlobalStoragePoints pero para el histórico de una sola
+// plataforma dentro del gráfico comparativo (una serie por plataforma).
 function buildGroupedPlatformStoragePoints(points, groupBy) {
   const sortedPoints = [...points].sort((a, b) =>
     String(a.month || '').localeCompare(String(b.month || ''))
@@ -195,6 +204,10 @@ function buildGroupedPlatformStoragePoints(points, groupBy) {
   return Array.from(groups.values());
 }
 
+// Versión financiera del agrupador anterior: además de totalGb, acumula
+// income/cost/margin por plataforma, solo contando los meses con configuración
+// financiera completa (financialMonthsCount), y marca hasPartialFinancialConfig
+// cuando el grupo mezcla meses con y sin esa configuración (para avisar en la UI).
 function buildGroupedPlatformFinancialPoints(points, groupBy) {
   const sortedPoints = [...points].sort((a, b) =>
     String(a.month || '').localeCompare(String(b.month || ''))
@@ -734,10 +747,18 @@ export default function GlobalPanel({
         const isDimmed = (isClickIsolated || isHoverFocused) && !isFocused;
         const isHidden = isClickIsolated && !isFocused;
 
+        // No se fija la propiedad `order` del dataset: Chart.js ya dibuja las líneas en
+        // el mismo orden que vienen en el array, y aquí el orden es el de
+        // storageHistoryChartPlatforms (ranking por almacenamiento actual), que es el
+        // orden que queremos también en la leyenda; forzar `order` solo complicaría
+        // mantener leyenda y trazo sincronizados sin aportar nada visualmente.
         return {
           label: formatPlatformDisplayName(platform.name),
           source: platform.source,
           data,
+          // rgba(201, 214, 234, 0.15): mismo azul claro del texto secundario del tema,
+          // pero casi transparente, para que la línea/punto siga siendo visible de fondo
+          // (referencia de escala) sin competir con la plataforma enfocada.
           borderColor: isHidden ? 'transparent' : isDimmed ? 'rgba(201, 214, 234, 0.15)' : color,
           backgroundColor: color,
           borderDash: isDashed ? [6, 4] : [],
@@ -1123,6 +1144,12 @@ export default function GlobalPanel({
                       padding: 14,
                       color: '#FFFFFF',
                       font: { size: 11, family: CHART_FONT_FAMILY },
+                      // generateLabels personalizado: la leyenda por defecto de Chart.js
+                      // no permite pintar un ítem "atenuado" cuando se aísla/hover una
+                      // plataforma (isolatedHistorySource/hoveredHistorySource), solo
+                      // mostrar/ocultar. Aquí se generan siempre todos los labels, con
+                      // color atenuado para los no enfocados, y se conserva el click
+                      // (onClick de abajo) para aislar/desaislar una plataforma.
                       generateLabels: (chart) => {
                         const focusedSource = isolatedHistorySource || hoveredHistorySource;
                         return chart.data.datasets.map((dataset, index) => {

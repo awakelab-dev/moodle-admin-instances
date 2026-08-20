@@ -18,8 +18,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Breadcrumb from './Breadcrumb';
 import ErrorRetry from './ErrorRetry';
 
+// Clave de localStorage donde se guarda la última posición de navegación
+// (plataforma/curso/alumno) de esta página. Al volver a entrar, se restaura
+// automáticamente ese punto en vez de arrancar siempre desde "Plataformas"
+// (ver pendingRestoreRef y los tres useEffect de restauración más abajo).
 const NAV_STORAGE_KEY = 'cs-nav-state';
 
+// Detecta cursos "plantilla" (no son cursos reales de alumnos) por el nombre
+// de su categoría, para poder ocultarlos del listado con el toggle correspondiente.
 function isTemplateCourse(course) {
   return /plantilla/i.test(course.category_name || '');
 }
@@ -70,6 +76,11 @@ function StatRow({ label, value }) {
   );
 }
 
+// Página "Cursos y Alumnos" (menú principal). Navegación jerárquica en un
+// solo componente con cuatro niveles controlados por `level`: plataformas ->
+// cursos de la plataforma -> detalle de un curso (alumnos o desglose de
+// almacenamiento) -> detalle de un alumno. La posición se persiste en
+// localStorage (ver NAV_STORAGE_KEY) para restaurarla al volver a la página.
 export default function CoursesStudentsPage() {
   const [level, setLevel] = useState('platforms');
   const [platforms, setPlatforms] = useState([]);
@@ -99,6 +110,10 @@ export default function CoursesStudentsPage() {
   const [studentGrades, setStudentGrades] = useState(null);
   const [studentGradesLoading, setStudentGradesLoading] = useState(false);
 
+  // Snapshot de la navegación guardada (leído una sola vez al montar). Se va
+  // consumiendo nivel por nivel en los tres useEffect de restauración
+  // siguientes (plataforma -> curso -> alumno) a medida que cada nivel
+  // termina de cargar sus datos; una vez usado o descartado se pone en null.
   const pendingRestoreRef = useRef(
     (() => {
       try {
@@ -152,6 +167,9 @@ export default function CoursesStudentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platformsLoading, platforms]);
 
+  // Segundo paso de la restauración: una vez cargados los cursos de la
+  // plataforma restaurada, busca el curso guardado y lo abre. Si no hay
+  // alumno pendiente por restaurar, aquí termina la restauración.
   useEffect(() => {
     const pending = pendingRestoreRef.current;
     if (!pending || !courseData) return;
@@ -172,6 +190,8 @@ export default function CoursesStudentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseData]);
 
+  // Tercer y último paso de la restauración: una vez cargada la ficha de
+  // alumnos del curso restaurado, busca el alumno guardado y lo abre.
   useEffect(() => {
     const pending = pendingRestoreRef.current;
     if (!pending?.studentUserId || !accessReportData) return;
@@ -183,6 +203,10 @@ export default function CoursesStudentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessReportData]);
 
+  // Guarda la posición de navegación actual en localStorage cada vez que
+  // cambia, mientras no se esté en medio de una restauración (evita
+  // sobrescribir el snapshot guardado con estados intermedios mientras se
+  // reconstruye la navegación al entrar a la página).
   useEffect(() => {
     if (restoring) return;
     try {
@@ -274,6 +298,10 @@ export default function CoursesStudentsPage() {
       .finally(() => setAccessReportLoading(false));
   }
 
+  // Carga el desglose de almacenamiento del curso solo la primera vez que se
+  // abre la pestaña "Detalle del curso" (si ya hay datos y no se pide
+  // refresh, no repite la llamada); `refresh: true` fuerza el recálculo en
+  // vivo contra Moodle en vez de usar el resultado ya guardado.
   function loadBreakdown(courseId, { refresh = false } = {}) {
     if (breakdownLoading) return;
     if (breakdownData && !refresh) return;
