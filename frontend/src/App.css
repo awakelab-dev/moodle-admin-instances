@@ -374,14 +374,6 @@ input:focus-visible {
   min-width: 0;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.9rem;
-  margin-left: auto;
-}
-
 .brand-kicker,
 .eyebrow {
   font-size: 0.63rem;
@@ -1185,26 +1177,6 @@ input:focus-visible {
   gap: 0.4rem;
 }
 
-.cs-list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 0.65rem 0.9rem;
-  border-radius: var(--radius-control);
-  border: 1px solid var(--color-border-soft);
-  background: var(--color-surface-muted);
-  color: var(--color-text);
-  font-weight: 700;
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.cs-list-item:hover {
-  background: rgba(17, 234, 234, 0.08);
-}
-
 .cs-tabs {
   display: flex;
   gap: 0.5rem;
@@ -1745,10 +1717,6 @@ input:focus-visible {
   flex: 0 0 auto;
 }
 
-.test-detail-skipped {
-  opacity: 0.82;
-}
-
 .test-ok {
   background: rgba(17, 234, 234, 0.1);
   border: 1px solid rgba(17, 234, 234, 0.18);
@@ -1766,12 +1734,6 @@ input:focus-visible {
   .header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .panel-header {
