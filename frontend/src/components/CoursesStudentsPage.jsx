@@ -19,12 +19,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import Breadcrumb from './Breadcrumb';
 import ErrorRetry from './ErrorRetry';
 
-// Clave de localStorage donde se guarda la última posición de navegación
-// (plataforma/curso/alumno) de esta página. Al volver a entrar, se restaura
-// automáticamente ese punto en vez de arrancar siempre desde "Plataformas"
-// (ver pendingRestoreRef y los tres useEffect de restauración más abajo).
-const NAV_STORAGE_KEY = 'cs-nav-state';
-
 // Detecta cursos "plantilla" (no son cursos reales de alumnos) por el nombre
 // de su categoría, para poder ocultarlos del listado con el toggle correspondiente.
 function isTemplateCourse(course) {
@@ -80,8 +74,9 @@ function StatRow({ label, value }) {
 // Página "Cursos y Alumnos" (menú principal). Navegación jerárquica en un
 // solo componente con cuatro niveles controlados por `level`: plataformas ->
 // cursos de la plataforma -> detalle de un curso (alumnos o desglose de
-// almacenamiento) -> detalle de un alumno. La posición se persiste en
-// localStorage (ver NAV_STORAGE_KEY) para restaurarla al volver a la página.
+// almacenamiento) -> detalle de un alumno. Siempre arranca en `level ===
+// 'platforms'`, pidiendo elegir plataforma explícitamente en vez de
+// recordar la última visitada.
 export default function CoursesStudentsPage() {
   const [level, setLevel] = useState('platforms');
   const [platforms, setPlatforms] = useState([]);
@@ -94,7 +89,6 @@ export default function CoursesStudentsPage() {
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [hideTemplates, setHideTemplates] = useState(false);
-  const [restoring, setRestoring] = useState(true);
 
   const [courseTab, setCourseTab] = useState('students'); // 'detail' | 'students'
   const [breakdownData, setBreakdownData] = useState(null);
@@ -138,20 +132,6 @@ export default function CoursesStudentsPage() {
   const [platformSearch, setPlatformSearch] = useState('');
   const pickerRef = useRef(null);
 
-  // Snapshot de la navegación guardada (leído una sola vez al montar). Se va
-  // consumiendo nivel por nivel en los tres useEffect de restauración
-  // siguientes (plataforma -> curso -> alumno) a medida que cada nivel
-  // termina de cargar sus datos; una vez usado o descartado se pone en null.
-  const pendingRestoreRef = useRef(
-    (() => {
-      try {
-        return JSON.parse(localStorage.getItem(NAV_STORAGE_KEY) || 'null');
-      } catch {
-        return null;
-      }
-    })()
-  );
-
   // Cierra el desplegable de plataforma si se hace clic fuera de él.
   useEffect(() => {
     function handleClickOutside(event) {
@@ -183,88 +163,6 @@ export default function CoursesStudentsPage() {
       isMounted = false;
     };
   }, []);
-
-  // Restaurar la última plataforma/curso/alumno visitados (localStorage) al
-  // entrar a la página, en vez de empezar siempre desde "Plataformas".
-  useEffect(() => {
-    if (platformsLoading) return;
-    const pending = pendingRestoreRef.current;
-    const platform = pending?.platformSource
-      ? platforms.find((p) => p.source === pending.platformSource)
-      : null;
-
-    if (platform) {
-      openPlatform(platform);
-      return;
-    }
-
-    // Sin plataforma restaurable: a diferencia del Dashboard, aquí no se
-    // auto-selecciona ninguna — se pide elegir explícitamente (queda en
-    // level === 'platforms' mostrando el selector como primera pantalla).
-    pendingRestoreRef.current = null;
-    setRestoring(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [platformsLoading, platforms]);
-
-  // Segundo paso de la restauración: una vez cargados los cursos de la
-  // plataforma restaurada, busca el curso guardado y lo abre. Si no hay
-  // alumno pendiente por restaurar, aquí termina la restauración.
-  useEffect(() => {
-    const pending = pendingRestoreRef.current;
-    if (!pending || !courseData) return;
-
-    if (pending.courseId) {
-      const course = allCourses.find((c) => c.course_id === pending.courseId);
-      if (course) {
-        openCourse(course);
-        if (!pending.studentUserId) {
-          pendingRestoreRef.current = null;
-          setRestoring(false);
-        }
-        return;
-      }
-    }
-    pendingRestoreRef.current = null;
-    setRestoring(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseData]);
-
-  // Tercer y último paso de la restauración: una vez cargada la ficha de
-  // alumnos del curso restaurado, busca el alumno guardado y lo abre.
-  useEffect(() => {
-    const pending = pendingRestoreRef.current;
-    if (!pending?.studentUserId || !accessReportData) return;
-
-    const student = accessReportData.students?.find((s) => s.userId === pending.studentUserId);
-    pendingRestoreRef.current = null;
-    setRestoring(false);
-    if (student) openStudent(student);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessReportData]);
-
-  // Guarda la posición de navegación actual en localStorage cada vez que
-  // cambia, mientras no se esté en medio de una restauración (evita
-  // sobrescribir el snapshot guardado con estados intermedios mientras se
-  // reconstruye la navegación al entrar a la página).
-  useEffect(() => {
-    if (restoring) return;
-    try {
-      if (selectedPlatform) {
-        localStorage.setItem(
-          NAV_STORAGE_KEY,
-          JSON.stringify({
-            platformSource: selectedPlatform.source,
-            courseId: selectedCourse?.course_id || null,
-            studentUserId: selectedStudent?.userId || null,
-          })
-        );
-      } else {
-        localStorage.removeItem(NAV_STORAGE_KEY);
-      }
-    } catch {
-      // localStorage no disponible: se ignora, simplemente no se restaura la próxima vez
-    }
-  }, [restoring, selectedPlatform, selectedCourse, selectedStudent]);
 
   function openPlatform(platform) {
     setSelectedPlatform(platform);
@@ -894,6 +792,10 @@ export default function CoursesStudentsPage() {
                 </p>
               </div>
               <div className="course-breakdown-actions">
+                <p className="course-breakdown-warning">
+                  Advertencia: en plataformas con muchos alumnos o cursos con mucha actividad,
+                  este informe puede tardar un poco en generarse.
+                </p>
                 <Button
                   type="button"
                   className="course-breakdown-sync-btn"
@@ -1043,6 +945,10 @@ export default function CoursesStudentsPage() {
                 </p>
               </div>
               <div className="course-breakdown-actions">
+                <p className="course-breakdown-warning">
+                  Advertencia: en plataformas con muchos alumnos o cursos con mucha actividad,
+                  este informe puede tardar un poco en generarse.
+                </p>
                 <Button
                   type="button"
                   className="course-breakdown-sync-btn"
