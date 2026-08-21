@@ -122,6 +122,11 @@ export const getCurrentUser = () =>
 export const triggerPlatformSync = (id) => request(`/sync/${id}`, { method: 'POST' });
 export const cancelSync = () => request('/sync/cancel', { method: 'POST' });
 export const getSyncStatus = () => request('/sync/status');
+// Sincronización dedicada de "Cursos y Alumnos" (matrícula, accesos,
+// calificaciones, foros por alumno) — separada del sync de storage de arriba.
+export const triggerCoursesSync = (platformId) => request(`/sync/courses/${platformId}`, { method: 'POST' });
+export const getCoursesSyncStatus = (platformId) =>
+  request(`/sync/courses/${platformId}/status`, { cache: 'no-store' });
 
 /* ─── Dashboard ─── */
 export const getPlatformStorageSummary = (params = {}) =>

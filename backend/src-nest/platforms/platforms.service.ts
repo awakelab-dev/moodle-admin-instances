@@ -140,6 +140,7 @@ export class PlatformsService {
       isActive: p.isActive,
       hasFinancialConfig: p.monthlyCharge !== null,
       lastSyncedAt: p.lastSyncedAt,
+      coursesLastSyncedAt: p.coursesLastSyncedAt,
     }));
   }
 

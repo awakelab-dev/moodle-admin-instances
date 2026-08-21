@@ -5,6 +5,9 @@ import {
   getCourses,
   getCourseAccessReport,
   getCourseGradesReport,
+  triggerCoursesSync,
+  getCoursesSyncStatus,
+  invalidateCache,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatUnixSeconds } from '@/lib/formatters';
@@ -74,6 +77,12 @@ export default function CoursesStudentsPage() {
   const [platforms, setPlatforms] = useState([]);
   const [platformsLoading, setPlatformsLoading] = useState(true);
   const [selectedPlatform, setSelectedPlatform] = useState(null);
+  // Sincronización dedicada de "Cursos y Alumnos" (matrícula, accesos,
+  // calificaciones, foros por alumno) de la plataforma abierta — separada
+  // del sync de storage de Configuración. `coursesSyncStatus` guarda el
+  // paso/porcentaje actual mientras `coursesSyncRunning` es true.
+  const [coursesSyncRunning, setCoursesSyncRunning] = useState(false);
+  const [coursesSyncStatus, setCoursesSyncStatus] = useState(null);
 
   const [courseData, setCourseData] = useState(null);
   const [coursesLoading, setCoursesLoading] = useState(false);
@@ -165,6 +174,42 @@ export default function CoursesStudentsPage() {
         setCoursesError('No se pudieron cargar los cursos de esta plataforma.');
       })
       .finally(() => setCoursesLoading(false));
+  }
+
+  // Sondea el progreso de la sincronización de "Cursos y Alumnos" cada 2s
+  // hasta que deja de estar "running", igual que hace Configuración con el
+  // sync de storage (ver ConfigPage.jsx's pollSyncStatus).
+  async function pollCoursesSyncStatus(platformId) {
+    let status;
+    do {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      status = await getCoursesSyncStatus(platformId);
+      setCoursesSyncStatus(status);
+    } while (status?.status === 'running');
+    return status;
+  }
+
+  async function handleSyncCourses() {
+    if (!selectedPlatform || coursesSyncRunning) return;
+    setCoursesSyncRunning(true);
+    setCoursesSyncStatus(null);
+    try {
+      await triggerCoursesSync(selectedPlatform.id);
+      await pollCoursesSyncStatus(selectedPlatform.id);
+      invalidateCache('platforms');
+      // Refresca la plataforma seleccionada (para el "Última sincronización")
+      // y, si hay un curso abierto, sus informes ya recién sincronizados.
+      const platforms = await getPlatforms();
+      const refreshed = platforms.find((p) => p.id === selectedPlatform.id);
+      if (refreshed) setSelectedPlatform(refreshed);
+      if (selectedCourse) {
+        loadAccessReport(selectedCourse.course_id);
+      }
+    } catch (err) {
+      setCoursesSyncStatus({ status: 'failed', sync_errors: [err.message] });
+    } finally {
+      setCoursesSyncRunning(false);
+    }
   }
 
   const allCourses = useMemo(() => {
@@ -536,6 +581,21 @@ export default function CoursesStudentsPage() {
               onChange={(e) => setCourseSearch(e.target.value)}
             />
           </div>
+          <div className="course-breakdown-actions">
+            <p className="course-breakdown-warning">
+              {selectedPlatform.coursesLastSyncedAt
+                ? `Última sincronización de alumnos/calificaciones: ${new Date(
+                    selectedPlatform.coursesLastSyncedAt
+                  ).toLocaleString('es-CL')}.`
+                : 'Esta plataforma todavía no se ha sincronizado — la lista de alumnos y las calificaciones estarán vacías hasta que se sincronice.'}
+              {' '}En plataformas con muchos cursos puede tardar bastante (recorre alumno por alumno).
+            </p>
+            <Button type="button" className="course-breakdown-sync-btn" onClick={handleSyncCourses} disabled={coursesSyncRunning}>
+              {coursesSyncRunning
+                ? coursesSyncStatus?.current_step || 'Sincronizando…'
+                : 'Sincronizar alumnos y calificaciones'}
+            </Button>
+          </div>
           <div className="cs-role-filter">
             <button
               type="button"
@@ -717,10 +777,7 @@ export default function CoursesStudentsPage() {
               </div>
               {accessReportLoading ? (
                 <>
-                  <p className="cs-detail-loading-note">
-                    Consultando alumnos en vivo — en plataformas con muchos alumnos puede
-                    tardar un poco en cargar.
-                  </p>
+                  <p className="cs-detail-loading-note">Cargando la última sincronización guardada…</p>
                   <TableSkeleton columns={6} />
                 </>
               ) : accessReportError ? (
@@ -728,6 +785,11 @@ export default function CoursesStudentsPage() {
                   message={accessReportError}
                   onRetry={() => loadAccessReport(selectedCourse.course_id)}
                 />
+              ) : accessReportData?.neverSynced ? (
+                <p className="empty">
+                  Esta plataforma todavía no se ha sincronizado — pulsa "Sincronizar alumnos y
+                  calificaciones" arriba para traer los datos por primera vez.
+                </p>
               ) : !filteredStudents.length ? (
                 <p className="empty">No hay alumnos matriculados en este curso.</p>
               ) : (
@@ -812,6 +874,11 @@ export default function CoursesStudentsPage() {
                   message={accessReportError}
                   onRetry={() => loadAccessReport(selectedCourse.course_id)}
                 />
+              ) : accessReportData?.neverSynced ? (
+                <p className="empty">
+                  Esta plataforma todavía no se ha sincronizado — pulsa "Sincronizar alumnos y
+                  calificaciones" en la lista de cursos.
+                </p>
               ) : !globalReportRows.length ? (
                 <p className="empty">No hay alumnos matriculados en este curso.</p>
               ) : (
@@ -968,15 +1035,13 @@ export default function CoursesStudentsPage() {
                   Presiona “Cargar evaluaciones y calificaciones” para consultar los datos en vivo.
                 </p>
               ) : gradesReportLoading ? (
-                <p className="empty">Consultando calificaciones en vivo…</p>
+                <p className="empty">Cargando la última sincronización guardada…</p>
               ) : gradesReportError ? (
                 <ErrorRetry message={gradesReportError} onRetry={loadGradesReport} />
               ) : gradesReportData?.available === false ? (
                 <p className="empty error">
-                  Esta plataforma todavía no tiene habilitada la función de calificaciones
-                  (<span className="mono">gradereport_user_get_grade_items</span>) en su Web
-                  Service — hay que pedirle al administrador de ese Moodle que la habilite en el
-                  servicio externo y añada la capacidad <span className="mono">moodle/grade:viewall</span>.
+                  {gradesReportData?.reason ||
+                    'Esta plataforma todavía no tiene habilitada la función de calificaciones.'}
                 </p>
               ) : !gradesReportData?.students?.length ? (
                 <p className="empty">No hay calificaciones registradas para este curso todavía.</p>
