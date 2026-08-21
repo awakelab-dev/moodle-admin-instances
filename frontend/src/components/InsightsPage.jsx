@@ -4,14 +4,19 @@ import InsightsTab from './InsightsTab';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+// Valor de "plataforma" reservado para la vista agregada — no es un
+// source real, así que no puede coincidir con ninguna plataforma.
+const ALL_PLATFORMS_VALUE = '__all__';
+
 // Pantalla "Dashboard" de Moodle Insights (menú principal de la app). Carga la lista
 // de plataformas configuradas, deja elegir una con el selector superior y delega el
-// contenido (stats, gráficos y tablas de cursos/alumnos) a InsightsTab.
+// contenido (stats, gráficos y tablas de cursos/alumnos) a InsightsTab. Por defecto
+// arranca en "Todas las plataformas" (datos agregados), no en una plataforma concreta.
 export default function InsightsPage() {
   const [platforms, setPlatforms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedSource, setSelectedSource] = useState('');
+  const [selectedSource, setSelectedSource] = useState(ALL_PLATFORMS_VALUE);
 
   useEffect(() => {
     let isMounted = true;
@@ -23,7 +28,6 @@ export default function InsightsPage() {
           formatPlatformDisplayName(a.name).localeCompare(formatPlatformDisplayName(b.name))
         );
         setPlatforms(list);
-        setSelectedSource((prev) => prev || list[0]?.source || '');
         setError(null);
       })
       .catch(() => {
@@ -50,7 +54,8 @@ export default function InsightsPage() {
     );
   }
 
-  const selectedPlatform = platforms.find((p) => p.source === selectedSource) || platforms[0];
+  const isAllPlatforms = selectedSource === ALL_PLATFORMS_VALUE;
+  const selectedPlatform = !isAllPlatforms && platforms.find((p) => p.source === selectedSource);
 
   return (
     <div className="section-stack">
@@ -59,7 +64,8 @@ export default function InsightsPage() {
           <p className="eyebrow">Dashboard</p>
           <h2 className="card-title section-title">Moodle Insights</h2>
           <p className="panel-description">
-            Cursos, alumnos y matrículas de una plataforma Moodle concreta.
+            Cursos, alumnos y matrículas de una plataforma Moodle concreta, o agregados de
+            todas a la vez.
           </p>
         </div>
         <Select value={selectedSource} onValueChange={setSelectedSource}>
@@ -67,6 +73,7 @@ export default function InsightsPage() {
             <SelectValue placeholder="Selecciona una plataforma" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={ALL_PLATFORMS_VALUE}>Todas las plataformas</SelectItem>
             {platforms.map((p) => (
               <SelectItem key={p.source} value={p.source}>
                 {formatPlatformDisplayName(p.name)}
@@ -77,8 +84,8 @@ export default function InsightsPage() {
       </div>
 
       <InsightsTab
-        moodleSource={selectedPlatform.source}
-        platformName={formatPlatformDisplayName(selectedPlatform.name)}
+        moodleSource={selectedPlatform ? selectedPlatform.source : undefined}
+        platformName={selectedPlatform ? formatPlatformDisplayName(selectedPlatform.name) : 'todas las plataformas'}
       />
     </div>
   );

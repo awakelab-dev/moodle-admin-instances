@@ -217,17 +217,12 @@ export default function InsightsTab({ moodleSource, platformName }) {
   useEffect(() => {
     let isMounted = true;
 
-    if (!moodleSource) {
-      setData(null);
-      setError(null);
-      setLoading(false);
-      return undefined;
-    }
-
     setLoading(true);
     setError(null);
 
-    getInsights({ moodleSource })
+    // Sin moodleSource se agregan los datos ya sincronizados de TODAS las
+    // plataformas (vista "Todas las plataformas" del Dashboard).
+    getInsights(moodleSource ? { moodleSource } : {})
       .then((response) => {
         if (isMounted) {
           setData(response);

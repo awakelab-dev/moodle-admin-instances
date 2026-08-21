@@ -693,20 +693,26 @@ export class DashboardService {
       .map((u) => ({ username: u.username, fullname: u.fullname, total_size_bytes: u.total_size_bytes, platforms: Array.from(u.platforms) }));
   }
 
-  // Datos ya sincronizados: estadísticas agregadas de una plataforma
-  // (cursos, alumnos, matrículas, notas promedio) más los rankings de
-  // categorías y cursos con mejor nota, todo calculado sobre lo que ya está
-  // en Postgres, sin tocar Moodle.
-  async getInsights(moodleSource: string) {
-    if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar los insights.');
+  // Datos ya sincronizados: estadísticas agregadas de una plataforma (o de
+  // TODAS a la vez si no se pasa moodleSource — vista "Todas las
+  // plataformas" del Dashboard) — cursos, alumnos, matrículas, notas
+  // promedio, más los rankings de categorías y cursos con mejor nota, todo
+  // calculado sobre lo que ya está en Postgres, sin tocar Moodle.
+  async getInsights(moodleSource?: string) {
+    let platform: { id: string; url: string; name: string } | null = null;
 
-    const platform = await this.findPlatformByUrl(moodleSource);
-    if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    if (moodleSource) {
+      platform = await this.findPlatformByUrl(moodleSource);
+      if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    }
+
+    const platformFilter = platform ? { platformId: platform.id } : {};
 
     const [courses, students, enrollmentCounts, enrolledPerCourse] = await Promise.all([
       this.prisma.course.findMany({
-        where: { platformId: platform.id },
+        where: platformFilter,
         select: {
+          platformId: true,
           courseId: true,
           courseName: true,
           shortname: true,
@@ -716,23 +722,31 @@ export class DashboardService {
         },
       }),
       this.prisma.moodleUser.findMany({
-        where: { platformId: platform.id },
-        select: { userId: true, fullname: true, username: true, email: true, averageGradePercent: true },
+        where: platformFilter,
+        select: { platformId: true, userId: true, fullname: true, username: true, email: true, averageGradePercent: true },
       }),
+      // Se agrupa siempre por plataforma + id, porque userId/courseId son
+      // ids propios de cada Moodle (no globalmente únicos) — sin platformId
+      // en la clave, dos alumnos/cursos de plataformas distintas con el
+      // mismo id numérico se contarían como uno solo en la vista agregada.
       this.prisma.courseEnrollment.groupBy({
-        by: ['userId'],
-        where: { platformId: platform.id },
+        by: ['platformId', 'userId'],
+        where: platformFilter,
         _count: { userId: true },
       }),
       this.prisma.courseEnrollment.groupBy({
-        by: ['courseId'],
-        where: { platformId: platform.id },
+        by: ['platformId', 'courseId'],
+        where: platformFilter,
         _count: { courseId: true },
       }),
     ]);
 
-    const courseCountByUserId = new Map(enrollmentCounts.map((row) => [row.userId, row._count.userId]));
-    const studentCountByCourseId = new Map(enrolledPerCourse.map((row) => [row.courseId, row._count.courseId]));
+    const courseCountByUserId = new Map(
+      enrollmentCounts.map((row) => [`${row.platformId}:${row.userId}`, row._count.userId]),
+    );
+    const studentCountByCourseId = new Map(
+      enrolledPerCourse.map((row) => [`${row.platformId}:${row.courseId}`, row._count.courseId]),
+    );
 
     const categoryCounts = new Map<string, number>();
     for (const course of courses) {
@@ -759,8 +773,8 @@ export class DashboardService {
       .map((c) => ({ courseName: c.courseName, shortname: c.shortname, averageGradePercent: c.averageGradePercent }));
 
     return {
-      moodleSource: platform.url,
-      platformName: platform.name,
+      moodleSource: platform?.url ?? null,
+      platformName: platform?.name ?? 'Todas las plataformas',
       stats: {
         courses: courses.length,
         visibleCourses,
@@ -777,7 +791,7 @@ export class DashboardService {
         shortname: c.shortname,
         categoryName: c.categoryName,
         visible: c.visible,
-        enrolledCount: studentCountByCourseId.get(c.courseId) || 0,
+        enrolledCount: studentCountByCourseId.get(`${c.platformId}:${c.courseId}`) || 0,
         averageGradePercent: c.averageGradePercent,
       })),
       students: students.map((u) => ({
@@ -785,7 +799,7 @@ export class DashboardService {
         fullname: u.fullname,
         username: u.username,
         email: u.email,
-        courseCount: courseCountByUserId.get(u.userId) || 0,
+        courseCount: courseCountByUserId.get(`${u.platformId}:${u.userId}`) || 0,
         averageGradePercent: u.averageGradePercent,
       })),
     };
