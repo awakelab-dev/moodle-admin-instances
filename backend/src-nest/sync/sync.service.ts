@@ -120,6 +120,8 @@ export class SyncService {
         category_id: course.categoryid ?? 0,
         category_name: catMap[course.categoryid] || 'Sin categoría',
         visible: course.visible !== 0,
+        start_date: course.startdate || null,
+        end_date: course.enddate || null,
       };
     }
 
@@ -334,6 +336,8 @@ export class SyncService {
             categoryId: meta.category_id,
             categoryName: meta.category_name,
             visible: meta.visible,
+            startDate: meta.start_date,
+            endDate: meta.end_date,
             averageGradePercent: courseGradeAverages[courseId] ?? null,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),
@@ -348,6 +352,8 @@ export class SyncService {
             categoryId: meta.category_id,
             categoryName: meta.category_name,
             visible: meta.visible,
+            startDate: meta.start_date,
+            endDate: meta.end_date,
             averageGradePercent: courseGradeAverages[courseId] ?? null,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),

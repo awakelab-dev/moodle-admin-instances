@@ -88,6 +88,9 @@ export default function CoursesStudentsPage() {
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [hideTemplates, setHideTemplates] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'historical'
+  const [courseSortKey, setCourseSortKey] = useState(null);
+  const [courseSortDir, setCourseSortDir] = useState('asc');
 
   const [courseTab, setCourseTab] = useState('students'); // 'detail' | 'students'
   const [breakdownData, setBreakdownData] = useState(null);
@@ -177,8 +180,27 @@ export default function CoursesStudentsPage() {
     [allCourses]
   );
 
+  const activeCount = useMemo(() => allCourses.filter((c) => !c.is_historical).length, [allCourses]);
+  const historicalCount = useMemo(() => allCourses.filter((c) => c.is_historical).length, [allCourses]);
+
+  function handleCourseSort(key) {
+    if (courseSortKey === key) {
+      setCourseSortDir((direction) => (direction === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setCourseSortKey(key);
+      setCourseSortDir('asc');
+    }
+  }
+
+  function courseSortIcon(key) {
+    if (courseSortKey !== key) return ' ↕';
+    return courseSortDir === 'asc' ? ' ↑' : ' ↓';
+  }
+
   const filteredCourses = useMemo(() => {
     let list = hideTemplates ? allCourses.filter((c) => !isTemplateCourse(c)) : allCourses;
+    if (statusFilter === 'active') list = list.filter((c) => !c.is_historical);
+    if (statusFilter === 'historical') list = list.filter((c) => c.is_historical);
     if (courseSearch.trim()) {
       const term = courseSearch.toLowerCase();
       list = list.filter(
@@ -188,8 +210,16 @@ export default function CoursesStudentsPage() {
           c.category_name.toLowerCase().includes(term)
       );
     }
-    return list;
-  }, [allCourses, courseSearch, hideTemplates]);
+    if (!courseSortKey) return list;
+    return [...list].sort((a, b) => {
+      const valA = a[courseSortKey] ?? 0;
+      const valB = b[courseSortKey] ?? 0;
+      if (typeof valA === 'string') {
+        return courseSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return courseSortDir === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [allCourses, courseSearch, hideTemplates, statusFilter, courseSortKey, courseSortDir]);
 
   function openCourse(course) {
     setSelectedCourse(course);
@@ -522,6 +552,29 @@ export default function CoursesStudentsPage() {
               onChange={(e) => setCourseSearch(e.target.value)}
             />
           </div>
+          <div className="cs-role-filter">
+            <button
+              type="button"
+              className={`cs-role-chip ${statusFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('all')}
+            >
+              Todos ({activeCount + historicalCount})
+            </button>
+            <button
+              type="button"
+              className={`cs-role-chip ${statusFilter === 'active' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('active')}
+            >
+              Activos ({activeCount})
+            </button>
+            <button
+              type="button"
+              className={`cs-role-chip ${statusFilter === 'historical' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('historical')}
+            >
+              Históricos ({historicalCount})
+            </button>
+          </div>
           {templateCount > 0 && (
             <button
               type="button"
@@ -534,7 +587,7 @@ export default function CoursesStudentsPage() {
             </button>
           )}
           {coursesLoading ? (
-            <TableSkeleton columns={2} />
+            <TableSkeleton columns={6} />
           ) : coursesError ? (
             <ErrorRetry message={coursesError} onRetry={() => openPlatform(selectedPlatform)} />
           ) : !allCourses.length ? (
@@ -542,12 +595,28 @@ export default function CoursesStudentsPage() {
               No hay datos de cursos para esta plataforma. Sincronízala primero en Configuración.
             </p>
           ) : (
-            <div className="table-wrapper insights-table-wrapper">
+            <div className="cs-report-box table-wrapper insights-table-wrapper">
               <table className="course-table">
                 <thead>
                   <tr>
-                    <th>Curso</th>
-                    <th>Categoría</th>
+                    <th className="sortable" onClick={() => handleCourseSort('course_name')}>
+                      Curso{courseSortIcon('course_name')}
+                    </th>
+                    <th className="sortable" onClick={() => handleCourseSort('category_name')}>
+                      Categoría{courseSortIcon('category_name')}
+                    </th>
+                    <th className="sortable" onClick={() => handleCourseSort('is_historical')}>
+                      Status{courseSortIcon('is_historical')}
+                    </th>
+                    <th className="sortable right" onClick={() => handleCourseSort('enrolled_count')}>
+                      Alumnos{courseSortIcon('enrolled_count')}
+                    </th>
+                    <th className="sortable" onClick={() => handleCourseSort('start_date')}>
+                      Inicio{courseSortIcon('start_date')}
+                    </th>
+                    <th className="sortable" onClick={() => handleCourseSort('end_date')}>
+                      Fin{courseSortIcon('end_date')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -573,11 +642,19 @@ export default function CoursesStudentsPage() {
                           </Badge>
                         )}
                       </td>
+                      <td>
+                        <Badge variant={course.is_historical ? 'outline' : 'secondary'}>
+                          {course.is_historical ? 'Histórico' : 'Activo'}
+                        </Badge>
+                      </td>
+                      <td className="right mono">{course.enrolled_count}</td>
+                      <td>{course.start_date ? formatUnixSeconds(course.start_date) : '—'}</td>
+                      <td>{course.end_date ? formatUnixSeconds(course.end_date) : '—'}</td>
                     </tr>
                   ))}
                   {!filteredCourses.length && (
                     <tr>
-                      <td colSpan={2} className="empty">
+                      <td colSpan={6} className="empty">
                         No se encontraron cursos.
                       </td>
                     </tr>

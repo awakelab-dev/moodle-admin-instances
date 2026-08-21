@@ -227,8 +227,20 @@ export class DashboardService {
       return { moodleSource: url, platformName: null, totalBytes: 0, totalContentBytes: 0, totalBackupBytes: 0, totalAssignmentBytes: 0, totalForumBytes: 0, categories: [] };
     }
 
-    const courses = await this.prisma.course.findMany({ where: platform ? { platformId: platform.id } : {} });
+    const courseFilter = platform ? { platformId: platform.id } : {};
+    const [courses, enrolledPerCourse] = await Promise.all([
+      this.prisma.course.findMany({ where: courseFilter }),
+      this.prisma.courseEnrollment.groupBy({
+        by: ['platformId', 'courseId'],
+        where: courseFilter,
+        _count: { courseId: true },
+      }),
+    ]);
+    const enrolledCountByCourse = new Map(
+      enrolledPerCourse.map((row) => [`${row.platformId}:${row.courseId}`, row._count.courseId]),
+    );
 
+    const nowSeconds = Math.floor(Date.now() / 1000);
     const catMap: Record<string, any> = {};
     let totalContentBytes = 0;
     let totalBackupBytes = 0;
@@ -254,6 +266,10 @@ export class DashboardService {
       catMap[key].total_backup_bytes += backup;
       catMap[key].total_assignment_bytes += assignment;
       catMap[key].total_forum_bytes += forum;
+      // "Histórico" si la fecha de fin ya pasó; "Activo" si no tiene fecha de
+      // fin (indefinido en Moodle) o todavía no ha llegado.
+      const isHistorical = Boolean(c.endDate) && c.endDate! < nowSeconds;
+
       catMap[key].courses.push({
         moodle_source: platform?.url || url,
         course_id: c.courseId,
@@ -264,6 +280,10 @@ export class DashboardService {
         backup_size_bytes: backup,
         assignment_size_bytes: assignment,
         forum_size_bytes: forum,
+        start_date: c.startDate || null,
+        end_date: c.endDate || null,
+        is_historical: isHistorical,
+        enrolled_count: enrolledCountByCourse.get(`${c.platformId}:${c.courseId}`) || 0,
       });
     }
 
