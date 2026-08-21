@@ -3,12 +3,11 @@ import { ChevronDown } from 'lucide-react';
 import {
   getPlatforms,
   getCourses,
-  getCourseBreakdown,
   getCourseAccessReport,
   getCourseGradesReport,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
-import { formatBytes, formatUnixSeconds } from '@/lib/formatters';
+import { formatUnixSeconds } from '@/lib/formatters';
 import { downloadXlsx } from '@/lib/excel';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,13 +28,6 @@ function isTemplateCourse(course) {
 // se trata como profesor/tutor de cara al filtro y a la etiqueta.
 function isTeacherRole(student) {
   return Array.isArray(student.roles) && student.roles.length > 0 && !student.roles.includes('student');
-}
-
-function formatDateTime(value) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('es-CL');
 }
 
 function ListSkeleton({ rows = 6 }) {
@@ -94,9 +86,6 @@ export default function CoursesStudentsPage() {
   const [courseSortDir, setCourseSortDir] = useState('asc');
 
   const [courseTab, setCourseTab] = useState('students'); // 'detail' | 'students'
-  const [breakdownData, setBreakdownData] = useState(null);
-  const [breakdownLoading, setBreakdownLoading] = useState(false);
-  const [breakdownError, setBreakdownError] = useState(null);
 
   const [accessReportData, setAccessReportData] = useState(null);
   const [accessReportLoading, setAccessReportLoading] = useState(false);
@@ -238,8 +227,6 @@ export default function CoursesStudentsPage() {
   function openCourse(course) {
     setSelectedCourse(course);
     setCourseTab('students');
-    setBreakdownData(null);
-    setBreakdownError(null);
     setAccessReportData(null);
     setAccessReportError(null);
     setStudentSearch('');
@@ -263,24 +250,6 @@ export default function CoursesStudentsPage() {
         setAccessReportError('No se pudo cargar la lista de alumnos de este curso.');
       })
       .finally(() => setAccessReportLoading(false));
-  }
-
-  // Carga el desglose de almacenamiento del curso solo la primera vez que se
-  // abre la pestaña "Detalle del curso" (si ya hay datos y no se pide
-  // refresh, no repite la llamada); `refresh: true` fuerza el recálculo en
-  // vivo contra Moodle en vez de usar el resultado ya guardado.
-  function loadBreakdown(courseId, { refresh = false } = {}) {
-    if (breakdownLoading) return;
-    if (breakdownData && !refresh) return;
-    setBreakdownLoading(true);
-    setBreakdownError(null);
-    getCourseBreakdown(courseId, { moodleSource: selectedPlatform.source, ...(refresh ? { refresh: 1 } : {}) })
-      .then((response) => setBreakdownData(response))
-      .catch(() => {
-        setBreakdownData(null);
-        setBreakdownError('No se pudo cargar el detalle de almacenamiento de este curso.');
-      })
-      .finally(() => setBreakdownLoading(false));
   }
 
   // Carga el detalle de calificaciones por alumno (gradereport_user_get_grade_items
@@ -708,10 +677,7 @@ export default function CoursesStudentsPage() {
             <button
               type="button"
               className={`cs-tab ${courseTab === 'detail' ? 'active' : ''}`}
-              onClick={() => {
-                setCourseTab('detail');
-                loadBreakdown(selectedCourse.course_id);
-              }}
+              onClick={() => setCourseTab('detail')}
             >
               Detalle del curso
             </button>
@@ -1086,58 +1052,26 @@ export default function CoursesStudentsPage() {
           )}
 
           {courseTab === 'detail' && (
-            breakdownLoading ? (
-              <div className="cs-detail-card">
-                <p className="cs-detail-loading-note">
-                  Calculando el detalle en vivo, archivo por archivo — puede tardar hasta un
-                  minuto en cursos con mucho contenido.
-                </p>
-                {Array.from({ length: 5 }).map((_, idx) => (
-                  <div key={idx} className="cs-stat-row">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
-                ))}
-              </div>
-            ) : breakdownError ? (
-              <ErrorRetry
-                message={breakdownError}
-                onRetry={() => loadBreakdown(selectedCourse.course_id)}
+            <div className="cs-detail-card">
+              <StatRow label="Nombre del curso" value={selectedCourse.course_name || '—'} />
+              <StatRow label="Código" value={selectedCourse.shortname || '—'} />
+              <StatRow label="Categoría" value={selectedCourse.category_name || '—'} />
+              <StatRow
+                label="Estado"
+                value={<Badge variant={selectedCourse.is_historical ? 'outline' : 'secondary'}>
+                  {selectedCourse.is_historical ? 'Histórico' : 'Activo'}
+                </Badge>}
               />
-            ) : breakdownData ? (
-              <div className="cs-detail-card">
-                <div className="cs-detail-meta-row">
-                  <p className={`course-breakdown-meta course-breakdown-meta-${breakdownData.source || 'live'}`}>
-                    {breakdownData.source === 'cache' ? 'Detalle cargado desde caché' : 'Detalle recalculado en vivo'} ·
-                    {' '}Calculado: {formatDateTime(breakdownData.calculatedAt)}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={breakdownLoading}
-                    onClick={() => loadBreakdown(selectedCourse.course_id, { refresh: true })}
-                  >
-                    Recalcular
-                  </Button>
-                </div>
-                <StatRow label="Contenido" value={formatBytes(breakdownData.course.size_bytes)} />
-                <StatRow
-                  label="Entregas"
-                  value={formatBytes(breakdownData.course.assignment_size_bytes)}
-                />
-                <StatRow label="Foros" value={formatBytes(breakdownData.course.forum_size_bytes)} />
-                <StatRow
-                  label="Backups"
-                  value={formatBytes(breakdownData.course.backup_size_bytes)}
-                />
-                <StatRow
-                  label="Total"
-                  value={formatBytes(breakdownData.course.total_bytes)}
-                />
-              </div>
-            ) : (
-              <p className="empty">Cargando…</p>
-            )
+              <StatRow
+                label="Fecha de inicio"
+                value={selectedCourse.start_date ? formatUnixSeconds(selectedCourse.start_date) : '—'}
+              />
+              <StatRow
+                label="Fecha de fin"
+                value={selectedCourse.end_date ? formatUnixSeconds(selectedCourse.end_date) : '—'}
+              />
+              <StatRow label="Alumnos matriculados" value={selectedCourse.enrolled_count ?? '—'} />
+            </div>
           )}
         </Card>
       )}
