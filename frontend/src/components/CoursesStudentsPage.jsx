@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import {
   getPlatforms,
   getCourses,
@@ -121,6 +122,19 @@ export default function CoursesStudentsPage() {
   const [gradesReportLoading, setGradesReportLoading] = useState(false);
   const [gradesReportError, setGradesReportError] = useState(null);
   const [hasRequestedGradesReport, setHasRequestedGradesReport] = useState(false);
+  // Alumnos cuya fila de "Detalle" está desplegada mostrando todas sus
+  // notas — por defecto solo se ve la primera, para no repetir dentro de
+  // cada fila el mismo scroll que ya tiene el recuadro completo.
+  const [expandedGradeStudents, setExpandedGradeStudents] = useState(() => new Set());
+
+  function toggleGradeExpanded(userId) {
+    setExpandedGradeStudents((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentGrades, setStudentGrades] = useState(null);
@@ -234,6 +248,7 @@ export default function CoursesStudentsPage() {
     setGradesReportData(null);
     setGradesReportError(null);
     setHasRequestedGradesReport(false);
+    setExpandedGradeStudents(new Set());
     setLevel('course');
     loadAccessReport(course.course_id);
   }
@@ -1030,15 +1045,42 @@ export default function CoursesStudentsPage() {
                           <TableCell className="right mono bold">{student.courseScoreOutOf10}</TableCell>
                           <TableCell>
                             {student.items.length ? (
-                              <div className="grade-detail-cell">
-                                {student.items.map((item, idx) => (
-                                  <div key={idx} className="grade-detail-row">
-                                    <span className="grade-detail-name">{item.itemName}</span>
-                                    <span className="grade-detail-value mono">
-                                      {item.gradeFormatted} ({item.scoreOutOf10}/10)
-                                    </span>
-                                  </div>
-                                ))}
+                              <div className="grade-detail-collapsible">
+                                <div className="grade-detail-row">
+                                  <span className="grade-detail-name">{student.items[0].itemName}</span>
+                                  <span className="grade-detail-value mono">
+                                    {student.items[0].gradeFormatted} ({student.items[0].scoreOutOf10}/10)
+                                  </span>
+                                </div>
+                                {student.items.length > 1 && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="grade-detail-toggle"
+                                      onClick={() => toggleGradeExpanded(student.userId)}
+                                    >
+                                      <ChevronDown
+                                        size={14}
+                                        className={expandedGradeStudents.has(student.userId) ? 'open' : ''}
+                                      />
+                                      {expandedGradeStudents.has(student.userId)
+                                        ? 'Ocultar'
+                                        : `Ver ${student.items.length - 1} más`}
+                                    </button>
+                                    {expandedGradeStudents.has(student.userId) && (
+                                      <div className="grade-detail-cell">
+                                        {student.items.slice(1).map((item, idx) => (
+                                          <div key={idx} className="grade-detail-row">
+                                            <span className="grade-detail-name">{item.itemName}</span>
+                                            <span className="grade-detail-value mono">
+                                              {item.gradeFormatted} ({item.scoreOutOf10}/10)
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             ) : (
                               '—'

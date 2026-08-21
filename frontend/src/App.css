@@ -1005,6 +1005,32 @@ input:focus-visible {
   color: var(--color-text);
 }
 
+.grade-detail-collapsible {
+  min-width: 280px;
+}
+
+.grade-detail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.grade-detail-toggle svg {
+  transition: transform 0.15s ease;
+}
+
+.grade-detail-toggle svg.open {
+  transform: rotate(180deg);
+}
+
 .insights-table-toolbar {
   display: flex;
   align-items: center;
