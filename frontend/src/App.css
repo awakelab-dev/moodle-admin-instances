@@ -1136,7 +1136,51 @@ input:focus-visible {
 }
 
 .course-table th.sortable:hover {
-  background: #dfe6f5;
+  background: rgba(17, 234, 234, 0.12);
+}
+
+/* Tabla de cursos de "Cursos y Alumnos": ancho fijo por columna para que
+   las 6 columnas quepan sin scroll horizontal en vez de estirarse por el
+   contenido (nombre de curso/categoría muy largos). */
+.cs-courses-table {
+  table-layout: fixed;
+}
+
+.cs-courses-table th:nth-child(1),
+.cs-courses-table td:nth-child(1) {
+  width: 32%;
+}
+
+.cs-courses-table th:nth-child(2),
+.cs-courses-table td:nth-child(2) {
+  width: 24%;
+}
+
+.cs-courses-table th:nth-child(3),
+.cs-courses-table td:nth-child(3) {
+  width: 11%;
+}
+
+.cs-courses-table th:nth-child(4),
+.cs-courses-table td:nth-child(4) {
+  width: 11%;
+}
+
+.cs-courses-table th:nth-child(5),
+.cs-courses-table td:nth-child(5),
+.cs-courses-table th:nth-child(6),
+.cs-courses-table td:nth-child(6) {
+  width: 11%;
+}
+
+.cs-courses-table .course-name-text,
+.cs-courses-table .course-short,
+.cs-courses-table .cat-badge {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .course-table th.right,

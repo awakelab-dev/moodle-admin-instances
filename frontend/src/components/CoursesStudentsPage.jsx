@@ -611,7 +611,7 @@ export default function CoursesStudentsPage() {
             </p>
           ) : (
             <div className="cs-report-box table-wrapper insights-table-wrapper">
-              <table className="course-table">
+              <table className="course-table cs-courses-table">
                 <thead>
                   <tr>
                     <th className="sortable" onClick={() => handleCourseSort('course_name')}>
@@ -683,16 +683,6 @@ export default function CoursesStudentsPage() {
 
       {level === 'course' && selectedCourse && (
         <Card className="p-4 min-w-0">
-          <div className="table-header-row">
-            <div>
-              <h3 className="card-title table-title">{selectedCourse.course_name}</h3>
-              <p className="panel-description">
-                {selectedCourse.shortname ? `${selectedCourse.shortname} · ` : ''}
-                {selectedCourse.category_name}
-              </p>
-            </div>
-          </div>
-
           <div className="cs-tabs">
             <button
               type="button"
