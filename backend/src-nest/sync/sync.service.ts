@@ -383,10 +383,15 @@ export class SyncService {
       }
     });
 
-    // Reemplazar las matrículas de esta plataforma con el snapshot actual
-    // (simplifica altas/bajas de alumnos entre sincronizaciones).
+    // Solo se AÑADEN pares nuevos (skipDuplicates), nunca se borra nada
+    // aquí: CoursesSyncService también escribe en esta tabla (matrícula,
+    // accesos, calificaciones, foros por alumno) y sí hace un reemplazo
+    // completo cuando corre; si este sync de storage borrara antes de
+    // recrear, cualquier "Cursos y Alumnos" sincronizado después de este
+    // sync de storage perdería sus datos. El único costo es que un alumno
+    // desmatriculado no se limpia aquí — lo hace la sync de Cursos y
+    // Alumnos en su propio reemplazo.
     try {
-      await this.prisma.courseEnrollment.deleteMany({ where: { platformId: platform.id } });
       if (enrollmentPairs.length > 0) {
         const uniquePairs = Array.from(
           new Map(

@@ -5,36 +5,8 @@ import {
   buildCourseStorageBreakdown,
   deriveCourseSizeTotals,
   detectFileBrowserAvailability,
-  extractCourseGradeItem,
-  mapWithConcurrency,
 } from '../sync/sync-helpers';
 import { bytesToGigabytes, calculateFinancialMetrics, normalizeUrl } from '../common/platform-utils';
-
-// Moodle devuelve varios campos "formatted" (nota, feedback, porcentaje) ya
-// renderizados como HTML (p. ej. envueltos en <span>, con &nbsp;). Como el
-// dashboard los muestra como texto plano en tablas, se limpian las etiquetas
-// y entidades antes de exponerlos en la respuesta.
-function stripHtml(value: string): string {
-  return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-}
-
-// El "gradeformatted" del ítem de tipo "course" (nota total) a veces trae,
-// tras quitar el HTML, una coletilla de si se ha superado el curso, del
-// tipo "6,33 (Superar (S))" — se recorta para dejar solo el número.
-function stripGradeAnnotation(value: string): string {
-  return value.replace(/\s*\(.*$/, '').trim();
-}
-
-// Cada ítem de Moodle puede tener su propia nota máxima (grademax) —
-// algunas actividades están configuradas sobre 10, otras sobre 100, etc.
-// Se normaliza a una nota sobre 10 para que todos los ítems se puedan
-// comparar entre sí en el informe, en vez de mezclar escalas distintas.
-function formatScoreOutOf10(graderaw: unknown, grademax: unknown): string {
-  const raw = typeof graderaw === 'number' ? graderaw : Number(graderaw);
-  const max = typeof grademax === 'number' ? grademax : Number(grademax);
-  if (!Number.isFinite(raw) || !Number.isFinite(max) || max <= 0) return '—';
-  return ((raw / max) * 10).toFixed(2).replace('.', ',');
-}
 
 // El query param "refresh" llega siempre como string (o undefined) desde la
 // URL, nunca como boolean real, por eso hace falta parsearlo a mano.
@@ -409,10 +381,11 @@ export class DashboardService {
     };
   }
 
-  // Consulta en vivo contra Moodle (Web Services): combina matrícula,
-  // acceso, nota final, evaluaciones y mensajes de foro por alumno para un
-  // curso. No usa caché en BD porque son datos que cambian constantemente
-  // (accesos, mensajes) y se piden puntualmente, no en cada sincronización.
+  // Lee de Postgres (CourseEnrollment) en vez de consultar Moodle en vivo:
+  // matrícula, accesos, nota final, evaluaciones y mensajes de foro por
+  // alumno de un curso. Esos datos los llena CoursesSyncService al pulsar
+  // "Sincronizar" en Cursos y Alumnos — aquí solo se leen, para que abrir
+  // un curso sea instantáneo en vez de esperar a Moodle en el momento.
   async getCourseAccessReport(courseId: number, moodleSource: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar el informe del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
@@ -425,149 +398,40 @@ export class DashboardService {
     });
     if (!course) throw new NotFoundException('Curso no encontrado.');
 
-    if (!platform.url || !platform.token) {
-      throw new NotFoundException('La plataforma seleccionada no está configurada para consultar el informe en vivo.');
-    }
+    const enrollments = await this.prisma.courseEnrollment.findMany({
+      where: { platformId: platform.id, courseId },
+    });
 
-    const client = new MoodleClient(platform.url, platform.token);
-    const [usersRaw, activeUsersRaw] = await Promise.all([
-      client.getEnrolledUsers(courseId),
-      client.getActiveEnrolledUserIds(courseId).catch(() => null),
-    ]);
-    if (!Array.isArray(usersRaw)) {
-      throw new ServiceUnavailableException('No se pudo obtener el listado de alumnos matriculados para este curso.');
-    }
-
-    // "Matrícula activa" sí se puede saber por Web Services: Moodle permite
-    // filtrar por matrículas activas (options.onlyactive=1). Si un usuario
-    // aparece en el listado completo pero no en el filtrado, está suspendido.
-    const activeUserIds = Array.isArray(activeUsersRaw)
-      ? new Set(activeUsersRaw.map((u: any) => u.id))
-      : null;
-
-    // Nota final y evaluaciones completadas por alumno: mismos datos que usa
-    // el informe de calificaciones. Si la función no está habilitada, se
-    // ignora sin romper el resto del informe.
-    const finalGradeByUserId = new Map<number, string>();
-    const evaluationsByUserId = new Map<number, { completed: number; total: number }>();
-    try {
-      const gradesRaw = await client.getGradeItems(courseId);
-      const usergrades = Array.isArray(gradesRaw?.usergrades) ? gradesRaw.usergrades : [];
-      for (const ug of usergrades) {
-        const courseItem = extractCourseGradeItem(ug.gradeitems);
-        if (courseItem?.gradeformatted) {
-          const clean = stripGradeAnnotation(stripHtml(courseItem.gradeformatted));
-          if (clean) finalGradeByUserId.set(ug.userid, clean);
-        }
-
-        const items = Array.isArray(ug.gradeitems)
-          ? ug.gradeitems.filter((item: any) => item.itemtype !== 'course')
-          : [];
-        const completed = items.filter((item: any) => {
-          const formatted = stripHtml(item.gradeformatted || '');
-          return formatted && formatted !== '-' && formatted !== '—';
-        }).length;
-        evaluationsByUserId.set(ug.userid, { completed, total: items.length });
-      }
-    } catch {
-      // gradereport_user_get_grade_items no disponible: se deja sin nota final.
-    }
-
-    // Actividades de aprendizaje completadas: requiere que el curso tenga
-    // "Finalización de actividades" activada. Se prueba con el primer
-    // alumno; si falla, se asume no disponible para todo el curso (evita
-    // repetir el mismo error por cada alumno).
-    const completionByUserId = new Map<number, { completed: number; total: number }>();
-    if (usersRaw.length > 0) {
-      let completionAvailable = true;
-      try {
-        await client.getActivitiesCompletionStatus(courseId, usersRaw[0].id);
-      } catch {
-        completionAvailable = false;
-      }
-
-      if (completionAvailable) {
-        await mapWithConcurrency(usersRaw, 8, async (u: any) => {
-          try {
-            const raw = await client.getActivitiesCompletionStatus(courseId, u.id);
-            const statuses = Array.isArray(raw?.statuses) ? raw.statuses : [];
-            const completed = statuses.filter((s: any) => s.state === 1 || s.state === 2).length;
-            completionByUserId.set(u.id, { completed, total: statuses.length });
-          } catch {
-            // se deja sin dato para este alumno en particular
-          }
-        });
-      }
-    }
-
-    // Mensajes de foro: se recorren los foros del curso y se cuentan los
-    // mensajes por autor. Si el curso no tiene foros o la función no está
-    // disponible, se deja sin dato en vez de romper el informe.
-    const forumMessageCountByUserId = new Map<number, number>();
-    let forumMessagesAvailable = false;
-    try {
-      const forums = await client.getForumsByCourses([courseId]);
-      if (Array.isArray(forums)) {
-        forumMessagesAvailable = true;
-        for (const forum of forums) {
-          let discussions: any[] = [];
-          try {
-            const discResult = await client.getForumDiscussions(forum.id);
-            discussions = Array.isArray(discResult?.discussions) ? discResult.discussions : [];
-          } catch {
-            continue;
-          }
-
-          await mapWithConcurrency(discussions, 8, async (disc: any) => {
-            try {
-              const postResult = await client.getDiscussionPosts(disc.discussion);
-              const posts = Array.isArray(postResult?.posts) ? postResult.posts : [];
-              for (const post of posts) {
-                forumMessageCountByUserId.set(
-                  post.userid,
-                  (forumMessageCountByUserId.get(post.userid) || 0) + 1,
-                );
-              }
-            } catch {
-              // se ignora esta discusión puntual
-            }
-          });
-        }
-      }
-    } catch {
-      // mod_forum_get_forums_by_courses no disponible
-    }
-
-    // Moodle no expone por Web Services el número de registros/eventos, el
-    // tiempo acumulado ni los correos enviados (eso vive dentro de plugins de
-    // informes como block_advanced_reports, sin API). Se devuelven como
-    // `null` explícitamente y el frontend los muestra con un valor fijo.
-    const students = usersRaw.map((u: any) => ({
-      userId: u.id,
-      firstname: u.firstname || '',
-      lastname: u.lastname || '',
-      username: u.username || '',
-      email: u.email || '',
-      activeEnrollment: activeUserIds ? activeUserIds.has(u.id) : null,
-      firstAccess: u.firstaccess || null,
-      lastAccess: u.lastaccess || null,
-      lastCourseAccess: u.lastcourseaccess || null,
+    const students = enrollments.map((e) => ({
+      userId: e.userId,
+      firstname: e.firstname || '',
+      lastname: e.lastname || '',
+      username: e.username || '',
+      email: e.email || '',
+      activeEnrollment: e.activeEnrollment,
+      firstAccess: e.firstAccess,
+      lastAccess: e.lastAccess,
+      lastCourseAccess: e.lastCourseAccess,
+      // Moodle no expone por Web Services el número de registros/eventos, el
+      // tiempo acumulado ni los correos enviados (eso vive dentro de
+      // plugins de informes como block_advanced_reports, sin API).
       records: null,
       accumulatedTime: null,
-      activitiesCompleted: completionByUserId.get(u.id)?.completed ?? null,
-      activitiesTotal: completionByUserId.get(u.id)?.total ?? null,
-      finalGrade: finalGradeByUserId.get(u.id) ?? null,
-      evaluationsCompleted: evaluationsByUserId.get(u.id)?.completed ?? null,
-      evaluationsTotal: evaluationsByUserId.get(u.id)?.total ?? null,
-      forumMessageCount: forumMessagesAvailable ? forumMessageCountByUserId.get(u.id) ?? 0 : null,
+      activitiesCompleted: e.activitiesCompleted,
+      activitiesTotal: e.activitiesTotal,
+      finalGrade: e.finalGrade,
+      evaluationsCompleted: e.evaluationsCompleted,
+      evaluationsTotal: e.evaluationsTotal,
+      forumMessageCount: e.forumMessageCount,
       emailsSent: null,
-      roles: Array.isArray(u.roles) ? u.roles.map((r: any) => r.shortname).filter(Boolean) : [],
+      roles: e.roles,
     }));
 
     return {
       moodleSource: platform.url,
       platformName: platform.name || course.moodleName || null,
-      calculatedAt: new Date().toISOString(),
+      calculatedAt: platform.coursesLastSyncedAt ? platform.coursesLastSyncedAt.toISOString() : null,
+      neverSynced: !platform.coursesLastSyncedAt,
       course: {
         course_id: course.courseId,
         course_name: course.courseName,
@@ -579,10 +443,9 @@ export class DashboardService {
     };
   }
 
-  // Consulta en vivo contra Moodle (Web Services): informe de calificaciones
-  // por alumno, con la nota de cada ítem normalizada además a escala /10
-  // (ver formatScoreOutOf10) para poder compararlas entre sí sin importar
-  // la nota máxima configurada en cada actividad.
+  // Lee de Postgres (CourseEnrollment) en vez de consultar Moodle en vivo:
+  // detalle de calificaciones por alumno, con la nota de cada ítem ya
+  // normalizada a escala /10 (calculado y guardado por CoursesSyncService).
   async getCourseGradesReport(courseId: number, moodleSource: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar las calificaciones del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
@@ -595,24 +458,15 @@ export class DashboardService {
     });
     if (!course) throw new NotFoundException('Curso no encontrado.');
 
-    if (!platform.url || !platform.token) {
-      throw new NotFoundException('La plataforma seleccionada no está configurada para consultar calificaciones en vivo.');
-    }
+    const enrollments = await this.prisma.courseEnrollment.findMany({
+      where: { platformId: platform.id, courseId },
+    });
 
-    const client = new MoodleClient(platform.url, platform.token);
-
-    // gradereport_user_get_grade_items no está habilitado en la mayoría de
-    // plataformas todavía (falta permiso del lado de Moodle) — se devuelve
-    // available:false con el motivo en vez de un error duro, así el
-    // frontend puede mostrar un mensaje claro en vez de romperse.
-    let raw: any;
-    try {
-      raw = await client.getGradeItems(courseId);
-    } catch (err: any) {
+    if (!platform.coursesLastSyncedAt) {
       return {
         moodleSource: platform.url,
         available: false,
-        reason: err.message || 'gradereport_user_get_grade_items no está disponible en esta plataforma.',
+        reason: 'Esta plataforma todavía no se ha sincronizado desde Cursos y Alumnos.',
         course: {
           course_id: course.courseId,
           course_name: course.courseName,
@@ -623,39 +477,25 @@ export class DashboardService {
       };
     }
 
-    const usergrades = Array.isArray(raw?.usergrades) ? raw.usergrades : [];
-    const students = usergrades.map((ug: any) => {
-      const items = (Array.isArray(ug.gradeitems) ? ug.gradeitems : [])
-        .filter((item: any) => item.itemtype !== 'course')
-        .map((item: any) => ({
-          itemName: item.itemname || 'Elemento sin nombre',
-          gradeFormatted: stripHtml(item.gradeformatted || '') || '—',
-          percentageFormatted: stripHtml(item.percentageformatted || '') || '—',
-          scoreOutOf10: formatScoreOutOf10(item.graderaw, item.grademax),
-          feedback: stripHtml(item.feedback || ''),
-        }));
-
-      const courseItem = (Array.isArray(ug.gradeitems) ? ug.gradeitems : []).find(
-        (item: any) => item.itemtype === 'course',
-      );
-
-      return {
-        userId: ug.userid,
-        fullname: ug.userfullname || '',
-        totalItems: items.length,
-        completedItems: items.filter((i: any) => i.gradeFormatted !== '—' && i.gradeFormatted !== '-').length,
-        coursePercentage:
-          stripHtml(courseItem?.percentageformatted || '') ||
-          stripGradeAnnotation(stripHtml(courseItem?.gradeformatted || '')) ||
-          '—',
-        courseScoreOutOf10: formatScoreOutOf10(courseItem?.graderaw, courseItem?.grademax),
-        items,
-      };
-    });
+    const students = enrollments
+      .filter((e) => e.finalGrade !== null || (Array.isArray(e.gradeItems) && (e.gradeItems as any[]).length > 0))
+      .map((e) => {
+        const items = Array.isArray(e.gradeItems) ? (e.gradeItems as any[]) : [];
+        return {
+          userId: e.userId,
+          fullname: `${e.firstname} ${e.lastname}`.trim(),
+          totalItems: items.length,
+          completedItems: items.filter((i: any) => i.gradeFormatted !== '—' && i.gradeFormatted !== '-').length,
+          coursePercentage: e.coursePercentage || '—',
+          courseScoreOutOf10: e.courseScoreOutOf10 || '—',
+          items,
+        };
+      });
 
     return {
       moodleSource: platform.url,
       available: true,
+      calculatedAt: platform.coursesLastSyncedAt.toISOString(),
       course: {
         course_id: course.courseId,
         course_name: course.courseName,

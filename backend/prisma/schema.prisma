@@ -32,6 +32,10 @@ model Platform {
   currency      Currency @default(USD)
   isActive      Boolean   @default(true) @map("is_active")
   lastSyncedAt  DateTime? @map("last_synced_at")
+  // Sincronizacion dedicada de "Cursos y Alumnos" (matricula, accesos,
+  // actividades, notas por item, mensajes de foro) — separada de
+  // lastSyncedAt, que es la del storage/tamano de curso.
+  coursesLastSyncedAt DateTime? @map("courses_last_synced_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -111,6 +115,31 @@ model CourseEnrollment {
 
   courseId Int @map("course_id")
   userId   Int @map("user_id")
+
+  // Snapshot de "Lista de alumnos"/"Informe global"/"Calificaciones" — se
+  // llena en la sincronizacion dedicada de Cursos y Alumnos (separada del
+  // sync de storage) y se lee sin tocar Moodle en el momento. Todo nullable
+  // porque una plataforma sin permisos de calificaciones/finalizacion no
+  // tendra esos campos. firstname/lastname/username/email se duplican aqui
+  // (en vez de unir con MoodleUser) para no depender del sync de storage.
+  firstname String @default("")
+  lastname  String @default("")
+  username  String @default("")
+  email     String @default("")
+  roles             String[] @default([])
+  activeEnrollment  Boolean?          @map("active_enrollment")
+  firstAccess       Int?              @map("first_access")
+  lastAccess        Int?              @map("last_access")
+  lastCourseAccess  Int?              @map("last_course_access")
+  activitiesCompleted Int?            @map("activities_completed")
+  activitiesTotal     Int?            @map("activities_total")
+  finalGrade          String?         @map("final_grade")
+  evaluationsCompleted Int?           @map("evaluations_completed")
+  evaluationsTotal      Int?          @map("evaluations_total")
+  forumMessageCount     Int?          @map("forum_message_count")
+  coursePercentage      String?       @map("course_percentage")
+  courseScoreOutOf10    String?       @map("course_score_out_of_10")
+  gradeItems            Json?         @map("grade_items")
 
   syncedAt DateTime @default(now()) @map("synced_at")
 

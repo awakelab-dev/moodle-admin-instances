@@ -1,6 +1,8 @@
 import { Controller, ConflictException, Get, Param, Post } from '@nestjs/common';
 import { SyncService } from './sync.service';
 import { SyncProgressService } from './sync-progress.service';
+import { CoursesSyncService } from './courses-sync.service';
+import { CoursesSyncProgressService } from './courses-sync-progress.service';
 import { Roles } from '../common/decorators/roles.decorator';
 
 /**
@@ -14,6 +16,8 @@ export class SyncController {
   constructor(
     private syncService: SyncService,
     private progress: SyncProgressService,
+    private coursesSyncService: CoursesSyncService,
+    private coursesSyncProgress: CoursesSyncProgressService,
   ) {}
 
   /** Marca la sincronización en curso para que se detenga en el próximo punto de chequeo. */
@@ -44,5 +48,28 @@ export class SyncController {
   @Get('status')
   status() {
     return this.progress.get() || { status: 'idle' };
+  }
+
+  /**
+   * Lanza la sincronización dedicada de "Cursos y Alumnos" (matrícula,
+   * accesos, calificaciones por ítem, finalización de actividades y
+   * mensajes de foro por alumno) de una plataforma en segundo plano —
+   * independiente del sync de storage de arriba.
+   */
+  @Post('courses/:platformId')
+  triggerCoursesSync(@Param('platformId') platformId: string) {
+    if (this.coursesSyncProgress.isRunning(platformId)) {
+      throw new ConflictException('Ya hay una sincronización de cursos y alumnos en curso para esta plataforma.');
+    }
+    this.coursesSyncService
+      .runInBackground(platformId)
+      .catch((err) => console.error('Unhandled courses-sync error:', err));
+    return { message: 'Sincronización de cursos y alumnos iniciada.' };
+  }
+
+  /** Devuelve el estado de la sincronización de "Cursos y Alumnos" de una plataforma. */
+  @Get('courses/:platformId/status')
+  coursesSyncStatus(@Param('platformId') platformId: string) {
+    return this.coursesSyncProgress.get(platformId) || { status: 'idle' };
   }
 }

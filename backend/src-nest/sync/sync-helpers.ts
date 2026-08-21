@@ -1,6 +1,32 @@
 // .mbz es la extensión de los archivos de copia de seguridad (backup) de Moodle.
 const BACKUP_EXTENSIONS = ['.mbz'];
 
+// Moodle devuelve varios campos "formatted" (nota, feedback, porcentaje) ya
+// renderizados como HTML (p. ej. envueltos en <span>, con &nbsp;). Como se
+// muestran como texto plano en tablas, se limpian las etiquetas y entidades
+// antes de exponerlos.
+export function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+}
+
+// El "gradeformatted" del ítem de tipo "course" (nota total) a veces trae,
+// tras quitar el HTML, una coletilla de si se ha superado el curso, del
+// tipo "6,33 (Superar (S))" — se recorta para dejar solo el número.
+export function stripGradeAnnotation(value: string): string {
+  return value.replace(/\s*\(.*$/, '').trim();
+}
+
+// Cada ítem de Moodle puede tener su propia nota máxima (grademax) —
+// algunas actividades están configuradas sobre 10, otras sobre 100, etc.
+// Se normaliza a una nota sobre 10 para que todos los ítems se puedan
+// comparar entre sí, en vez de mezclar escalas distintas.
+export function formatScoreOutOf10(graderaw: unknown, grademax: unknown): string {
+  const raw = typeof graderaw === 'number' ? graderaw : Number(graderaw);
+  const max = typeof grademax === 'number' ? grademax : Number(grademax);
+  if (!Number.isFinite(raw) || !Number.isFinite(max) || max <= 0) return '—';
+  return ((raw / max) * 10).toFixed(2).replace('.', ',');
+}
+
 /** Determina si un archivo es una copia de seguridad de Moodle por su extensión. */
 export function isBackupFile(filename?: string): boolean {
   if (!filename) return false;
