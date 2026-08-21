@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getPlatforms,
   getCourses,
@@ -124,25 +123,6 @@ export default function CoursesStudentsPage() {
   const [studentGrades, setStudentGrades] = useState(null);
   const [studentGradesLoading, setStudentGradesLoading] = useState(false);
 
-  // Selector de plataforma con buscador (sustituye al <Select> simple):
-  // `pickerOpen` controla si el desplegable está abierto y `platformSearch`
-  // filtra la lista mientras se escribe. `pickerRef` se usa para cerrar el
-  // desplegable al hacer clic fuera de él.
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [platformSearch, setPlatformSearch] = useState('');
-  const pickerRef = useRef(null);
-
-  // Cierra el desplegable de plataforma si se hace clic fuera de él.
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
-        setPickerOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   useEffect(() => {
     let isMounted = true;
     getPlatforms()
@@ -191,20 +171,6 @@ export default function CoursesStudentsPage() {
     }
     return list;
   }, [courseData]);
-
-  // Lista de plataformas que se muestra en el desplegable con buscador,
-  // filtrada por lo que se va escribiendo en `platformSearch`.
-  const filteredPickerPlatforms = useMemo(() => {
-    if (!platformSearch.trim()) return platforms;
-    const term = platformSearch.toLowerCase();
-    return platforms.filter((p) => formatPlatformDisplayName(p.name).toLowerCase().includes(term));
-  }, [platforms, platformSearch]);
-
-  function selectPlatformFromPicker(platform) {
-    openPlatform(platform);
-    setPickerOpen(false);
-    setPlatformSearch('');
-  }
 
   const templateCount = useMemo(
     () => allCourses.filter(isTemplateCourse).length,
@@ -510,49 +476,6 @@ export default function CoursesStudentsPage() {
             Explora cada plataforma, sus cursos y el detalle de cada alumno matriculado.
           </p>
         </div>
-        {!platformsLoading && platforms.length > 0 && (
-          <div className="cs-platform-picker" ref={pickerRef}>
-            <button
-              type="button"
-              className="cs-platform-trigger"
-              onClick={() => setPickerOpen((open) => !open)}
-            >
-              <span>
-                {selectedPlatform ? formatPlatformDisplayName(selectedPlatform.name) : 'Selecciona una plataforma'}
-              </span>
-              <ChevronDown size={16} className={`cs-platform-chevron ${pickerOpen ? 'open' : ''}`} />
-            </button>
-            {pickerOpen && (
-              <div className="cs-platform-dropdown">
-                <div className="cs-platform-search">
-                  <Search size={14} />
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="Buscar plataforma…"
-                    value={platformSearch}
-                    onChange={(e) => setPlatformSearch(e.target.value)}
-                  />
-                </div>
-                <div className="cs-platform-options">
-                  {filteredPickerPlatforms.map((p) => (
-                    <button
-                      key={p.source}
-                      type="button"
-                      className={`cs-platform-option ${selectedPlatform?.source === p.source ? 'active' : ''}`}
-                      onClick={() => selectPlatformFromPicker(p)}
-                    >
-                      {formatPlatformDisplayName(p.name)}
-                    </button>
-                  ))}
-                  {!filteredPickerPlatforms.length && (
-                    <p className="cs-platform-empty">Sin resultados.</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       <Breadcrumb items={breadcrumbItems} />
