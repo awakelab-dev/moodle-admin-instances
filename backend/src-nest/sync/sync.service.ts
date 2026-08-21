@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncProgressService } from './sync-progress.service';
+import { CoursesSyncService } from './courses-sync.service';
 import { MoodleClient } from './moodle-client.service';
 import { calculateFinancialMetrics, getMonthKey } from '../common/platform-utils';
 import {
@@ -65,6 +66,7 @@ export class SyncService {
   constructor(
     private prisma: PrismaService,
     private progress: SyncProgressService,
+    private coursesSyncService: CoursesSyncService,
   ) {}
 
   /**
@@ -484,6 +486,29 @@ export class SyncService {
 
     try {
       await this.syncPlatform(platform);
+
+      // Fase 2, misma sincronización: matrícula/accesos/calificaciones/foros
+      // por alumno de "Cursos y Alumnos" (ver CoursesSyncService). Comparte
+      // el mismo SyncProgressService (cancelación incluida) — sincronizar
+      // desde Configuración o desde Cursos y Alumnos es siempre esta misma
+      // operación completa, nunca dos sincronizaciones separadas.
+      const afterPhase1 = this.progress.get()!;
+      const phase1Total = afterPhase1.items_total || 0;
+      await this.coursesSyncService.syncPlatformCourseDetails(
+        platform,
+        (label, done, total) => {
+          const current = this.progress.get();
+          if (current) {
+            current.current_step = label;
+            current.items_total = phase1Total + total;
+            current.items_done = phase1Total + done;
+          }
+        },
+        () => {
+          if (this.progress.isCancelRequested()) throw new SyncCancelledError();
+        },
+      );
+
       const current = this.progress.get()!;
       current.status = 'completed';
       current.completed_at = new Date();

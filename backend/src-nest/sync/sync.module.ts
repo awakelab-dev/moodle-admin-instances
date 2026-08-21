@@ -3,17 +3,16 @@ import { SyncController } from './sync.controller';
 import { SyncService } from './sync.service';
 import { SyncProgressService } from './sync-progress.service';
 import { CoursesSyncService } from './courses-sync.service';
-import { CoursesSyncProgressService } from './courses-sync-progress.service';
 
 /**
  * Agrupa todo lo relacionado con la sincronización de plataformas Moodle:
- * el controlador HTTP, el servicio que ejecuta la sincronización pesada de
- * storage y su progreso, y la sincronización dedicada de "Cursos y Alumnos"
- * (matrícula/calificaciones/foros por alumno) con su propio progreso.
+ * el controlador HTTP, el servicio que orquesta la sincronización completa
+ * (storage + "Cursos y Alumnos", como una sola operación) y el servicio de
+ * progreso compartido que ambas fases actualizan.
  */
 @Module({
   controllers: [SyncController],
-  providers: [SyncService, SyncProgressService, CoursesSyncService, CoursesSyncProgressService],
-  exports: [SyncProgressService, SyncService, CoursesSyncService, CoursesSyncProgressService],
+  providers: [SyncService, SyncProgressService, CoursesSyncService],
+  exports: [SyncProgressService, SyncService, CoursesSyncService],
 })
 export class SyncModule {}

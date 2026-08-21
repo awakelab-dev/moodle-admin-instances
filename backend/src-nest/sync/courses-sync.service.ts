@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CoursesSyncProgressService } from './courses-sync-progress.service';
 import { MoodleClient } from './moodle-client.service';
 import {
   extractCourseGradeItem,
@@ -19,23 +18,25 @@ const FORUM_CONCURRENCY = 8;
 const DB_CHUNK = 200;
 
 /**
- * Sincronización dedicada de "Cursos y Alumnos": para cada curso de la
- * plataforma, trae matrícula, accesos, calificaciones por ítem,
- * finalización de actividades y mensajes de foro POR ALUMNO, y lo guarda en
- * CourseEnrollment. Es la misma información que antes se consultaba en vivo
- * al abrir un curso (ver DashboardService.getCourseAccessReport/
- * getCourseGradesReport) — separada del sync de storage/tamaño porque es
- * mucho más lenta (una llamada por alumno por curso) y no tiene sentido
- * repetirla cada vez que alguien solo quiere ver tamaños de archivo.
+ * Trae matrícula, accesos, calificaciones por ítem, finalización de
+ * actividades y mensajes de foro POR ALUMNO de cada curso de una
+ * plataforma, y lo guarda en CourseEnrollment. Es la misma información que
+ * antes se consultaba en vivo al abrir un curso (ver
+ * DashboardService.getCourseAccessReport/getCourseGradesReport). Forma
+ * parte de la sincronización única de la plataforma (SyncService la llama
+ * como una fase más, con el mismo progreso/cancelación que el resto) —
+ * no tiene su propio endpoint ni botón: sincronizar desde Configuración o
+ * desde Cursos y Alumnos dispara siempre la misma sincronización completa.
  */
 @Injectable()
 export class CoursesSyncService {
-  constructor(
-    private prisma: PrismaService,
-    private progress: CoursesSyncProgressService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async syncPlatformCourseDetails(platform: { id: string; url: string; token: string; name: string }) {
+  async syncPlatformCourseDetails(
+    platform: { id: string; url: string; token: string; name: string },
+    onProgress: (label: string, done: number, total: number) => void,
+    ensureNotCancelled: () => void,
+  ) {
     const client = new MoodleClient(platform.url, platform.token);
     const coursesRaw = await client.getCourses();
     if (!Array.isArray(coursesRaw)) {
@@ -45,15 +46,6 @@ export class CoursesSyncService {
 
     const total = courseIds.length || 1;
     let done = 0;
-    const bump = (label: string) => {
-      done += 1;
-      const current = this.progress.get(platform.id);
-      if (current) {
-        current.current_step = label;
-        current.items_done = Math.min(done, total);
-        current.items_total = total;
-      }
-    };
 
     const enrollmentRows: any[] = [];
 
@@ -63,9 +55,12 @@ export class CoursesSyncService {
       } catch (err: any) {
         console.warn(`  ⚠ [courses-sync] Error curso ${courseId}: ${err.message}`);
       } finally {
-        bump(`Sincronizando alumnos y calificaciones (curso ${done + 1}/${total})`);
+        done += 1;
+        onProgress(`Sincronizando alumnos y calificaciones (curso ${done}/${total})`, done, total);
       }
-    });
+    }, ensureNotCancelled);
+
+    ensureNotCancelled();
 
     // Igual que el sync de storage: se reemplaza el snapshot completo de la
     // plataforma en vez de ir actualizando fila a fila (simplifica altas/
@@ -82,10 +77,17 @@ export class CoursesSyncService {
     return { courses: courseIds.length, enrollments: enrollmentRows.length };
   }
 
-  private async runInBatches<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>) {
+  private async runInBatches<T>(
+    items: T[],
+    concurrency: number,
+    fn: (item: T) => Promise<void>,
+    ensureNotCancelled: () => void,
+  ) {
     for (let i = 0; i < items.length; i += concurrency) {
+      ensureNotCancelled();
       await Promise.all(items.slice(i, i + concurrency).map(fn));
     }
+    ensureNotCancelled();
   }
 
   // Trae y compone el snapshot completo de un curso (matrícula, accesos,
@@ -225,42 +227,6 @@ export class CoursesSyncService {
         courseScoreOutOf10: courseScoreByUserId.get(u.id) ?? null,
         gradeItems: gradeItemsByUserId.get(u.id) ?? [],
       });
-    }
-  }
-
-  /**
-   * Punto de entrada usado por el controlador: lanza la sincronización sin
-   * bloquear la respuesta HTTP, inicializando/actualizando el progreso en
-   * CoursesSyncProgressService para que el frontend pueda pedirlo por
-   * polling.
-   */
-  async runInBackground(platformId: string) {
-    const platform = await this.prisma.platform.findUniqueOrThrow({ where: { id: platformId } });
-
-    this.progress.set(platform.id, {
-      platformId: platform.id,
-      platformName: platform.name,
-      status: 'running',
-      started_at: new Date(),
-      completed_at: null,
-      current_step: 'Iniciando sincronización',
-      items_done: 0,
-      items_total: 0,
-      sync_errors: [],
-    });
-
-    try {
-      await this.syncPlatformCourseDetails(platform);
-      const current = this.progress.get(platform.id)!;
-      current.status = 'completed';
-      current.completed_at = new Date();
-      current.items_done = current.items_total;
-    } catch (err: any) {
-      console.error(`  ✗ [courses-sync] ${platform.name}: ${err.message}`);
-      const current = this.progress.get(platform.id)!;
-      current.status = 'failed';
-      current.completed_at = new Date();
-      current.sync_errors.push(err.message || 'Error desconocido');
     }
   }
 }

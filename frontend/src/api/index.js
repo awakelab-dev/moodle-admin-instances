@@ -119,14 +119,13 @@ export const getCurrentUser = () =>
   });
 
 /* ─── Sync ─── */
+// Una sola sincronización por plataforma trae TODO (storage + "Cursos y
+// Alumnos": matrícula, accesos, calificaciones, foros por alumno). Se puede
+// disparar/seguir/cancelar desde Configuración o desde Cursos y Alumnos —
+// ambas páginas comparten este mismo estado global.
 export const triggerPlatformSync = (id) => request(`/sync/${id}`, { method: 'POST' });
 export const cancelSync = () => request('/sync/cancel', { method: 'POST' });
 export const getSyncStatus = () => request('/sync/status');
-// Sincronización dedicada de "Cursos y Alumnos" (matrícula, accesos,
-// calificaciones, foros por alumno) — separada del sync de storage de arriba.
-export const triggerCoursesSync = (platformId) => request(`/sync/courses/${platformId}`, { method: 'POST' });
-export const getCoursesSyncStatus = (platformId) =>
-  request(`/sync/courses/${platformId}/status`, { cache: 'no-store' });
 
 /* ─── Dashboard ─── */
 export const getPlatformStorageSummary = (params = {}) =>

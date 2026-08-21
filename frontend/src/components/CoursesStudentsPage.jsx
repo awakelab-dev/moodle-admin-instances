@@ -5,8 +5,9 @@ import {
   getCourses,
   getCourseAccessReport,
   getCourseGradesReport,
-  triggerCoursesSync,
-  getCoursesSyncStatus,
+  triggerPlatformSync,
+  cancelSync,
+  getSyncStatus,
   invalidateCache,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
@@ -77,12 +78,13 @@ export default function CoursesStudentsPage() {
   const [platforms, setPlatforms] = useState([]);
   const [platformsLoading, setPlatformsLoading] = useState(true);
   const [selectedPlatform, setSelectedPlatform] = useState(null);
-  // Sincronización dedicada de "Cursos y Alumnos" (matrícula, accesos,
-  // calificaciones, foros por alumno) de la plataforma abierta — separada
-  // del sync de storage de Configuración. `coursesSyncStatus` guarda el
-  // paso/porcentaje actual mientras `coursesSyncRunning` es true.
-  const [coursesSyncRunning, setCoursesSyncRunning] = useState(false);
-  const [coursesSyncStatus, setCoursesSyncStatus] = useState(null);
+  // Sincronización completa de la plataforma (storage + matrícula/accesos/
+  // calificaciones/foros de "Cursos y Alumnos", como una sola operación) —
+  // la misma que dispara el botón de Configuración. `syncStatus` guarda el
+  // paso/porcentaje actual mientras `syncRunning` es true.
+  const [syncRunning, setSyncRunning] = useState(false);
+  const [cancelingSync, setCancelingSync] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
 
   const [courseData, setCourseData] = useState(null);
   const [coursesLoading, setCoursesLoading] = useState(false);
@@ -176,39 +178,61 @@ export default function CoursesStudentsPage() {
       .finally(() => setCoursesLoading(false));
   }
 
-  // Sondea el progreso de la sincronización de "Cursos y Alumnos" cada 2s
-  // hasta que deja de estar "running", igual que hace Configuración con el
-  // sync de storage (ver ConfigPage.jsx's pollSyncStatus).
-  async function pollCoursesSyncStatus(platformId) {
+  // Sondea el progreso de la sincronización completa (misma que dispara
+  // Configuración) cada 2s hasta que deja de estar "running" — igual que
+  // ConfigPage.jsx's pollSyncStatus, pero global (no por plataforma).
+  async function pollSyncStatusHere() {
     let status;
     do {
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      status = await getCoursesSyncStatus(platformId);
-      setCoursesSyncStatus(status);
+      status = await getSyncStatus();
+      setSyncStatus(status);
     } while (status?.status === 'running');
     return status;
   }
 
+  async function afterSyncFinished() {
+    invalidateCache('platforms');
+    // Refresca la plataforma seleccionada (para el "Última sincronización")
+    // y, si hay un curso abierto, sus informes ya recién sincronizados.
+    const platforms = await getPlatforms();
+    const refreshed = platforms.find((p) => p.id === selectedPlatform.id);
+    if (refreshed) setSelectedPlatform(refreshed);
+    if (selectedCourse) {
+      loadAccessReport(selectedCourse.course_id);
+    }
+  }
+
   async function handleSyncCourses() {
-    if (!selectedPlatform || coursesSyncRunning) return;
-    setCoursesSyncRunning(true);
-    setCoursesSyncStatus(null);
+    if (!selectedPlatform || syncRunning) return;
+    setSyncRunning(true);
+    setSyncStatus(null);
     try {
-      await triggerCoursesSync(selectedPlatform.id);
-      await pollCoursesSyncStatus(selectedPlatform.id);
-      invalidateCache('platforms');
-      // Refresca la plataforma seleccionada (para el "Última sincronización")
-      // y, si hay un curso abierto, sus informes ya recién sincronizados.
-      const platforms = await getPlatforms();
-      const refreshed = platforms.find((p) => p.id === selectedPlatform.id);
-      if (refreshed) setSelectedPlatform(refreshed);
-      if (selectedCourse) {
-        loadAccessReport(selectedCourse.course_id);
+      try {
+        await triggerPlatformSync(selectedPlatform.id);
+      } catch (err) {
+        // 409: ya hay una sincronización en curso (p. ej. lanzada desde
+        // Configuración) — nos limitamos a seguirle el progreso en vez de
+        // fallar, ya que es la misma operación completa.
+        if (err.status !== 409) throw err;
       }
+      await pollSyncStatusHere();
+      await afterSyncFinished();
     } catch (err) {
-      setCoursesSyncStatus({ status: 'failed', sync_errors: [err.message] });
+      setSyncStatus({ status: 'failed', sync_errors: [err.message] });
     } finally {
-      setCoursesSyncRunning(false);
+      setSyncRunning(false);
+    }
+  }
+
+  async function handleCancelSync() {
+    setCancelingSync(true);
+    try {
+      await cancelSync();
+    } catch (err) {
+      setSyncStatus({ status: 'failed', sync_errors: [err.message] });
+    } finally {
+      setCancelingSync(false);
     }
   }
 
@@ -584,17 +608,19 @@ export default function CoursesStudentsPage() {
           <div className="course-breakdown-actions">
             <p className="course-breakdown-warning">
               {selectedPlatform.coursesLastSyncedAt
-                ? `Última sincronización de alumnos/calificaciones: ${new Date(
-                    selectedPlatform.coursesLastSyncedAt
-                  ).toLocaleString('es-CL')}.`
+                ? `Última sincronización: ${new Date(selectedPlatform.coursesLastSyncedAt).toLocaleString('es-CL')}.`
                 : 'Esta plataforma todavía no se ha sincronizado — la lista de alumnos y las calificaciones estarán vacías hasta que se sincronice.'}
-              {' '}En plataformas con muchos cursos puede tardar bastante (recorre alumno por alumno).
+              {' '}En plataformas con muchos cursos puede tardar bastante (recorre alumno por alumno); es la misma
+              sincronización que el botón de Configuración.
             </p>
-            <Button type="button" className="course-breakdown-sync-btn" onClick={handleSyncCourses} disabled={coursesSyncRunning}>
-              {coursesSyncRunning
-                ? coursesSyncStatus?.current_step || 'Sincronizando…'
-                : 'Sincronizar alumnos y calificaciones'}
+            <Button type="button" className="course-breakdown-sync-btn" onClick={handleSyncCourses} disabled={syncRunning}>
+              {syncRunning ? syncStatus?.current_step || 'Sincronizando…' : 'Sincronizar plataforma'}
             </Button>
+            {syncRunning && (
+              <Button type="button" variant="outline" onClick={handleCancelSync} disabled={cancelingSync}>
+                {cancelingSync ? 'Cancelando…' : 'Cancelar sincronización'}
+              </Button>
+            )}
           </div>
           <div className="cs-role-filter">
             <button
