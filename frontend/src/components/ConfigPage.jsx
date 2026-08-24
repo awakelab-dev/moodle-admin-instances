@@ -98,6 +98,14 @@ export default function ConfigPage() {
   const [nowMs, setNowMs] = useState(Date.now());
   const platformsRef = useRef([]);
   const trackedSyncIdsRef = useRef(new Set());
+  // Cada sincronización que termina llama a load() para refrescar la lista.
+  // Si se sincronizan dos plataformas seguidas, puede haber dos load() en
+  // vuelo a la vez — sin esto, si la petición más antigua responde más
+  // tarde que la más nueva (orden de red no garantizado), su resultado
+  // (más viejo) sobrescribe el más reciente y la plataforma recién
+  // sincronizada "desaparece"/vuelve a su estado anterior. Solo se aplica
+  // la respuesta si sigue siendo la última petición pedida.
+  const loadRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!Object.values(syncLoading).some(Boolean)) return undefined;
@@ -106,15 +114,21 @@ export default function ConfigPage() {
   }, [syncLoading]);
 
   async function load() {
+    const requestId = ++loadRequestIdRef.current;
     try {
       const data = await getPlatforms();
+      // Descarta la respuesta si mientras tanto se pidió un load() más
+      // nuevo (p. ej. por otra sincronización terminando casi a la vez) —
+      // solo la última petición en vuelo puede actualizar el estado.
+      if (requestId !== loadRequestIdRef.current) return platformsRef.current;
       setPlatforms(data);
       platformsRef.current = data;
       return data;
     } catch {
-      setPlatforms([]);
-      platformsRef.current = [];
-      return [];
+      // Un fallo puntual de red no debe vaciar la lista ya cargada — se
+      // deja el estado anterior tal cual en vez de mostrar "sin
+      // plataformas" por un error transitorio.
+      return platformsRef.current;
     } finally {
       setLoading(false);
     }
