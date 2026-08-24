@@ -91,7 +91,7 @@ export default function CoursesStudentsPage() {
   const [coursesError, setCoursesError] = useState(null);
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [hideTemplates, setHideTemplates] = useState(false);
+  const [hideTemplates, setHideTemplates] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'historical'
   const [courseSortKey, setCourseSortKey] = useState(null);
   const [courseSortDir, setCourseSortDir] = useState('asc');
