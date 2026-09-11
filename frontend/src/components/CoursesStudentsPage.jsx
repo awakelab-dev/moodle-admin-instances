@@ -86,6 +86,7 @@ export default function CoursesStudentsPage() {
   const [cancelingSync, setCancelingSync] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
 
+  const [platformSearch, setPlatformSearch] = useState('');
   const [courseData, setCourseData] = useState(null);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [coursesError, setCoursesError] = useState(null);
@@ -246,6 +247,14 @@ export default function CoursesStudentsPage() {
     }
     return list;
   }, [courseData]);
+
+  // Lista filtrada de la pantalla inicial "elige una plataforma" (25
+  // plataformas es demasiado para escanear sin buscador).
+  const filteredPlatforms = useMemo(() => {
+    if (!platformSearch.trim()) return platforms;
+    const term = platformSearch.toLowerCase();
+    return platforms.filter((p) => formatPlatformDisplayName(p.name).toLowerCase().includes(term));
+  }, [platforms, platformSearch]);
 
   const templateCount = useMemo(
     () => allCourses.filter(isTemplateCourse).length,
@@ -572,10 +581,20 @@ export default function CoursesStudentsPage() {
           ) : (
             <>
               <p className="panel-description cs-platform-prompt">
-                Elige una plataforma arriba para ver sus cursos y alumnos.
+                Elige una plataforma para ver sus cursos y alumnos.
               </p>
+              <Input
+                type="text"
+                className="table-search"
+                placeholder="Buscar plataforma"
+                value={platformSearch}
+                onChange={(e) => setPlatformSearch(e.target.value)}
+              />
+              {!filteredPlatforms.length && (
+                <p className="empty">No se encontraron plataformas.</p>
+              )}
               <div className="cs-platform-grid">
-                {platforms.map((p) => (
+                {filteredPlatforms.map((p) => (
                   <button
                     key={p.source}
                     type="button"

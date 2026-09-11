@@ -101,13 +101,21 @@ export class SyncService {
     const progressUnitsTotal =
       courses.length * (2 + (backupWsAvailable ? 1 : 0) + (gradesWsAvailable ? 1 : 0)) || 1;
     let progressUnitsDone = 0;
+    // Esta fase (storage) es la primera mitad de la sincronización completa
+    // de la plataforma — se reporta sobre una escala fija 0-50 en vez de sus
+    // unidades reales, para que al pasar a la segunda fase ("Cursos y
+    // Alumnos", 50-100, ver runSinglePlatformInBackground) el progreso
+    // global nunca retroceda visualmente aunque las dos fases cuenten
+    // "unidades de trabajo" en escalas distintas entre sí.
     const bumpProgress = (label: string) => {
       progressUnitsDone += 1;
       const current = this.progress.get();
       if (current) {
         current.current_step = label;
-        current.items_done = Math.min(progressUnitsDone, progressUnitsTotal);
-        current.items_total = progressUnitsTotal;
+        current.items_total = 100;
+        current.items_done = Math.round(
+          (Math.min(progressUnitsDone, progressUnitsTotal) / progressUnitsTotal) * 50,
+        );
       }
     };
     const ensureNotCancelled = () => {
@@ -492,16 +500,25 @@ export class SyncService {
       // el mismo SyncProgressService (cancelación incluida) — sincronizar
       // desde Configuración o desde Cursos y Alumnos es siempre esta misma
       // operación completa, nunca dos sincronizaciones separadas.
+      //
+      // Fase 1 y fase 2 cuentan "unidades" en escalas totalmente distintas
+      // (una son pasos de storage, la otra son cursos), así que sumarlas
+      // directamente (phase1Total + total) hacía que el % visible RETROCEDA
+      // al empezar la fase 2 (items_total salta de golpe mientras
+      // items_done no crece al mismo ritmo). Para evitarlo, el progreso
+      // global se expresa siempre sobre una escala fija 0-100: fase 1 llena
+      // 0-50, fase 2 llena 50-100, garantizando que nunca baje.
       const afterPhase1 = this.progress.get()!;
-      const phase1Total = afterPhase1.items_total || 0;
+      afterPhase1.items_total = 100;
+      afterPhase1.items_done = 50;
       await this.coursesSyncService.syncPlatformCourseDetails(
         platform,
         (label, done, total) => {
           const current = this.progress.get();
           if (current) {
             current.current_step = label;
-            current.items_total = phase1Total + total;
-            current.items_done = phase1Total + done;
+            current.items_total = 100;
+            current.items_done = 50 + Math.round((total > 0 ? done / total : 1) * 50);
           }
         },
         () => {
