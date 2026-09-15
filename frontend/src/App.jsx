@@ -3,7 +3,7 @@
 // vistas (sin react-router, solo estado local `view`) y el sidebar con sus
 // tres categorías colapsables.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users } from 'lucide-react';
 import {
   clearAuthSession,
   getCurrentUser,
@@ -22,6 +22,7 @@ const GlobalPanel = lazy(() => import('./components/GlobalPanel'));
 const InsightsPage = lazy(() => import('./components/InsightsPage'));
 const CoursesStudentsPage = lazy(() => import('./components/CoursesStudentsPage'));
 const ConfigPage = lazy(() => import('./components/ConfigPage'));
+const UsersPage = lazy(() => import('./components/UsersPage'));
 const ROLE_LABELS = {
   admin: 'Acceso total',
   limited: 'Sin sincronización',
@@ -118,7 +119,15 @@ export default function App() {
     setSearchTerm('');
   }
 
-  const resolvedView = view === 'detail' && !selectedPlatform ? 'global' : view;
+  const isAdmin = currentUserRole === 'admin';
+  // Storage/Configuración/Usuarios son exclusivos de superadmin — si un
+  // usuario "limited" tuviera alguna de estas vistas en su estado (p. ej.
+  // quedó guardada de una sesión anterior con otro rol), se le manda al
+  // Dashboard en vez de dejarle ver una pantalla a la que no debería llegar.
+  const ADMIN_ONLY_VIEWS = new Set(['global', 'detail', 'config', 'users']);
+  const resolvedView = !isAdmin && ADMIN_ONLY_VIEWS.has(view)
+    ? 'insights'
+    : view === 'detail' && !selectedPlatform ? 'global' : view;
   const isGlobalView = resolvedView === 'global';
 
   function openPlatformDetail(platform) {
@@ -155,6 +164,7 @@ export default function App() {
     ),
     'courses-students': <CoursesStudentsPage />,
     config: <ConfigPage />,
+    users: <UsersPage />,
   };
 
   if (authLoading) {
@@ -193,30 +203,34 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Secciones principales">
-          <button
-            type="button"
-            className="sidebar-nav-category"
-            onClick={() => setStorageNavExpanded((prev) => !prev)}
-            aria-expanded={storageNavExpanded}
-          >
-            <span>Storage</span>
-            <ChevronDown
-              size={16}
-              className={`sidebar-nav-chevron ${storageNavExpanded ? '' : 'is-collapsed'}`}
-            />
-          </button>
-
-          {storageNavExpanded && (
-            <div className="sidebar-nav-group">
+          {isAdmin && (
+            <>
               <button
                 type="button"
-                className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
-                onClick={() => setView('global')}
+                className="sidebar-nav-category"
+                onClick={() => setStorageNavExpanded((prev) => !prev)}
+                aria-expanded={storageNavExpanded}
               >
-                <HardDrive size={16} />
-                Administración
+                <span>Storage</span>
+                <ChevronDown
+                  size={16}
+                  className={`sidebar-nav-chevron ${storageNavExpanded ? '' : 'is-collapsed'}`}
+                />
               </button>
-            </div>
+
+              {storageNavExpanded && (
+                <div className="sidebar-nav-group">
+                  <button
+                    type="button"
+                    className={`sidebar-nav-item ${isGlobalView ? 'active' : ''}`}
+                    onClick={() => setView('global')}
+                  >
+                    <HardDrive size={16} />
+                    Administración
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           <button
@@ -253,30 +267,42 @@ export default function App() {
             </div>
           )}
 
-          <button
-            type="button"
-            className="sidebar-nav-category"
-            onClick={() => setConfigNavExpanded((prev) => !prev)}
-            aria-expanded={configNavExpanded}
-          >
-            <span>Configuración</span>
-            <ChevronDown
-              size={16}
-              className={`sidebar-nav-chevron ${configNavExpanded ? '' : 'is-collapsed'}`}
-            />
-          </button>
-
-          {configNavExpanded && (
-            <div className="sidebar-nav-group">
+          {isAdmin && (
+            <>
               <button
                 type="button"
-                className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
-                onClick={() => setView('config')}
+                className="sidebar-nav-category"
+                onClick={() => setConfigNavExpanded((prev) => !prev)}
+                aria-expanded={configNavExpanded}
               >
-                <Settings size={16} />
-                Plataformas
+                <span>Configuración</span>
+                <ChevronDown
+                  size={16}
+                  className={`sidebar-nav-chevron ${configNavExpanded ? '' : 'is-collapsed'}`}
+                />
               </button>
-            </div>
+
+              {configNavExpanded && (
+                <div className="sidebar-nav-group">
+                  <button
+                    type="button"
+                    className={`sidebar-nav-item ${resolvedView === 'config' ? 'active' : ''}`}
+                    onClick={() => setView('config')}
+                  >
+                    <Settings size={16} />
+                    Plataformas
+                  </button>
+                  <button
+                    type="button"
+                    className={`sidebar-nav-item ${resolvedView === 'users' ? 'active' : ''}`}
+                    onClick={() => setView('users')}
+                  >
+                    <Users size={16} />
+                    Usuarios
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </nav>
 

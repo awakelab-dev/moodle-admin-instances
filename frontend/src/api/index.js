@@ -181,3 +181,9 @@ export const deletePlatform = (id) =>
   });
 export const testPlatform = (id) =>
   request(`/platforms/${id}/test`, { method: 'POST' });
+
+/* ─── Users (gestión, solo superadmin) ─── */
+export const getUsers = () => request('/users', { cache: 'no-store' });
+export const createUser = (data) => request('/users', { method: 'POST', body: JSON.stringify(data) });
+export const updateUser = (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteUser = (id) => request(`/users/${id}`, { method: 'DELETE' });

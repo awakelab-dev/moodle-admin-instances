@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MoodleClient } from '../sync/moodle-client.service';
 import {
@@ -7,6 +7,8 @@ import {
   detectFileBrowserAvailability,
 } from '../sync/sync-helpers';
 import { bytesToGigabytes, calculateFinancialMetrics, normalizeUrl } from '../common/platform-utils';
+import { UsersService } from '../users/users.service';
+import type { PublicUser } from '../auth/auth.service';
 
 // El query param "refresh" llega siempre como string (o undefined) desde la
 // URL, nunca como boolean real, por eso hace falta parsearlo a mano.
@@ -39,13 +41,35 @@ function normalizeBreakdownRows(rows: any = []): any[] {
 // Web Services de Moodle en vivo, cada método lo indica explícitamente.
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private usersService: UsersService,
+  ) {}
 
   // Busca la plataforma ya sincronizada por su URL (normalizada sin barra
   // final), no hace ninguna llamada a Moodle.
   private async findPlatformByUrl(moodleSource: string) {
     const url = normalizeUrl(moodleSource);
     return this.prisma.platform.findFirst({ where: { url } });
+  }
+
+  // Un usuario "limited" solo puede pedir datos de las plataformas que se
+  // le hayan asignado (ver UsersService.getPermittedPlatformIds); un admin
+  // no tiene restricción. Se usa en cada endpoint de Moodle Insights que
+  // recibe una plataforma concreta.
+  private async assertPlatformAccess(currentUser: PublicUser, platformId: string) {
+    const permittedIds = await this.usersService.getPermittedPlatformIds(currentUser);
+    if (permittedIds && !permittedIds.includes(platformId)) {
+      throw new ForbiddenException('No tienes acceso a esta plataforma.');
+    }
+  }
+
+  // Para las vistas agregadas ("todas las plataformas"): devuelve el
+  // filtro Prisma que restringe a las plataformas permitidas de un
+  // usuario "limited", o {} (sin restricción) para un admin.
+  private async getPermittedFilter(currentUser: PublicUser): Promise<{ platformId?: { in: string[] } }> {
+    const permittedIds = await this.usersService.getPermittedPlatformIds(currentUser);
+    return permittedIds ? { platformId: { in: permittedIds } } : {};
   }
 
   // Datos ya sincronizados: agrega el tamaño total de cursos por plataforma
@@ -192,14 +216,15 @@ export class DashboardService {
   // Datos ya sincronizados: agrupa los cursos de una plataforma (o de
   // todas, si no se filtra) por categoría, sumando los distintos tipos de
   // tamaño (contenido, backups, tareas, foros) a nivel de categoría y total.
-  async getCourses(moodleSource?: string) {
+  async getCourses(currentUser: PublicUser, moodleSource?: string) {
     const url = moodleSource ? normalizeUrl(moodleSource) : '';
     const platform = url ? await this.findPlatformByUrl(url) : null;
     if (url && !platform) {
       return { moodleSource: url, platformName: null, totalBytes: 0, totalContentBytes: 0, totalBackupBytes: 0, totalAssignmentBytes: 0, totalForumBytes: 0, categories: [] };
     }
+    if (platform) await this.assertPlatformAccess(currentUser, platform.id);
 
-    const courseFilter = platform ? { platformId: platform.id } : {};
+    const courseFilter = platform ? { platformId: platform.id } : await this.getPermittedFilter(currentUser);
     const [courses, enrolledPerCourse] = await Promise.all([
       this.prisma.course.findMany({ where: courseFilter }),
       this.prisma.courseEnrollment.groupBy({
@@ -274,12 +299,13 @@ export class DashboardService {
   // recalcular. El flag `refresh` (query param) permite forzar el
   // recálculo en vivo cuando el admin quiere datos actualizados. Devuelve
   // `source: 'cache'` o `source: 'live'` según de dónde vino el resultado.
-  async getCourseBreakdown(courseId: number, moodleSource: string, refreshFlag?: string) {
+  async getCourseBreakdown(currentUser: PublicUser, courseId: number, moodleSource: string, refreshFlag?: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar el detalle del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
 
     const platform = await this.findPlatformByUrl(moodleSource);
     if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    await this.assertPlatformAccess(currentUser, platform.id);
 
     const course = await this.prisma.course.findUnique({ where: { platform_course_unique: { platformId: platform.id, courseId } } });
     if (!course) throw new NotFoundException('Curso no encontrado.');
@@ -386,12 +412,13 @@ export class DashboardService {
   // alumno de un curso. Esos datos los llena CoursesSyncService al pulsar
   // "Sincronizar" en Cursos y Alumnos — aquí solo se leen, para que abrir
   // un curso sea instantáneo en vez de esperar a Moodle en el momento.
-  async getCourseAccessReport(courseId: number, moodleSource: string) {
+  async getCourseAccessReport(currentUser: PublicUser, courseId: number, moodleSource: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar el informe del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
 
     const platform = await this.findPlatformByUrl(moodleSource);
     if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    await this.assertPlatformAccess(currentUser, platform.id);
 
     const course = await this.prisma.course.findUnique({
       where: { platform_course_unique: { platformId: platform.id, courseId } },
@@ -446,12 +473,13 @@ export class DashboardService {
   // Lee de Postgres (CourseEnrollment) en vez de consultar Moodle en vivo:
   // detalle de calificaciones por alumno, con la nota de cada ítem ya
   // normalizada a escala /10 (calculado y guardado por CoursesSyncService).
-  async getCourseGradesReport(courseId: number, moodleSource: string) {
+  async getCourseGradesReport(currentUser: PublicUser, courseId: number, moodleSource: string) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar las calificaciones del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
 
     const platform = await this.findPlatformByUrl(moodleSource);
     if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    await this.assertPlatformAccess(currentUser, platform.id);
 
     const course = await this.prisma.course.findUnique({
       where: { platform_course_unique: { platformId: platform.id, courseId } },
@@ -558,15 +586,16 @@ export class DashboardService {
   // plataformas" del Dashboard) — cursos, alumnos, matrículas, notas
   // promedio, más los rankings de categorías y cursos con mejor nota, todo
   // calculado sobre lo que ya está en Postgres, sin tocar Moodle.
-  async getInsights(moodleSource?: string) {
+  async getInsights(currentUser: PublicUser, moodleSource?: string) {
     let platform: { id: string; url: string; name: string } | null = null;
 
     if (moodleSource) {
       platform = await this.findPlatformByUrl(moodleSource);
       if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+      await this.assertPlatformAccess(currentUser, platform.id);
     }
 
-    const platformFilter = platform ? { platformId: platform.id } : {};
+    const platformFilter = platform ? { platformId: platform.id } : await this.getPermittedFilter(currentUser);
 
     const [courses, students, enrollmentCounts, enrolledPerCourse] = await Promise.all([
       this.prisma.course.findMany({

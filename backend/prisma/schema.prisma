@@ -43,6 +43,7 @@ model Platform {
   users       MoodleUser[]
   snapshots   PlatformSnapshot[]
   enrollments CourseEnrollment[]
+  userAccess  UserPlatformAccess[]
 
   @@map("platforms")
 }
@@ -194,5 +195,24 @@ model AuthUser {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  platformAccess UserPlatformAccess[]
+
   @@map("auth_users")
+}
+
+// Qué plataformas puede ver un usuario "limited" (rol "usuario", no
+// superadmin) en Moodle Insights (Dashboard/Cursos y Alumnos). Los admin
+// ven todas las plataformas siempre, sin pasar por esta tabla — solo se
+// consulta para filtrar cuando el usuario actual es "limited".
+model UserPlatformAccess {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  platformId String   @map("platform_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platformId])
+  @@map("user_platform_access")
 }

@@ -9,6 +9,7 @@ const TOKEN_TTL_MS = 1000 * 60 * 60 * 12;
 // Forma del usuario que se expone fuera de este servicio (nunca incluye el
 // hash de la contraseña).
 export interface PublicUser {
+  id: string;
   username: string;
   displayName: string;
   role: string;
@@ -20,8 +21,8 @@ function signPayload(value: string): string {
   return crypto.createHmac('sha256', AUTH_TOKEN_SECRET).update(value).digest('base64url');
 }
 
-function sanitize(user: { username: string; displayName: string; role: string }): PublicUser {
-  return { username: user.username, displayName: user.displayName, role: user.role };
+function sanitize(user: { id: string; username: string; displayName: string; role: string }): PublicUser {
+  return { id: user.id, username: user.username, displayName: user.displayName, role: user.role };
 }
 
 // Autenticación propia del dashboard (no usa OAuth/Moodle): valida

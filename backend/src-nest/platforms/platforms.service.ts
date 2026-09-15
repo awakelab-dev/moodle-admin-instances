@@ -4,6 +4,8 @@ import { CreatePlatformDto } from './dto/create-platform.dto';
 import { UpdatePlatformDto } from './dto/update-platform.dto';
 import { normalizeUrl, slugifyPlatform, normalizeOptionalAmount } from '../common/platform-utils';
 import { MoodleClient } from '../sync/moodle-client.service';
+import { UsersService } from '../users/users.service';
+import type { PublicUser } from '../auth/auth.service';
 
 // El token completo nunca se expone al frontend, solo un fragmento (inicio
 // y final) para que el admin pueda reconocer cuál está guardado.
@@ -120,12 +122,23 @@ function buildTestSummary(connectionOk: boolean, requiredChecks: any[], optional
 // solo se administra la configuración de la plataforma.
 @Injectable()
 export class PlatformsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private usersService: UsersService,
+  ) {}
 
-  // Devuelve todas las plataformas configuradas (activas o no), con el
-  // token enmascarado, para listarlas en la pantalla de configuración.
-  async findAll() {
-    const platforms = await this.prisma.platform.findMany({ orderBy: { createdAt: 'asc' } });
+  // Devuelve las plataformas configuradas, con el token enmascarado. Un
+  // superadmin ve todas; un usuario "limited" solo ve las que se le hayan
+  // asignado (ver UsersService.getPermittedPlatformIds) — así el mismo
+  // endpoint sirve tanto para Configuración (solo superadmin, ver
+  // PlatformsController) como para el selector de plataformas de Moodle
+  // Insights (ambos roles).
+  async findAll(currentUser: PublicUser) {
+    const permittedIds = await this.usersService.getPermittedPlatformIds(currentUser);
+    const platforms = await this.prisma.platform.findMany({
+      where: permittedIds ? { id: { in: permittedIds } } : {},
+      orderBy: { createdAt: 'asc' },
+    });
     return platforms.map((p) => ({
       id: p.id,
       name: p.name,
