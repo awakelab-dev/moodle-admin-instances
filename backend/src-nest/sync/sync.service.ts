@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncProgressService } from './sync-progress.service';
 import { CoursesSyncService } from './courses-sync.service';
@@ -467,9 +468,54 @@ export class SyncService {
   }
 
   /**
+   * Sincronización completa de UNA plataforma (fase 1: storage: fase 2:
+   * "Cursos y Alumnos"), actualizando el progreso compartido a medida que
+   * avanza. No toca el estado inicial/final del progreso (platforms_total,
+   * status, completed_at...) — eso lo decide quien la llama, porque el
+   * mismo método se reutiliza tanto para sincronizar una sola plataforma
+   * (runSinglePlatformInBackground) como dentro del bucle nocturno
+   * multi-plataforma (runAllActivePlatformsInBackground). Lanza si se
+   * cancela o si falla, para que el que llama decida cómo reaccionar.
+   */
+  private async syncOnePlatform(platform: { id: string; url: string; token: string; name: string; monthlyCharge: any }) {
+    await this.syncPlatform(platform);
+
+    // Fase 2, misma sincronización: matrícula/accesos/calificaciones/foros
+    // por alumno de "Cursos y Alumnos" (ver CoursesSyncService). Comparte
+    // el mismo SyncProgressService (cancelación incluida) — sincronizar
+    // desde Configuración o desde Cursos y Alumnos es siempre esta misma
+    // operación completa, nunca dos sincronizaciones separadas.
+    //
+    // Fase 1 y fase 2 cuentan "unidades" en escalas totalmente distintas
+    // (una son pasos de storage, la otra son cursos), así que sumarlas
+    // directamente (phase1Total + total) hacía que el % visible RETROCEDA
+    // al empezar la fase 2 (items_total salta de golpe mientras items_done
+    // no crece al mismo ritmo). Para evitarlo, el progreso de ESTA
+    // plataforma se expresa siempre sobre una escala fija 0-100: fase 1
+    // llena 0-50, fase 2 llena 50-100, garantizando que nunca baje.
+    const afterPhase1 = this.progress.get()!;
+    afterPhase1.items_total = 100;
+    afterPhase1.items_done = 50;
+    await this.coursesSyncService.syncPlatformCourseDetails(
+      platform,
+      (label, done, total) => {
+        const current = this.progress.get();
+        if (current) {
+          current.current_step = label;
+          current.items_total = 100;
+          current.items_done = 50 + Math.round((total > 0 ? done / total : 1) * 50);
+        }
+      },
+      () => {
+        if (this.progress.isCancelRequested()) throw new SyncCancelledError();
+      },
+    );
+  }
+
+  /**
    * Punto de entrada usado por el controlador para lanzar la sincronización
    * de una plataforma sin bloquear la respuesta HTTP: inicializa el progreso
-   * compartido (SyncProgressService), corre syncPlatform() y al terminar
+   * compartido (SyncProgressService), corre syncOnePlatform() y al terminar
    * marca el resultado como 'completed' o 'failed'. Los errores se capturan
    * aquí para que una promesa rota no quede sin manejar (ver el .catch en el
    * controlador, que solo cubre un fallo antes de llegar a este try/catch).
@@ -493,38 +539,7 @@ export class SyncService {
     });
 
     try {
-      await this.syncPlatform(platform);
-
-      // Fase 2, misma sincronización: matrícula/accesos/calificaciones/foros
-      // por alumno de "Cursos y Alumnos" (ver CoursesSyncService). Comparte
-      // el mismo SyncProgressService (cancelación incluida) — sincronizar
-      // desde Configuración o desde Cursos y Alumnos es siempre esta misma
-      // operación completa, nunca dos sincronizaciones separadas.
-      //
-      // Fase 1 y fase 2 cuentan "unidades" en escalas totalmente distintas
-      // (una son pasos de storage, la otra son cursos), así que sumarlas
-      // directamente (phase1Total + total) hacía que el % visible RETROCEDA
-      // al empezar la fase 2 (items_total salta de golpe mientras
-      // items_done no crece al mismo ritmo). Para evitarlo, el progreso
-      // global se expresa siempre sobre una escala fija 0-100: fase 1 llena
-      // 0-50, fase 2 llena 50-100, garantizando que nunca baje.
-      const afterPhase1 = this.progress.get()!;
-      afterPhase1.items_total = 100;
-      afterPhase1.items_done = 50;
-      await this.coursesSyncService.syncPlatformCourseDetails(
-        platform,
-        (label, done, total) => {
-          const current = this.progress.get();
-          if (current) {
-            current.current_step = label;
-            current.items_total = 100;
-            current.items_done = 50 + Math.round((total > 0 ? done / total : 1) * 50);
-          }
-        },
-        () => {
-          if (this.progress.isCancelRequested()) throw new SyncCancelledError();
-        },
-      );
+      await this.syncOnePlatform(platform);
 
       const current = this.progress.get()!;
       current.status = 'completed';
@@ -540,4 +555,79 @@ export class SyncService {
     }
   }
 
+  /**
+   * Sincronización automática nocturna: recorre TODAS las plataformas
+   * activas con token, una por una (nunca en paralelo — mismo límite que
+   * la sincronización manual), reutilizando syncOnePlatform(). Si una
+   * plataforma falla, se registra el error y se sigue con la siguiente en
+   * vez de abortar la corrida entera (una plataforma con problemas no debe
+   * dejar sin sincronizar a las demás). Comparte el mismo
+   * SyncProgressService que la sincronización manual: si ya hay una
+   * sincronización en curso (manual o de una corrida nocturna anterior que
+   * se solapó), esta se salta entera en vez de pisarla.
+   *
+   * Corre todos los días a medianoche hora de España — franja con poco o
+   * ningún uso real de la app, para no competir con sincronizaciones
+   * manuales ni saturar los Moodle de origen en horario de trabajo.
+   */
+  @Cron('0 0 * * *', { timeZone: 'Europe/Madrid', name: 'nightly-sync-all-platforms' })
+  async runAllActivePlatformsInBackground() {
+    if (this.progress.isRunning()) {
+      console.log('  ⏭ Sync nocturno omitido: ya hay una sincronización en curso.');
+      return;
+    }
+
+    const platforms = await this.prisma.platform.findMany({
+      where: { isActive: true, token: { not: '' } },
+      orderBy: { name: 'asc' },
+    });
+    if (!platforms.length) return;
+
+    console.log(`  ▶ Sync nocturno: ${platforms.length} plataformas activas.`);
+
+    this.progress.set({
+      id: `nightly-${Date.now()}`,
+      status: 'running',
+      started_at: new Date(),
+      completed_at: null,
+      platforms_total: platforms.length,
+      platforms_synced: 0,
+      current_platform: platforms[0].name,
+      sync_errors: [],
+      current_step: 'Iniciando sincronización',
+      items_done: 0,
+      items_total: 0,
+      platform_id: platforms[0].id,
+    });
+
+    for (const platform of platforms) {
+      if (this.progress.isCancelRequested()) break;
+
+      const current = this.progress.get()!;
+      current.current_platform = platform.name;
+      current.platform_id = platform.id;
+      current.current_step = 'Iniciando sincronización';
+      current.items_done = 0;
+      current.items_total = 0;
+
+      try {
+        await this.syncOnePlatform(platform);
+        this.progress.get()!.platforms_synced += 1;
+      } catch (err: any) {
+        if (err instanceof SyncCancelledError) break;
+        console.error(`  ✗ [nocturno] ${platform.name}: ${err.message}`);
+        this.progress.get()!.sync_errors.push(`${platform.name}: ${err.message}`);
+        // Se sigue con la siguiente plataforma en vez de abortar todo.
+      }
+    }
+
+    const final = this.progress.get()!;
+    const cancelled = this.progress.isCancelRequested();
+    final.status = cancelled ? 'failed' : 'completed';
+    final.completed_at = new Date();
+    if (cancelled) {
+      final.sync_errors.push('Sincronización nocturna cancelada por el usuario.');
+    }
+    console.log(`  ✓ Sync nocturno terminado: ${final.platforms_synced}/${platforms.length} plataformas.`);
+  }
 }

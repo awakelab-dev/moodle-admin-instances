@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -18,7 +19,16 @@ import { AppController } from './app.controller';
 // El orden importa: AuthGuard corre antes que RolesGuard porque este último
 // necesita que request.user ya esté poblado.
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, AuthModule, PlatformsModule, SyncModule, DashboardModule, UsersModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
+    PrismaModule,
+    AuthModule,
+    PlatformsModule,
+    SyncModule,
+    DashboardModule,
+    UsersModule,
+  ],
   controllers: [AppController],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },
