@@ -73,6 +73,14 @@ export class UsersService {
     }
 
     const data: any = {};
+    if (dto.username !== undefined) {
+      const username = dto.username.trim().toLowerCase();
+      if (username !== user.username) {
+        const existing = await this.prisma.authUser.findUnique({ where: { username } });
+        if (existing) throw new ConflictException('Ya existe un usuario con ese nombre.');
+      }
+      data.username = username;
+    }
     if (dto.displayName !== undefined) data.displayName = dto.displayName.trim();
     if (dto.role !== undefined) data.role = dto.role;
     if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 10);

@@ -59,7 +59,8 @@ async function request(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const error = new Error(body.error || `HTTP ${res.status}`);
+    const message = Array.isArray(body.message) ? body.message.join(' ') : body.message;
+    const error = new Error(message || body.error || `HTTP ${res.status}`);
 
     error.status = res.status;
     error.body = body;

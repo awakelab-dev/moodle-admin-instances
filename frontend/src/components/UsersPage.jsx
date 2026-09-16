@@ -102,6 +102,7 @@ export default function UsersPage() {
     try {
       if (editingId !== null) {
         const payload = {
+          username: form.username.trim(),
           displayName: form.displayName.trim(),
           role: form.role,
           platformIds: form.platformIds,
@@ -181,7 +182,6 @@ export default function UsersPage() {
                   placeholder="usuario.acceso"
                   autoComplete="off"
                   value={form.username}
-                  disabled={editingId !== null}
                   onChange={(e) => setForm({ ...form, username: e.target.value })}
                   required
                 />
