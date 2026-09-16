@@ -209,10 +209,21 @@ function TablePagination({ controls }) {
   );
 }
 
-export default function InsightsTab({ moodleSource, platformName }) {
+export default function InsightsTab({ moodleSource, platformName, lightTheme = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Chart.js no lee variables CSS — sus colores van fijos en JS, así que
+  // hace falta este pequeño set aparte para que los gráficos sigan siendo
+  // legibles cuando se activa el tema claro (texto blanco sobre blanco
+  // sería invisible).
+  const chartBarColor = lightTheme ? '#0B93AA' : '#19F7F1';
+  const chartBarBorder = lightTheme ? '#FFFFFF' : '#01264C';
+  const chartTextColor = lightTheme ? '#011932' : '#C9D6EA';
+  const chartTooltipBg = lightTheme ? '#FFFFFF' : '#01264C';
+  const chartTooltipText = lightTheme ? '#011932' : '#FFFFFF';
+  const chartGridColor = lightTheme ? 'rgba(1, 25, 50, 0.08)' : 'rgba(240, 243, 252, 0.10)';
 
   useEffect(() => {
     let isMounted = true;
@@ -253,15 +264,15 @@ export default function InsightsTab({ moodleSource, platformName }) {
         {
           label: 'Cursos',
           data: data.topCategories.map((c) => c.count),
-          backgroundColor: '#19F7F1',
-          borderColor: '#01264C',
+          backgroundColor: chartBarColor,
+          borderColor: chartBarBorder,
           borderWidth: 1,
           borderRadius: 8,
           barThickness: 28,
         },
       ],
     };
-  }, [data]);
+  }, [data, chartBarColor, chartBarBorder]);
 
   const gradeChartData = useMemo(() => {
     if (!data?.topGradedCourses?.length) return null;
@@ -272,15 +283,15 @@ export default function InsightsTab({ moodleSource, platformName }) {
         {
           label: 'Promedio de calificación',
           data: data.topGradedCourses.map((c) => c.averageGradePercent),
-          backgroundColor: '#19F7F1',
-          borderColor: '#01264C',
+          backgroundColor: chartBarColor,
+          borderColor: chartBarBorder,
           borderWidth: 1,
           borderRadius: 8,
           barThickness: 28,
         },
       ],
     };
-  }, [data]);
+  }, [data, chartBarColor, chartBarBorder]);
 
   const courses = data?.courses || [];
   const students = data?.students || [];
@@ -362,9 +373,9 @@ export default function InsightsTab({ moodleSource, platformName }) {
                 plugins: {
                   legend: { display: false },
                   tooltip: {
-                    backgroundColor: '#01264C',
-                    titleColor: '#FFFFFF',
-                    bodyColor: '#FFFFFF',
+                    backgroundColor: chartTooltipBg,
+                    titleColor: chartTooltipText,
+                    bodyColor: chartTooltipText,
                     padding: 12,
                     callbacks: {
                       label: (ctx) => `${ctx.raw} curso${ctx.raw === 1 ? '' : 's'}`,
@@ -374,16 +385,16 @@ export default function InsightsTab({ moodleSource, platformName }) {
                 scales: {
                   x: {
                     ticks: {
-                      color: '#C9D6EA',
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       precision: 0,
                     },
-                    grid: { color: 'rgba(240, 243, 252, 0.10)' },
+                    grid: { color: chartGridColor },
                     border: { display: false },
                   },
                   y: {
                     ticks: {
-                      color: '#C9D6EA',
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                     },
                     grid: { display: false },
@@ -418,9 +429,9 @@ export default function InsightsTab({ moodleSource, platformName }) {
                 plugins: {
                   legend: { display: false },
                   tooltip: {
-                    backgroundColor: '#01264C',
-                    titleColor: '#FFFFFF',
-                    bodyColor: '#FFFFFF',
+                    backgroundColor: chartTooltipBg,
+                    titleColor: chartTooltipText,
+                    bodyColor: chartTooltipText,
                     padding: 12,
                     callbacks: {
                       label: (ctx) => formatGradePercent(ctx.raw) || '—',
@@ -429,7 +440,7 @@ export default function InsightsTab({ moodleSource, platformName }) {
                 },
                 scales: {
                   x: {
-                    ticks: { color: '#C9D6EA', font: { size: 11, family: CHART_FONT_FAMILY } },
+                    ticks: { color: chartTextColor, font: { size: 11, family: CHART_FONT_FAMILY } },
                     grid: { display: false },
                     border: { display: false },
                   },
@@ -437,13 +448,13 @@ export default function InsightsTab({ moodleSource, platformName }) {
                     beginAtZero: true,
                     max: 100,
                     ticks: {
-                      color: '#C9D6EA',
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       // Los valores del eje llegan en porcentaje (0-100, ver formatGradePercent),
                       // se dividen entre 10 para etiquetar el eje con la escala de nota /10.
                       callback: (value) => (Number(value) / 10).toFixed(1).replace('.', ','),
                     },
-                    grid: { color: 'rgba(240, 243, 252, 0.10)' },
+                    grid: { color: chartGridColor },
                     border: { display: false },
                   },
                 },

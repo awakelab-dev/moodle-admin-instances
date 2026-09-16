@@ -12,7 +12,7 @@ const ALL_PLATFORMS_VALUE = '__all__';
 // de plataformas configuradas, deja elegir una con el selector superior y delega el
 // contenido (stats, gráficos y tablas de cursos/alumnos) a InsightsTab. Por defecto
 // arranca en "Todas las plataformas" (datos agregados), no en una plataforma concreta.
-export default function InsightsPage() {
+export default function InsightsPage({ lightTheme = false }) {
   const [platforms, setPlatforms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -86,6 +86,7 @@ export default function InsightsPage() {
       <InsightsTab
         moodleSource={selectedPlatform ? selectedPlatform.source : undefined}
         platformName={selectedPlatform ? formatPlatformDisplayName(selectedPlatform.name) : 'todas las plataformas'}
+        lightTheme={lightTheme}
       />
     </div>
   );

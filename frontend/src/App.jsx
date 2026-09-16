@@ -3,7 +3,7 @@
 // vistas (sin react-router, solo estado local `view`) y el sidebar con sus
 // tres categorías colapsables.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users, Sun, Moon } from 'lucide-react';
 import {
   clearAuthSession,
   getCurrentUser,
@@ -45,6 +45,18 @@ export default function App() {
   const [storageNavExpanded, setStorageNavExpanded] = useState(true);
   const [insightsNavExpanded, setInsightsNavExpanded] = useState(true);
   const [configNavExpanded, setConfigNavExpanded] = useState(true);
+  // Tema claro, solo para Moodle Insights (Dashboard/Cursos y Alumnos) —
+  // Storage y Configuración se quedan siempre en el tema oscuro de marca.
+  // Preferencia por navegador (no por usuario/servidor): es una comodidad
+  // visual personal, no un dato que haga falta compartir ni recuperar en
+  // otro dispositivo.
+  const [lightTheme, setLightTheme] = useState(() => {
+    try {
+      return localStorage.getItem('moodle-insights-theme') === 'light';
+    } catch {
+      return false;
+    }
+  });
   const searchSubmitRef = useRef(null);
   const currentUser = session?.user || null;
   const currentUserRole = currentUser?.role || null;
@@ -129,6 +141,19 @@ export default function App() {
     ? 'insights'
     : view === 'detail' && !selectedPlatform ? 'global' : view;
   const isGlobalView = resolvedView === 'global';
+  const isInsightsSection = resolvedView === 'insights' || resolvedView === 'courses-students';
+
+  function toggleTheme() {
+    setLightTheme((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('moodle-insights-theme', next ? 'light' : 'dark');
+      } catch {
+        // localStorage no disponible: el toggle sigue funcionando en esta sesión, solo no se recuerda la próxima vez
+      }
+      return next;
+    });
+  }
 
   function openPlatformDetail(platform) {
     setSelectedPlatform(platform);
@@ -144,7 +169,7 @@ export default function App() {
   }
 
   const views = {
-    insights: <InsightsPage />,
+    insights: <InsightsPage lightTheme={lightTheme} />,
     global: (
       <GlobalPanel
         onSelectPlatform={openPlatformDetail}
@@ -323,7 +348,7 @@ export default function App() {
         </div>
       </aside>
 
-      <div className="app-content">
+      <div className={`app-content ${isInsightsSection && lightTheme ? 'theme-light' : ''}`}>
         {isGlobalView && (
           <div className="content-topbar">
             <div className="nav-search-wrapper">
@@ -353,6 +378,21 @@ export default function App() {
             <Button type="button" onClick={handleSearchClick}>
               Buscar
             </Button>
+          </div>
+        )}
+
+        {isInsightsSection && (
+          <div className="content-topbar">
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              aria-pressed={lightTheme}
+              title={lightTheme ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
+            >
+              {lightTheme ? <Moon size={15} /> : <Sun size={15} />}
+              {lightTheme ? 'Tema oscuro' : 'Tema claro'}
+            </button>
           </div>
         )}
 

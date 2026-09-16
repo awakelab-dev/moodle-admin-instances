@@ -321,6 +321,54 @@ input:focus-visible {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+
+.theme-toggle-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ─── Tema claro (solo Moodle Insights: Dashboard / Cursos y Alumnos) ───
+   Redefine las mismas variables de color que usa todo el CSS existente,
+   con la paleta clara de marca (azules claros de fondo, azul profundo
+   como texto/jerarquía, cian oscuro como acento con contraste suficiente
+   sobre blanco). Storage y Configuración nunca llevan esta clase, se
+   quedan siempre en el tema oscuro. */
+.app-content.theme-light {
+  --color-brand: #011932;
+  --color-brand-strong: #34547a;
+  --color-accent: #0b93aa;
+  --color-bg: #f0f3fc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e2e6f2;
+  --color-text: #011932;
+  --color-text-secondary: rgba(1, 25, 50, 0.62);
+  --color-border: #c9d6ea;
+  --color-border-soft: #dce4f2;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --chart-blue: #0b93aa;
+  --chart-purple: #4e7ea5;
+  --chart-orange: #0abcc9;
+  --shadow: 0 1px 3px rgba(1, 25, 50, 0.1);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
 .main {
   width: min(1240px, 100%);
   margin: 0 auto;
