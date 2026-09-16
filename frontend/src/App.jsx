@@ -152,7 +152,6 @@ export default function App() {
     ? 'insights'
     : view === 'detail' && !selectedPlatform ? 'global' : view;
   const isGlobalView = resolvedView === 'global';
-  const isInsightsSection = resolvedView === 'insights' || resolvedView === 'courses-students';
 
   function toggleTheme() {
     setLightTheme((prev) => {
@@ -188,12 +187,14 @@ export default function App() {
         searchTerm={searchTerm}
         onSearchTermChange={setSearchTerm}
         searchSubmitRef={searchSubmitRef}
+        lightTheme={lightTheme}
       />
     ),
     detail: (
       <Dashboard
         key={selectedPlatform?.id || 'detail-view'}
         selectedPlatform={selectedPlatform}
+        lightTheme={lightTheme}
         userRole={currentUserRole}
         onBackToStorage={() => setView('global')}
       />
@@ -359,53 +360,50 @@ export default function App() {
         </div>
       </aside>
 
-      <div className={`app-content ${isInsightsSection && lightTheme ? 'theme-light' : ''}`}>
-        {isGlobalView && (
-          <div className="content-topbar">
-            <div className="nav-search-wrapper">
-              <svg
-                className="nav-search-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <Input
-                type="text"
-                className="nav-search-input pl-8"
-                placeholder="Buscar empresa"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button type="button" onClick={handleSearchClick}>
-              Buscar
-            </Button>
-          </div>
-        )}
-
-        {isInsightsSection && (
-          <div className="content-topbar">
-            <button
-              type="button"
-              className="theme-toggle-btn"
-              onClick={toggleTheme}
-              aria-pressed={lightTheme}
-              title={lightTheme ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
-            >
-              {lightTheme ? <Moon size={15} /> : <Sun size={15} />}
-              {lightTheme ? 'Tema oscuro' : 'Tema claro'}
-            </button>
-          </div>
-        )}
+      <div className={`app-content ${lightTheme ? 'theme-light' : ''}`}>
+        <div className="content-topbar">
+          {isGlobalView && (
+            <>
+              <div className="nav-search-wrapper">
+                <svg
+                  className="nav-search-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <Input
+                  type="text"
+                  className="nav-search-input pl-8"
+                  placeholder="Buscar empresa"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button type="button" onClick={handleSearchClick}>
+                Buscar
+              </Button>
+            </>
+          )}
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            aria-pressed={lightTheme}
+            title={lightTheme ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
+          >
+            {lightTheme ? <Moon size={15} /> : <Sun size={15} />}
+            {lightTheme ? 'Tema oscuro' : 'Tema claro'}
+          </button>
+        </div>
 
         <main className="main">
           <Suspense fallback={<p className="empty">Cargando…</p>}>

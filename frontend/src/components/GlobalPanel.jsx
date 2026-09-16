@@ -373,7 +373,20 @@ export default function GlobalPanel({
   searchTerm = '',
   onSearchTermChange,
   searchSubmitRef,
+  lightTheme = false,
 }) {
+  // Mismo motivo que en InsightsTab.jsx: Chart.js no lee variables CSS, así
+  // que hace falta este set aparte para que los 3 gráficos sigan siendo
+  // legibles con el tema claro. Los colores POR PLATAFORMA (PLATFORM_COLORS,
+  // LINE_CATEGORICAL_COLORS) no se tocan — son una paleta categórica pensada
+  // para distinguir series entre sí, no dependen del tema.
+  const chartTextColor = lightTheme ? '#011932' : '#C9D6EA';
+  const chartTooltipBg = lightTheme ? '#FFFFFF' : '#01264C';
+  const chartTooltipText = lightTheme ? '#011932' : '#FFFFFF';
+  const chartGridColor = lightTheme ? 'rgba(1, 25, 50, 0.08)' : 'rgba(240, 243, 252, 0.10)';
+  const chartLegendText = lightTheme ? '#011932' : '#FFFFFF';
+  const chartLegendDimmed = lightTheme ? 'rgba(1, 25, 50, 0.35)' : 'rgba(201, 214, 234, 0.55)';
+
   const [platformSummaries, setPlatformSummaries] = useState([]);
   const [storageHistory, setStorageHistory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -937,9 +950,9 @@ export default function GlobalPanel({
               plugins: {
                 legend: { display: false },
                 tooltip: {
-                  backgroundColor: '#01264C',
-                  titleColor: '#FFFFFF',
-                  bodyColor: '#FFFFFF',
+                  backgroundColor: chartTooltipBg,
+                  titleColor: chartTooltipText,
+                  bodyColor: chartTooltipText,
                   padding: 12,
                   callbacks: {
                     label: (context) => formatGigabytes(context.raw),
@@ -950,12 +963,12 @@ export default function GlobalPanel({
                 x: {
                   beginAtZero: true,
                   ticks: {
-                    color: '#C9D6EA',
+                    color: chartTextColor,
                     font: { size: 11, family: CHART_FONT_FAMILY },
                     callback: (value) => formatGigabytes(Number(value)),
                   },
                   grid: {
-                    color: 'rgba(240, 243, 252, 0.10)',
+                    color: chartGridColor,
                   },
                   border: {
                     display: false,
@@ -963,7 +976,7 @@ export default function GlobalPanel({
                 },
                 y: {
                   ticks: {
-                    color: '#C9D6EA',
+                    color: chartTextColor,
                     font: { size: 11, family: CHART_FONT_FAMILY },
                     autoSkip: false,
                   },
@@ -1142,7 +1155,7 @@ export default function GlobalPanel({
                       boxWidth: 8,
                       boxHeight: 8,
                       padding: 14,
-                      color: '#FFFFFF',
+                      color: chartLegendText,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       // generateLabels personalizado: la leyenda por defecto de Chart.js
                       // no permite pintar un ítem "atenuado" cuando se aísla/hover una
@@ -1157,12 +1170,12 @@ export default function GlobalPanel({
                           // En vez de un color casi transparente (que se ve como un
                           // círculo vacío en la leyenda), las líneas no activas usan
                           // un círculo "desactivado" siempre visible.
-                          const color = isFocused ? dataset.backgroundColor : 'rgba(201, 214, 234, 0.55)';
+                          const color = isFocused ? dataset.backgroundColor : chartLegendDimmed;
                           return {
                             text: dataset.label,
                             fillStyle: color,
                             strokeStyle: color,
-                            fontColor: '#FFFFFF',
+                            fontColor: chartLegendText,
                             lineWidth: 0,
                             pointStyle: 'circle',
                             hidden: false,
@@ -1180,9 +1193,9 @@ export default function GlobalPanel({
                     },
                   },
                   tooltip: {
-                    backgroundColor: '#01264C',
-                    titleColor: '#FFFFFF',
-                    bodyColor: '#FFFFFF',
+                    backgroundColor: chartTooltipBg,
+                    titleColor: chartTooltipText,
+                    bodyColor: chartTooltipText,
                     padding: 12,
                     callbacks: {
                       label: (context) =>
@@ -1193,7 +1206,7 @@ export default function GlobalPanel({
                 scales: {
                   x: {
                     ticks: {
-                      color: '#C9D6EA',
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                     },
                     grid: {
@@ -1206,12 +1219,12 @@ export default function GlobalPanel({
                   y: {
                     beginAtZero: true,
                     ticks: {
-                      color: '#C9D6EA',
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       callback: (value) => formatGigabytes(Number(value)),
                     },
                     grid: {
-                      color: 'rgba(240, 243, 252, 0.10)',
+                      color: chartGridColor,
                     },
                     border: {
                       display: false,
@@ -1306,9 +1319,9 @@ export default function GlobalPanel({
                   plugins: {
                     legend: { display: false },
                     tooltip: {
-                      backgroundColor: '#01264C',
-                      titleColor: '#FFFFFF',
-                      bodyColor: '#FFFFFF',
+                      backgroundColor: chartTooltipBg,
+                      titleColor: chartTooltipText,
+                      bodyColor: chartTooltipText,
                       padding: 12,
                       callbacks: {
                         label: (context) => {
@@ -1338,13 +1351,13 @@ export default function GlobalPanel({
                     x: {
                       beginAtZero: true,
                       ticks: {
-                        color: '#C9D6EA',
+                        color: chartTextColor,
                         font: { size: 11, family: CHART_FONT_FAMILY },
                         callback: (value) =>
                           formatCurrencyCompact(value, sharedMarginCurrency),
                       },
                       grid: {
-                        color: 'rgba(240, 243, 252, 0.10)',
+                        color: chartGridColor,
                       },
                       border: {
                         display: false,
@@ -1352,7 +1365,7 @@ export default function GlobalPanel({
                     },
                     y: {
                       ticks: {
-                        color: '#C9D6EA',
+                        color: chartTextColor,
                         font: { size: 11, family: CHART_FONT_FAMILY },
                         autoSkip: false,
                       },

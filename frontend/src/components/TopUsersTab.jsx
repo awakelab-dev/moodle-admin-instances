@@ -26,7 +26,12 @@ function truncateLabel(value, maxLength = 26) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }
 
-export default function TopUsersTab({ moodleSource, platformName }) {
+export default function TopUsersTab({ moodleSource, platformName, lightTheme = false }) {
+  const chartTextColor = lightTheme ? '#011932' : '#C9D6EA';
+  const chartTooltipBg = lightTheme ? '#FFFFFF' : '#01264C';
+  const chartTooltipText = lightTheme ? '#011932' : '#FFFFFF';
+  const chartGridColor = lightTheme ? 'rgba(1, 25, 50, 0.08)' : 'rgba(240, 243, 252, 0.10)';
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -116,9 +121,9 @@ export default function TopUsersTab({ moodleSource, platformName }) {
             plugins: {
               legend: { display: false },
               tooltip: {
-                backgroundColor: '#01264C',
-                titleColor: '#FFFFFF',
-                bodyColor: '#FFFFFF',
+                backgroundColor: chartTooltipBg,
+                titleColor: chartTooltipText,
+                bodyColor: chartTooltipText,
                 padding: 12,
                 callbacks: {
                   label: (ctx) => formatBytes(ctx.raw),
@@ -128,16 +133,16 @@ export default function TopUsersTab({ moodleSource, platformName }) {
             scales: {
               x: {
                 ticks: {
-                  color: '#C9D6EA',
+                  color: chartTextColor,
                   font: { size: 11, family: CHART_FONT_FAMILY },
                   callback: (v) => formatBytes(Number(v)),
                 },
-                grid: { color: 'rgba(240, 243, 252, 0.10)' },
+                grid: { color: chartGridColor },
                 border: { display: false },
               },
               y: {
                 ticks: {
-                  color: '#C9D6EA',
+                  color: chartTextColor,
                   font: { size: 12, family: CHART_FONT_FAMILY },
                 },
                 grid: { display: false },

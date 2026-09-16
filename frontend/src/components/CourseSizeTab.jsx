@@ -55,7 +55,14 @@ function formatDateTime(value) {
 // llamada costosa al Web Service). La ficha de alumnos ("Informe Global") y
 // el detalle de calificaciones viven ahora en la página "Cursos y Alumnos"
 // (ver CoursesStudentsPage.jsx).
-export default function CourseSizeTab({ moodleSource, platformName }) {
+export default function CourseSizeTab({ moodleSource, platformName, lightTheme = false }) {
+  // Chart.js no lee variables CSS — mismo motivo que en InsightsTab.jsx/
+  // GlobalPanel.jsx. STORAGE_COLORS (las barras por tipo) no se toca, son
+  // categóricas y no dependen del tema.
+  const chartTextColor = lightTheme ? '#011932' : STORAGE_COLORS.total;
+  const chartTooltipBg = lightTheme ? '#FFFFFF' : '#01264C';
+  const chartTooltipText = lightTheme ? '#011932' : '#FFFFFF';
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -389,14 +396,14 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                     labels: {
                       boxWidth: 12,
                       padding: 18,
-                      color: STORAGE_COLORS.total,
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                     },
                   },
                   tooltip: {
-                    backgroundColor: '#01264C',
-                    titleColor: '#FFFFFF',
-                    bodyColor: '#FFFFFF',
+                    backgroundColor: chartTooltipBg,
+                    titleColor: chartTooltipText,
+                    bodyColor: chartTooltipText,
                     padding: 12,
                     callbacks: {
                       label: (ctx) =>
@@ -408,7 +415,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                   x: {
                     stacked: true,
                     ticks: {
-                      color: STORAGE_COLORS.total,
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                       callback: (value) => formatBytes(Number(value)),
                     },
@@ -418,7 +425,7 @@ export default function CourseSizeTab({ moodleSource, platformName }) {
                   y: {
                     stacked: true,
                     ticks: {
-                      color: STORAGE_COLORS.total,
+                      color: chartTextColor,
                       font: { size: 11, family: CHART_FONT_FAMILY },
                     },
                     grid: { display: false },

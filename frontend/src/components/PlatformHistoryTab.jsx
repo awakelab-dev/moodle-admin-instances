@@ -151,7 +151,11 @@ function getMarginDescription(groupBy) {
   return 'Margen mensual calculado a partir del cobro fijo y un costo global de USD 1 por GB.';
 }
 
-export default function PlatformHistoryTab({ moodleSource, platformName, userRole }) {
+export default function PlatformHistoryTab({ moodleSource, platformName, userRole, lightTheme = false }) {
+  const chartTextColor = lightTheme ? '#011932' : '#C9D6EA';
+  const chartTooltipBg = lightTheme ? '#FFFFFF' : '#01264C';
+  const chartTooltipText = lightTheme ? '#011932' : '#FFFFFF';
+
   const [groupBy, setGroupBy] = useState('month');
   const [rangeStartKey, setRangeStartKey] = useState('');
   const [rangeEndKey, setRangeEndKey] = useState('');
@@ -507,9 +511,9 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                   plugins: {
                     legend: { display: false },
                     tooltip: {
-                      backgroundColor: '#01264C',
-                      titleColor: '#FFFFFF',
-                      bodyColor: '#FFFFFF',
+                      backgroundColor: chartTooltipBg,
+                      titleColor: chartTooltipText,
+                      bodyColor: chartTooltipText,
                       padding: 12,
                       callbacks: {
                         label: (context) => formatGigabytes(context.raw),
@@ -519,7 +523,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                   scales: {
                     x: {
                       ticks: {
-                        color: '#C9D6EA',
+                        color: chartTextColor,
                         font: { size: 11, family: CHART_FONT_FAMILY },
                       },
                       grid: {
@@ -532,7 +536,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                     y: {
                       beginAtZero: true,
                       ticks: {
-                        color: '#C9D6EA',
+                        color: chartTextColor,
                         font: { size: 11, family: CHART_FONT_FAMILY },
                         callback: (value) => formatGigabytes(Number(value)),
                       },
@@ -568,9 +572,9 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                     plugins: {
                       legend: { display: false },
                       tooltip: {
-                        backgroundColor: '#01264C',
-                        titleColor: '#FFFFFF',
-                        bodyColor: '#FFFFFF',
+                        backgroundColor: chartTooltipBg,
+                        titleColor: chartTooltipText,
+                        bodyColor: chartTooltipText,
                         padding: 12,
                         callbacks: {
                           label: (context) => {
@@ -613,7 +617,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                     scales: {
                       x: {
                         ticks: {
-                          color: '#C9D6EA',
+                          color: chartTextColor,
                           font: { size: 11, family: CHART_FONT_FAMILY },
                         },
                         grid: {
@@ -626,7 +630,7 @@ export default function PlatformHistoryTab({ moodleSource, platformName, userRol
                       y: {
                         beginAtZero: true,
                         ticks: {
-                          color: '#C9D6EA',
+                          color: chartTextColor,
                           font: { size: 11, family: CHART_FONT_FAMILY },
                           callback: (value) =>
                             formatCurrencyCompact(value, effectiveCurrency),

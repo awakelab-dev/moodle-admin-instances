@@ -10,7 +10,7 @@ import { formatPlatformDisplayName } from '@/lib/utils';
 // plataforma desde la pestaña "Storage". Solo organiza la navegación por
 // pestañas (tamaño de curso, top usuarios, histórico); cada pestaña carga
 // sus propios datos de forma independiente.
-export default function Dashboard({ selectedPlatform, userRole, onBackToStorage }) {
+export default function Dashboard({ selectedPlatform, userRole, onBackToStorage, lightTheme = false }) {
   const [tab, setTab] = useState('courses');
 
   if (!selectedPlatform) {
@@ -39,12 +39,14 @@ export default function Dashboard({ selectedPlatform, userRole, onBackToStorage 
           <CourseSizeTab
             moodleSource={selectedPlatform.source}
             platformName={formatPlatformDisplayName(selectedPlatform.name)}
+            lightTheme={lightTheme}
           />
         </TabsContent>
         <TabsContent value="users">
           <TopUsersTab
             moodleSource={selectedPlatform.source}
             platformName={formatPlatformDisplayName(selectedPlatform.name)}
+            lightTheme={lightTheme}
           />
         </TabsContent>
         <TabsContent value="history">
@@ -52,6 +54,7 @@ export default function Dashboard({ selectedPlatform, userRole, onBackToStorage 
             moodleSource={selectedPlatform.source}
             platformName={formatPlatformDisplayName(selectedPlatform.name)}
             userRole={userRole}
+            lightTheme={lightTheme}
           />
         </TabsContent>
       </Tabs>
