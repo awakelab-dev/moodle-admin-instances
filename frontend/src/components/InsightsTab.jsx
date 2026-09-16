@@ -499,7 +499,7 @@ export default function InsightsTab({ moodleSource, platformName, lightTheme = f
               {courseControls.pageItems.map((course) => (
                 <TableRow key={course.courseId}>
                   <TableCell>
-                    <div className="font-semibold text-white">{course.courseName}</div>
+                    <div className="font-semibold text-foreground">{course.courseName}</div>
                     {course.shortname && (
                       <div className="text-xs text-muted-foreground">{course.shortname}</div>
                     )}
@@ -560,7 +560,7 @@ export default function InsightsTab({ moodleSource, platformName, lightTheme = f
             <TableBody>
               {studentControls.pageItems.map((student) => (
                 <TableRow key={student.userId}>
-                  <TableCell className="font-semibold text-white">
+                  <TableCell className="font-semibold text-foreground">
                     {student.fullname || student.username}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{student.email || '—'}</TableCell>

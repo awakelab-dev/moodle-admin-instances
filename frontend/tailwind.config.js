@@ -7,27 +7,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#011932',
-        surface: '#01264c',
-        'surface-muted': '#012142',
-        foreground: '#f0f3fc',
-        'muted-foreground': 'rgba(240, 243, 252, 0.62)',
-        border: '#34547a',
-        'border-soft': '#27334f',
+        // Todos apuntan a las variables CSS de App.css (no a hex fijos): así
+        // los componentes shadcn heredan el tema claro de Moodle Insights
+        // igual que el resto del CSS escrito a mano, en vez de quedarse
+        // siempre en la paleta oscura pase lo que pase con el tema activo.
+        background: 'var(--color-bg)',
+        surface: 'var(--color-surface)',
+        'surface-muted': 'var(--color-surface-muted)',
+        foreground: 'var(--color-text)',
+        'muted-foreground': 'var(--color-text-secondary)',
+        border: 'var(--color-border)',
+        'border-soft': 'var(--color-border-soft)',
         accent: {
-          DEFAULT: '#11eaea',
-          strong: '#0fced3',
+          DEFAULT: 'var(--color-accent)',
+          strong: 'var(--color-accent)',
         },
         brand: {
-          DEFAULT: '#f0f3fc',
-          strong: '#72a3c4',
+          DEFAULT: 'var(--color-brand)',
+          strong: 'var(--color-brand-strong)',
         },
-        destructive: '#ff8080',
-        success: '#4ade80',
+        destructive: 'var(--color-danger)',
+        success: 'var(--color-success)',
         chart: {
-          1: '#0b93aa',
-          2: '#4e7ea5',
-          3: '#0fced3',
+          1: 'var(--chart-blue)',
+          2: 'var(--chart-purple)',
+          3: 'var(--chart-orange)',
         },
       },
       borderRadius: {
