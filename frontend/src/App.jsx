@@ -8,6 +8,7 @@ import {
   clearAuthSession,
   getCurrentUser,
   getStoredAuthSession,
+  invalidateCache,
   loginUser,
   saveAuthSession,
 } from './api';
@@ -115,6 +116,10 @@ export default function App() {
   async function handleLogin(credentials) {
     const nextSession = await loginUser(credentials);
 
+    // Por si la sesión anterior expiró sola (sin pasar por handleLogout) y
+    // se inicia sesión con un usuario distinto en la misma pestaña: fuerza
+    // a pedir todo de nuevo en vez de arrastrar caché del usuario anterior.
+    invalidateCache();
     setSession(nextSession);
     setAuthNotice(null);
     setSelectedPlatform(null);
@@ -124,6 +129,12 @@ export default function App() {
 
   function handleLogout() {
     clearAuthSession();
+    // getPlatforms() (y cualquier otro endpoint cacheado) guarda su
+    // respuesta en memoria con una clave global, no por usuario — sin
+    // esto, si se inicia sesión con otro usuario en la misma pestaña sin
+    // recargar la página, podría quedar servida la lista de plataformas
+    // (u otros datos) del usuario anterior hasta que expire el caché.
+    invalidateCache();
     setSession(null);
     setAuthNotice(null);
     setSelectedPlatform(null);
