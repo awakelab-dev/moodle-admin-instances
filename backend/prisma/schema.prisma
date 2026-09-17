@@ -61,12 +61,8 @@ model Course {
   categoryName String @default("Sin categoría") @map("category_name")
   visible      Boolean @default(true)
   averageGradePercent Float? @map("average_grade_percent")
-  // BigInt (no Int): algunas plataformas devuelven fechas de fin muy
-  // lejanas (p. ej. año 2050) que superan el máximo de un INT4 de Postgres
-  // (2038), y el curso dejaba de guardarse por completo — ver commit que
-  // añade esta nota.
-  startDate BigInt? @map("start_date")
-  endDate   BigInt? @map("end_date")
+  startDate Int? @map("start_date")
+  endDate   Int? @map("end_date")
 
   sizeBytes           BigInt @default(0) @map("size_bytes")
   backupSizeBytes     BigInt @default(0) @map("backup_size_bytes")

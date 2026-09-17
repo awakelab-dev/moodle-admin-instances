@@ -265,8 +265,7 @@ export class DashboardService {
       catMap[key].total_forum_bytes += forum;
       // "Histórico" si la fecha de fin ya pasó; "Activo" si no tiene fecha de
       // fin (indefinido en Moodle) o todavía no ha llegado.
-      const endDateSeconds = c.endDate != null ? Number(c.endDate) : null;
-      const isHistorical = Boolean(endDateSeconds) && endDateSeconds! < nowSeconds;
+      const isHistorical = Boolean(c.endDate) && c.endDate! < nowSeconds;
 
       catMap[key].courses.push({
         moodle_source: platform?.url || url,
@@ -278,8 +277,8 @@ export class DashboardService {
         backup_size_bytes: backup,
         assignment_size_bytes: assignment,
         forum_size_bytes: forum,
-        start_date: c.startDate != null ? Number(c.startDate) : null,
-        end_date: endDateSeconds,
+        start_date: c.startDate || null,
+        end_date: c.endDate || null,
         is_historical: isHistorical,
         enrolled_count: enrolledCountByCourse.get(`${c.platformId}:${c.courseId}`) || 0,
       });

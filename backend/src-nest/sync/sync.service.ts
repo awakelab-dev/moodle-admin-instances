@@ -28,6 +28,19 @@ const FORUM_CONCURRENCY = 10;
 const CHUNK = 50;
 const DB_WRITE_CONCURRENCY = 20;
 
+// Postgres INT4 (columnas start_date/end_date de Course) solo admite hasta
+// este valor. Algunas plataformas Moodle devuelven una fecha de fin muy
+// lejana (año 2050+) para cursos sin fecha de cierre real; en vez de
+// cambiar el tipo de columna (lo que exigiría una migración de base de
+// datos en producción), esas fechas fuera de rango se guardan como null —
+// funcionalmente equivalente a "sin fecha de fin" (nunca se marcan como
+// histórico, y la UI ya muestra "—" cuando no hay fecha).
+const INT4_MAX = 2147483647;
+function clampInt4Date(value: number | null | undefined): number | null {
+  if (value == null) return null;
+  return value > INT4_MAX || value < -INT4_MAX ? null : value;
+}
+
 /** Señala que el usuario pidió cancelar la sincronización desde el endpoint POST /sync/cancel. */
 class SyncCancelledError extends Error {
   constructor() {
@@ -131,8 +144,8 @@ export class SyncService {
         category_id: course.categoryid ?? 0,
         category_name: catMap[course.categoryid] || 'Sin categoría',
         visible: course.visible !== 0,
-        start_date: course.startdate || null,
-        end_date: course.enddate || null,
+        start_date: clampInt4Date(course.startdate || null),
+        end_date: clampInt4Date(course.enddate || null),
       };
     }
 
@@ -347,8 +360,8 @@ export class SyncService {
             categoryId: meta.category_id,
             categoryName: meta.category_name,
             visible: meta.visible,
-            startDate: meta.start_date != null ? BigInt(meta.start_date) : null,
-            endDate: meta.end_date != null ? BigInt(meta.end_date) : null,
+            startDate: meta.start_date,
+            endDate: meta.end_date,
             averageGradePercent: courseGradeAverages[courseId] ?? null,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),
@@ -363,8 +376,8 @@ export class SyncService {
             categoryId: meta.category_id,
             categoryName: meta.category_name,
             visible: meta.visible,
-            startDate: meta.start_date != null ? BigInt(meta.start_date) : null,
-            endDate: meta.end_date != null ? BigInt(meta.end_date) : null,
+            startDate: meta.start_date,
+            endDate: meta.end_date,
             averageGradePercent: courseGradeAverages[courseId] ?? null,
             sizeBytes: BigInt(sizes.content),
             backupSizeBytes: BigInt(sizes.backup),
