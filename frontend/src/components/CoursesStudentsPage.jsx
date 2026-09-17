@@ -15,6 +15,7 @@ import { formatUnixSeconds } from '@/lib/formatters';
 import { downloadXlsx } from '@/lib/excel';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -94,6 +95,8 @@ export default function CoursesStudentsPage() {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [hideTemplates, setHideTemplates] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'historical'
+  const [dateFrom, setDateFrom] = useState(''); // 'YYYY-MM-DD', filtra por fecha de inicio del curso
+  const [dateTo, setDateTo] = useState('');
   const [courseSortKey, setCourseSortKey] = useState(null);
   const [courseSortDir, setCourseSortDir] = useState('asc');
 
@@ -282,6 +285,14 @@ export default function CoursesStudentsPage() {
     let list = hideTemplates ? allCourses.filter((c) => !isTemplateCourse(c)) : allCourses;
     if (statusFilter === 'active') list = list.filter((c) => !c.is_historical);
     if (statusFilter === 'historical') list = list.filter((c) => c.is_historical);
+    if (dateFrom) {
+      const fromSeconds = new Date(`${dateFrom}T00:00:00`).getTime() / 1000;
+      list = list.filter((c) => c.start_date && c.start_date >= fromSeconds);
+    }
+    if (dateTo) {
+      const toSeconds = new Date(`${dateTo}T23:59:59`).getTime() / 1000;
+      list = list.filter((c) => c.start_date && c.start_date <= toSeconds);
+    }
     if (courseSearch.trim()) {
       const term = courseSearch.toLowerCase();
       list = list.filter(
@@ -300,7 +311,7 @@ export default function CoursesStudentsPage() {
       }
       return courseSortDir === 'asc' ? valA - valB : valB - valA;
     });
-  }, [allCourses, courseSearch, hideTemplates, statusFilter, courseSortKey, courseSortDir]);
+  }, [allCourses, courseSearch, hideTemplates, statusFilter, dateFrom, dateTo, courseSortKey, courseSortDir]);
 
   function openCourse(course) {
     setSelectedCourse(course);
@@ -663,6 +674,36 @@ export default function CoursesStudentsPage() {
             >
               Históricos ({historicalCount})
             </button>
+          </div>
+          <div className="cs-date-filter flex items-center gap-2.5 flex-wrap">
+            <Label className="eyebrow" style={{ margin: 0 }}>Inicio del curso:</Label>
+            <Input
+              type="date"
+              className="table-search"
+              style={{ width: 'auto' }}
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+            <span className="panel-description" style={{ margin: 0 }}>a</span>
+            <Input
+              type="date"
+              className="table-search"
+              style={{ width: 'auto' }}
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+            {(dateFrom || dateTo) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+              >
+                Limpiar fechas
+              </Button>
+            )}
           </div>
           {templateCount > 0 && (
             <button
