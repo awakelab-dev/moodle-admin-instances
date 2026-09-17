@@ -207,7 +207,7 @@ input:focus-visible {
 }
 
 .sidebar-brand .logo {
-  color: #ffffff;
+  color: var(--color-text);
   font-size: 0.95rem;
 }
 
@@ -299,7 +299,7 @@ input:focus-visible {
 }
 
 .sidebar-footer .session-name {
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .app-content {
@@ -342,13 +342,13 @@ input:focus-visible {
   color: var(--color-accent);
 }
 
-/* ─── Tema claro (solo Moodle Insights: Dashboard / Cursos y Alumnos) ───
+/* ─── Tema claro (toda la app) ───
    Redefine las mismas variables de color que usa todo el CSS existente,
    con la paleta clara de marca (azules claros de fondo, azul profundo
    como texto/jerarquía, cian oscuro como acento con contraste suficiente
-   sobre blanco). Storage y Configuración nunca llevan esta clase, se
-   quedan siempre en el tema oscuro. */
-.app-content.theme-light {
+   sobre blanco). La clase va en `.app-shell` (contenedor común de sidebar
+   + contenido) para que las variables cascadeen también al sidebar. */
+.theme-light {
   --color-brand: #011932;
   --color-brand-strong: #34547a;
   --color-accent: #0b93aa;

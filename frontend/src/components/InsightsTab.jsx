@@ -497,7 +497,7 @@ export default function InsightsTab({ moodleSource, platformName, lightTheme = f
             </TableHeader>
             <TableBody>
               {courseControls.pageItems.map((course) => (
-                <TableRow key={course.courseId}>
+                <TableRow key={`${course.platformId}-${course.courseId}`}>
                   <TableCell>
                     <div className="font-semibold text-foreground">{course.courseName}</div>
                     {course.shortname && (
@@ -559,7 +559,7 @@ export default function InsightsTab({ moodleSource, platformName, lightTheme = f
             </TableHeader>
             <TableBody>
               {studentControls.pageItems.map((student) => (
-                <TableRow key={student.userId}>
+                <TableRow key={`${student.platformId}-${student.userId}`}>
                   <TableCell className="font-semibold text-foreground">
                     {student.fullname || student.username}
                   </TableCell>

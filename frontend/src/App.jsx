@@ -46,11 +46,10 @@ export default function App() {
   const [storageNavExpanded, setStorageNavExpanded] = useState(true);
   const [insightsNavExpanded, setInsightsNavExpanded] = useState(true);
   const [configNavExpanded, setConfigNavExpanded] = useState(true);
-  // Tema claro, solo para Moodle Insights (Dashboard/Cursos y Alumnos) —
-  // Storage y Configuración se quedan siempre en el tema oscuro de marca.
-  // Preferencia por navegador (no por usuario/servidor): es una comodidad
-  // visual personal, no un dato que haga falta compartir ni recuperar en
-  // otro dispositivo.
+  // Tema claro de toda la app (Dashboard, Cursos y Alumnos, Storage,
+  // Configuración, Usuarios). Preferencia por navegador (no por
+  // usuario/servidor): es una comodidad visual personal, no un dato que
+  // haga falta compartir ni recuperar en otro dispositivo.
   const [lightTheme, setLightTheme] = useState(() => {
     try {
       return localStorage.getItem('moodle-insights-theme') === 'light';
@@ -58,9 +57,21 @@ export default function App() {
       return false;
     }
   });
+
   const searchSubmitRef = useRef(null);
   const currentUser = session?.user || null;
   const currentUserRole = currentUser?.role || null;
+
+  // La clase también se refleja en <html>, además de en `.app-shell` (ver
+  // JSX más abajo): los desplegables de <Select> (Radix Portal) se
+  // renderizan directamente en <body>, fuera del árbol de `.app-shell`, así
+  // que sin esto se quedaban siempre en tema oscuro pese a activar el claro.
+  // Solo se aplica con sesión iniciada: el login mantiene siempre su fondo y
+  // logo de marca oscuros (el logo usa texto casi blanco, pensado para
+  // fondo oscuro — se leería mal sobre una tarjeta de login clara).
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-light', lightTheme && Boolean(currentUser));
+  }, [lightTheme, currentUser]);
 
   useEffect(() => {
     const existingToken = initialSessionRef.current?.token;
@@ -225,7 +236,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${lightTheme ? 'theme-light' : ''}`}>
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-mark" aria-hidden="true">
@@ -360,7 +371,7 @@ export default function App() {
         </div>
       </aside>
 
-      <div className={`app-content ${lightTheme ? 'theme-light' : ''}`}>
+      <div className="app-content">
         <div className="content-topbar">
           {isGlobalView && (
             <>

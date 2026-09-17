@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import Breadcrumb from './Breadcrumb';
 import ErrorRetry from './ErrorRetry';
@@ -110,22 +111,19 @@ export default function CoursesStudentsPage() {
 
   // Búsqueda y orden propios de la pestaña "Informe global" (independientes
   // de los de "Lista de alumnos", aunque ambas pestañas leen los mismos
-  // `accessReportData`, ya cargados al abrir el curso). El informe en sí
-  // solo se muestra tras pulsar el botón, igual que "Calificaciones", en
-  // vez de aparecer ya generado al entrar en la pestaña.
+  // `accessReportData`, ya cargados al abrir el curso — se muestran de
+  // inmediato, sin esperar a que el usuario pulse un botón).
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const [globalSortKey, setGlobalSortKey] = useState('lastname');
   const [globalSortDir, setGlobalSortDir] = useState('asc');
-  const [hasRequestedGlobalReport, setHasRequestedGlobalReport] = useState(false);
 
   // Informe de calificaciones de TODOS los alumnos del curso (distinto del
-  // que se consulta para un solo alumno en el nivel "student"). Al ser una
-  // llamada costosa a Moodle, se carga solo bajo demanda con un botón,
-  // igual que el desglose de almacenamiento.
+  // que se consulta para un solo alumno en el nivel "student"). Se lee de
+  // Postgres (última sincronización guardada) y se carga de inmediato al
+  // abrir el curso, igual que la lista de alumnos.
   const [gradesReportData, setGradesReportData] = useState(null);
   const [gradesReportLoading, setGradesReportLoading] = useState(false);
   const [gradesReportError, setGradesReportError] = useState(null);
-  const [hasRequestedGradesReport, setHasRequestedGradesReport] = useState(false);
   // Alumnos cuya fila de "Detalle" está desplegada mostrando todas sus
   // notas — por defecto solo se ve la primera, para no repetir dentro de
   // cada fila el mismo scroll que ya tiene el recuadro completo.
@@ -170,6 +168,7 @@ export default function CoursesStudentsPage() {
     setCourseData(null);
     setCourseSearch('');
     setCoursesError(null);
+    setSyncStatus(null);
     setLevel('courses');
     setCoursesLoading(true);
 
@@ -204,6 +203,7 @@ export default function CoursesStudentsPage() {
     if (refreshed) setSelectedPlatform(refreshed);
     if (selectedCourse) {
       loadAccessReport(selectedCourse.course_id);
+      loadGradesReport(selectedCourse.course_id);
     }
   }
 
@@ -215,10 +215,21 @@ export default function CoursesStudentsPage() {
       try {
         await triggerPlatformSync(selectedPlatform.id);
       } catch (err) {
-        // 409: ya hay una sincronización en curso (p. ej. lanzada desde
-        // Configuración) — nos limitamos a seguirle el progreso en vez de
-        // fallar, ya que es la misma operación completa.
         if (err.status !== 409) throw err;
+        // 409: ya hay una sincronización en curso — puede ser justo esta
+        // misma plataforma (p. ej. lanzada desde Configuración, nos
+        // limitamos a seguirle el progreso) o una plataforma DISTINTA, en
+        // cuyo caso no hay que esperar a que termine esa otra y darla por
+        // buena: hay que avisar y no tocar los datos de esta plataforma
+        // (antes se seguía el progreso de la que fuera sin comprobar el
+        // platform_id, y al terminar la otra sync el botón se reseteaba
+        // como si esta plataforma ya estuviera sincronizada).
+        const current = await getSyncStatus();
+        if (current?.platform_id !== selectedPlatform.id) {
+          throw new Error(
+            `Ya hay una sincronización en curso${current?.current_platform ? ` (${formatPlatformDisplayName(current.current_platform)})` : ''}. Espera a que termine e inténtalo de nuevo.`,
+          );
+        }
       }
       await pollSyncStatusHere();
       await afterSyncFinished();
@@ -320,13 +331,17 @@ export default function CoursesStudentsPage() {
     setAccessReportError(null);
     setStudentSearch('');
     setGlobalSearchTerm('');
-    setHasRequestedGlobalReport(false);
     setGradesReportData(null);
     setGradesReportError(null);
-    setHasRequestedGradesReport(false);
     setExpandedGradeStudents(new Set());
     setLevel('course');
+    // Los datos de matrícula/accesos y de calificaciones ya están guardados
+    // en Postgres desde la última sincronización — se cargan siempre al
+    // abrir el curso, en todas las pestañas, sin esperar a que el usuario
+    // pulse un botón. El botón "Sincronizar plataforma" (arriba) es el único
+    // que trae datos nuevos de Moodle; estos dos solo leen lo ya guardado.
     loadAccessReport(course.course_id);
+    loadGradesReport(course.course_id);
   }
 
   function loadAccessReport(courseId) {
@@ -341,16 +356,15 @@ export default function CoursesStudentsPage() {
       .finally(() => setAccessReportLoading(false));
   }
 
-  // Carga el detalle de calificaciones por alumno (gradereport_user_get_grade_items
-  // de Moodle) en vivo, para TODOS los alumnos del curso a la vez; puede venir
-  // marcado como no disponible si la plataforma no tiene esa función
-  // habilitada en su Web Service externo.
-  function loadGradesReport() {
-    if (!selectedCourse || !selectedPlatform) return;
-    setHasRequestedGradesReport(true);
+  // Carga el detalle de calificaciones por alumno (guardado en Postgres en
+  // la última sincronización, no en vivo); puede venir marcado como no
+  // disponible si la plataforma no tiene esa función habilitada en su Web
+  // Service externo.
+  function loadGradesReport(courseId) {
+    if (!selectedPlatform) return;
     setGradesReportLoading(true);
     setGradesReportError(null);
-    getCourseGradesReport(selectedCourse.course_id, { moodleSource: selectedPlatform.source })
+    getCourseGradesReport(courseId, { moodleSource: selectedPlatform.source })
       .then((response) => setGradesReportData(response))
       .catch(() => {
         setGradesReportData(null);
@@ -638,8 +652,10 @@ export default function CoursesStudentsPage() {
           <div className="course-breakdown-actions">
             <p className="course-breakdown-warning">
               {selectedPlatform.coursesLastSyncedAt
-                ? `Última sincronización: ${new Date(selectedPlatform.coursesLastSyncedAt).toLocaleString('es-CL')}.`
-                : 'Esta plataforma todavía no se ha sincronizado — la lista de alumnos y las calificaciones estarán vacías hasta que se sincronice.'}
+                ? `Última sincronización de cursos y alumnos: ${new Date(selectedPlatform.coursesLastSyncedAt).toLocaleString('es-CL')}.`
+                : selectedPlatform.lastSyncedAt
+                  ? 'El almacenamiento de esta plataforma ya se sincronizó, pero todavía no tiene datos de cursos y alumnos — la lista de alumnos y las calificaciones estarán vacías hasta que se sincronice.'
+                  : 'Esta plataforma todavía no se ha sincronizado — la lista de alumnos y las calificaciones estarán vacías hasta que se sincronice.'}
               {' '}En plataformas con muchos cursos puede tardar bastante (recorre alumno por alumno); es la misma
               sincronización que el botón de Configuración.
             </p>
@@ -652,6 +668,11 @@ export default function CoursesStudentsPage() {
               </Button>
             )}
           </div>
+          {!syncRunning && syncStatus?.status === 'failed' && Boolean(syncStatus.sync_errors?.length) && (
+            <Alert variant="destructive">
+              <AlertDescription>{syncStatus.sync_errors[syncStatus.sync_errors.length - 1]}</AlertDescription>
+            </Alert>
+          )}
           <div className="cs-role-filter">
             <button
               type="button"
@@ -873,8 +894,8 @@ export default function CoursesStudentsPage() {
                 />
               ) : accessReportData?.neverSynced ? (
                 <p className="empty">
-                  Esta plataforma todavía no se ha sincronizado — pulsa "Sincronizar alumnos y
-                  calificaciones" arriba para traer los datos por primera vez.
+                  Esta plataforma todavía no tiene datos de cursos y alumnos — pulsa "Sincronizar
+                  plataforma" arriba para traerlos por primera vez.
                 </p>
               ) : !filteredStudents.length ? (
                 <p className="empty">No hay alumnos matriculados en este curso.</p>
@@ -927,33 +948,25 @@ export default function CoursesStudentsPage() {
               </div>
               <div className="course-breakdown-actions">
                 <p className="course-breakdown-warning">
-                  Advertencia: en plataformas con muchos alumnos o cursos con mucha actividad,
-                  este informe puede tardar un poco en generarse.
+                  Datos de la última sincronización guardada. Si necesitas datos más recientes de
+                  Moodle, usa "Sincronizar plataforma" arriba y luego "Actualizar informe" aquí.
                 </p>
                 <Button
                   type="button"
                   className="course-breakdown-sync-btn"
-                  onClick={() => setHasRequestedGlobalReport(true)}
+                  onClick={() => loadAccessReport(selectedCourse.course_id)}
                   disabled={accessReportLoading}
                 >
-                  {accessReportLoading
-                    ? 'Cargando informe…'
-                    : hasRequestedGlobalReport
-                      ? 'Actualizar informe'
-                      : 'Generar informe global'}
+                  {accessReportLoading ? 'Actualizando…' : 'Actualizar informe'}
                 </Button>
-                {hasRequestedGlobalReport && Boolean(globalReportRows.length) && (
+                {Boolean(globalReportRows.length) && (
                   <Button type="button" variant="outline" onClick={handleExportGlobalReport}>
                     Descargar informe (Excel)
                   </Button>
                 )}
               </div>
 
-              {!hasRequestedGlobalReport ? (
-                <p className="empty">
-                  Presiona “Generar informe global” para ver la ficha completa de alumnos.
-                </p>
-              ) : accessReportLoading ? (
+              {accessReportLoading ? (
                 <TableSkeleton columns={6} />
               ) : accessReportError ? (
                 <ErrorRetry
@@ -962,8 +975,8 @@ export default function CoursesStudentsPage() {
                 />
               ) : accessReportData?.neverSynced ? (
                 <p className="empty">
-                  Esta plataforma todavía no se ha sincronizado — pulsa "Sincronizar alumnos y
-                  calificaciones" en la lista de cursos.
+                  Esta plataforma todavía no tiene datos de cursos y alumnos — pulsa "Sincronizar
+                  plataforma" en la lista de cursos.
                 </p>
               ) : !globalReportRows.length ? (
                 <p className="empty">No hay alumnos matriculados en este curso.</p>
@@ -1089,25 +1102,21 @@ export default function CoursesStudentsPage() {
               <div className="table-header-row">
                 <p className="panel-description">
                   Nota de cada tarea, examen y actividad evaluable por alumno matriculado,
-                  obtenida en vivo de Moodle (<span className="mono">gradereport_user_get_grade_items</span>).
+                  según la última sincronización (<span className="mono">gradereport_user_get_grade_items</span>).
                 </p>
               </div>
               <div className="course-breakdown-actions">
                 <p className="course-breakdown-warning">
-                  Advertencia: en plataformas con muchos alumnos o cursos con mucha actividad,
-                  este informe puede tardar un poco en generarse.
+                  Datos de la última sincronización guardada. Si necesitas datos más recientes de
+                  Moodle, usa "Sincronizar plataforma" arriba y luego "Actualizar calificaciones" aquí.
                 </p>
                 <Button
                   type="button"
                   className="course-breakdown-sync-btn"
-                  onClick={loadGradesReport}
+                  onClick={() => loadGradesReport(selectedCourse.course_id)}
                   disabled={gradesReportLoading}
                 >
-                  {gradesReportLoading
-                    ? 'Cargando calificaciones…'
-                    : hasRequestedGradesReport
-                      ? 'Actualizar calificaciones'
-                      : 'Cargar evaluaciones y calificaciones'}
+                  {gradesReportLoading ? 'Actualizando…' : 'Actualizar calificaciones'}
                 </Button>
                 {Boolean(gradesReportData?.students?.length) && gradesReportData?.available && (
                   <Button type="button" variant="outline" onClick={handleExportGradesReport}>
@@ -1116,16 +1125,19 @@ export default function CoursesStudentsPage() {
                 )}
               </div>
 
-              {!hasRequestedGradesReport ? (
-                <p className="empty">
-                  Presiona “Cargar evaluaciones y calificaciones” para consultar los datos en vivo.
-                </p>
-              ) : gradesReportLoading ? (
+              {gradesReportLoading ? (
                 <p className="empty">Cargando la última sincronización guardada…</p>
               ) : gradesReportError ? (
-                <ErrorRetry message={gradesReportError} onRetry={loadGradesReport} />
+                <ErrorRetry
+                  message={gradesReportError}
+                  onRetry={() => loadGradesReport(selectedCourse.course_id)}
+                />
               ) : gradesReportData?.available === false ? (
-                <p className="empty error">
+                // "Todavía no sincronizado" es un estado normal (mismo caso que
+                // "Lista de alumnos" cuando neverSynced), no un error — solo la
+                // falta real de la función de calificaciones en el Moodle de
+                // origen se muestra en rojo.
+                <p className={gradesReportData?.reason ? 'empty' : 'empty error'}>
                   {gradesReportData?.reason ||
                     'Esta plataforma todavía no tiene habilitada la función de calificaciones.'}
                 </p>

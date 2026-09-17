@@ -34,11 +34,11 @@ function normalizeBreakdownRows(rows: any = []): any[] {
     .sort((a, b) => b.size_bytes - a.size_bytes);
 }
 
-// Servicio que arma todas las respuestas del dashboard. La mayoría de
-// métodos leen únicamente lo que ya se sincronizó en Postgres (rápido, no
-// depende de que Moodle esté disponible); solo getCourseBreakdown (en modo
-// live/refresh) y getCourseAccessReport/getCourseGradesReport consultan los
-// Web Services de Moodle en vivo, cada método lo indica explícitamente.
+// Servicio que arma todas las respuestas del dashboard. Todos los métodos
+// leen únicamente lo que ya se sincronizó en Postgres (rápido, no depende
+// de que Moodle esté disponible), incluidos getCourseAccessReport y
+// getCourseGradesReport — solo getCourseBreakdown, en modo live/refresh,
+// consulta los Web Services de Moodle en vivo, y lo indica explícitamente.
 @Injectable()
 export class DashboardService {
   constructor(
@@ -265,7 +265,8 @@ export class DashboardService {
       catMap[key].total_forum_bytes += forum;
       // "Histórico" si la fecha de fin ya pasó; "Activo" si no tiene fecha de
       // fin (indefinido en Moodle) o todavía no ha llegado.
-      const isHistorical = Boolean(c.endDate) && c.endDate! < nowSeconds;
+      const endDateSeconds = c.endDate != null ? Number(c.endDate) : null;
+      const isHistorical = Boolean(endDateSeconds) && endDateSeconds! < nowSeconds;
 
       catMap[key].courses.push({
         moodle_source: platform?.url || url,
@@ -277,8 +278,8 @@ export class DashboardService {
         backup_size_bytes: backup,
         assignment_size_bytes: assignment,
         forum_size_bytes: forum,
-        start_date: c.startDate || null,
-        end_date: c.endDate || null,
+        start_date: c.startDate != null ? Number(c.startDate) : null,
+        end_date: endDateSeconds,
         is_historical: isHistorical,
         enrolled_count: enrolledCountByCourse.get(`${c.platformId}:${c.courseId}`) || 0,
       });
@@ -674,7 +675,16 @@ export class DashboardService {
       },
       topCategories,
       topGradedCourses,
+      // courseId/userId son ids internos de cada Moodle, no globalmente únicos
+      // — dos plataformas distintas pueden asignarle el mismo número a un
+      // curso o alumno completamente distinto. Se expone platformId junto a
+      // cada uno para que el frontend pueda formar una clave (React key)
+      // realmente única al listarlos juntos en la vista "Todas las
+      // plataformas"; sin esto, dos filas de plataformas distintas con el
+      // mismo id numérico colisionaban (warning de React y filas mal
+      // asociadas al reordenar/paginar).
       courses: courses.map((c) => ({
+        platformId: c.platformId,
         courseId: c.courseId,
         courseName: c.courseName,
         shortname: c.shortname,
@@ -684,6 +694,7 @@ export class DashboardService {
         averageGradePercent: c.averageGradePercent,
       })),
       students: students.map((u) => ({
+        platformId: u.platformId,
         userId: u.userId,
         fullname: u.fullname,
         username: u.username,
