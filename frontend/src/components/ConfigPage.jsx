@@ -452,7 +452,7 @@ export default function ConfigPage() {
               </h3>
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="grid gap-3.5">
+          <form onSubmit={handleSubmit} className="grid gap-3.5" noValidate>
             <div className="grid grid-cols-2 gap-3.5 max-[720px]:grid-cols-1">
               <div className="grid gap-1.5">
                 <Label>Nombre</Label>
