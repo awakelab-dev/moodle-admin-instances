@@ -688,12 +688,11 @@ export default function CoursesStudentsPage() {
           <div className="course-breakdown-actions">
             <p className="course-breakdown-warning">
               {selectedPlatform.coursesLastSyncedAt
-                ? `Última sincronización de cursos y alumnos: ${new Date(selectedPlatform.coursesLastSyncedAt).toLocaleString('es-CL')}.`
+                ? `Última sincronización: ${new Date(selectedPlatform.coursesLastSyncedAt).toLocaleString('es-CL')}.`
                 : selectedPlatform.lastSyncedAt
-                  ? 'El almacenamiento de esta plataforma ya se sincronizó, pero todavía no tiene datos de cursos y alumnos — la lista de alumnos y las calificaciones estarán vacías hasta que se sincronice.'
-                  : 'Esta plataforma todavía no se ha sincronizado — la lista de alumnos y las calificaciones estarán vacías hasta que se sincronice.'}
-              {' '}En plataformas con muchos cursos puede tardar bastante (recorre alumno por alumno); es la misma
-              sincronización que el botón de Configuración.
+                  ? 'Esta plataforma todavía no tiene datos de cursos y alumnos.'
+                  : 'Esta plataforma todavía no se ha sincronizado.'}
+              {' '}Algunas plataformas pueden tardar algo más en sincronizar.
             </p>
             <Button
               type="button"

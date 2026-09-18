@@ -369,6 +369,24 @@ input:focus-visible {
   color: var(--color-text);
 }
 
+/* Pedido por el instructor: en tema claro el sidebar va en blanco puro
+   (--color-surface), distinto del fondo lavanda del resto de la app
+   (--color-bg), para que destaque como panel de navegación. */
+.theme-light .sidebar {
+  background: var(--color-surface);
+}
+
+/* El sidebar ahora es blanco puro en tema claro, así que los elementos que
+   antes usaban ese mismo blanco para contrastar contra el fondo lavanda
+   original (marca, hover/activo del menú, caja de usuario) quedarían
+   invisibles — pasan a un gris-azulado claro (--color-surface-muted). */
+.theme-light .sidebar-brand .brand-mark,
+.theme-light .sidebar-nav-item:hover,
+.theme-light .sidebar-nav-item.active,
+.theme-light .sidebar-footer .session-box {
+  background: var(--color-surface-muted);
+}
+
 .main {
   width: min(1240px, 100%);
   margin: 0 auto;
