@@ -376,15 +376,27 @@ input:focus-visible {
   background: var(--color-surface);
 }
 
-/* El sidebar ahora es blanco puro en tema claro, así que los elementos que
-   antes usaban ese mismo blanco para contrastar contra el fondo lavanda
-   original (marca, hover/activo del menú, caja de usuario) quedarían
-   invisibles — pasan a un gris-azulado claro (--color-surface-muted). */
-.theme-light .sidebar-brand .brand-mark,
-.theme-light .sidebar-nav-item:hover,
-.theme-light .sidebar-nav-item.active,
-.theme-light .sidebar-footer .session-box {
+/* El sidebar ahora es blanco puro en tema claro, así que la marca (logo)
+   quedaría invisible sobre ese blanco — pasa a un gris-azulado claro. */
+.theme-light .sidebar-brand .brand-mark {
   background: var(--color-surface-muted);
+}
+
+/* Caja de usuario/cerrar sesión: mismo azul (tinte del acento cian) que el
+   ítem activo del menú, a petición explícita. */
+.theme-light .sidebar-footer .session-box {
+  background: rgba(11, 147, 170, 0.16);
+}
+
+/* Hover/activo del menú: azul (tinte del acento cian de marca) en vez de
+   gris, a petición explícita — más identificable como "seleccionado". */
+.theme-light .sidebar-nav-item:hover {
+  background: rgba(11, 147, 170, 0.16);
+}
+
+.theme-light .sidebar-nav-item.active {
+  background: rgba(11, 147, 170, 0.26);
+  font-weight: 800;
 }
 
 .main {
