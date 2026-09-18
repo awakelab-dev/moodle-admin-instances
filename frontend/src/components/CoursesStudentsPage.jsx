@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import {
   getPlatforms,
@@ -82,11 +82,20 @@ export default function CoursesStudentsPage() {
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   // Sincronización completa de la plataforma (storage + matrícula/accesos/
   // calificaciones/foros de "Cursos y Alumnos", como una sola operación) —
-  // la misma que dispara el botón de Configuración. `syncStatus` guarda el
-  // paso/porcentaje actual mientras `syncRunning` es true.
-  const [syncRunning, setSyncRunning] = useState(false);
+  // la misma que dispara el botón de Configuración. `globalSync` es el
+  // estado CRUDO del backend (una sola sincronización a la vez, para toda
+  // la app, identificada por `platform_id`), sondeado continuamente sin
+  // importar qué plataforma se esté viendo — así, si la sync en curso es de
+  // OTRA plataforma, esta página lo sabe y no se la apropia visualmente ni
+  // deja cancelarla por error (bug encontrado en QA: navegar a otra
+  // plataforma mientras una sync seguía corriendo hacía que esta página
+  // mostrara su progreso como propio, y "Cancelar" cancelaba la de la otra).
+  // `syncStatus` solo se usa para mensajes de error explícitos.
+  const [globalSync, setGlobalSync] = useState(null);
   const [cancelingSync, setCancelingSync] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
+  const selectedPlatformIdRef = useRef(null);
+  const prevRunningPlatformIdRef = useRef(null);
 
   const [platformSearch, setPlatformSearch] = useState('');
   const [courseData, setCourseData] = useState(null);
@@ -163,6 +172,49 @@ export default function CoursesStudentsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    selectedPlatformIdRef.current = selectedPlatform?.id ?? null;
+  }, [selectedPlatform]);
+
+  // Sondeo continuo del estado de sincronización, independiente de qué
+  // plataforma se esté viendo o de quién la haya disparado (esta página,
+  // Configuración, u otra pestaña/persona) — así el botón "Sincronizar
+  // plataforma" siempre refleja el estado REAL de la plataforma que se está
+  // viendo, nunca el de otra. Cuando detecta que la sync de la plataforma
+  // que seguimos viendo acaba de terminar, refresca sus datos.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const status = await getSyncStatus();
+        if (cancelled) return;
+        setGlobalSync(status);
+
+        const finishedPlatformId =
+          prevRunningPlatformIdRef.current &&
+          (status?.status !== 'running' || status?.platform_id !== prevRunningPlatformIdRef.current)
+            ? prevRunningPlatformIdRef.current
+            : null;
+        prevRunningPlatformIdRef.current = status?.status === 'running' ? status.platform_id : null;
+
+        if (finishedPlatformId && finishedPlatformId === selectedPlatformIdRef.current) {
+          afterSyncFinished(finishedPlatformId);
+        }
+      } catch {
+        // Sondeo puntual fallido: no interrumpe la vista, se reintenta en el próximo tick.
+      }
+    }
+
+    poll();
+    const intervalId = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function openPlatform(platform) {
     setSelectedPlatform(platform);
     setCourseData(null);
@@ -181,25 +233,15 @@ export default function CoursesStudentsPage() {
       .finally(() => setCoursesLoading(false));
   }
 
-  // Sondea el progreso de la sincronización completa (misma que dispara
-  // Configuración) cada 2s hasta que deja de estar "running" — igual que
-  // ConfigPage.jsx's pollSyncStatus, pero global (no por plataforma).
-  async function pollSyncStatusHere() {
-    let status;
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      status = await getSyncStatus();
-      setSyncStatus(status);
-    } while (status?.status === 'running');
-    return status;
-  }
-
-  async function afterSyncFinished() {
+  // Se llama cuando el sondeo continuo detecta que la sync de `platformId`
+  // acaba de terminar — solo si seguimos viendo esa misma plataforma en ese
+  // momento (comprobado vía ref, no vía closure, porque el usuario pudo
+  // haber navegado a otra plataforma mientras la sync seguía corriendo).
+  async function afterSyncFinished(platformId) {
     invalidateCache('platforms');
-    // Refresca la plataforma seleccionada (para el "Última sincronización")
-    // y, si hay un curso abierto, sus informes ya recién sincronizados.
-    const platforms = await getPlatforms();
-    const refreshed = platforms.find((p) => p.id === selectedPlatform.id);
+    const platformsList = await getPlatforms();
+    if (selectedPlatformIdRef.current !== platformId) return;
+    const refreshed = platformsList.find((p) => p.id === platformId);
     if (refreshed) setSelectedPlatform(refreshed);
     if (selectedCourse) {
       loadAccessReport(selectedCourse.course_id);
@@ -207,36 +249,30 @@ export default function CoursesStudentsPage() {
     }
   }
 
+  const syncingThisPlatform = Boolean(
+    globalSync?.status === 'running' && selectedPlatform && globalSync?.platform_id === selectedPlatform.id,
+  );
+  const syncingOtherPlatform = Boolean(
+    globalSync?.status === 'running' && selectedPlatform && globalSync?.platform_id && globalSync.platform_id !== selectedPlatform.id,
+  );
+
   async function handleSyncCourses() {
-    if (!selectedPlatform || syncRunning) return;
-    setSyncRunning(true);
+    if (!selectedPlatform || syncingThisPlatform || syncingOtherPlatform) return;
     setSyncStatus(null);
     try {
-      try {
-        await triggerPlatformSync(selectedPlatform.id);
-      } catch (err) {
-        if (err.status !== 409) throw err;
-        // 409: ya hay una sincronización en curso — puede ser justo esta
-        // misma plataforma (p. ej. lanzada desde Configuración, nos
-        // limitamos a seguirle el progreso) o una plataforma DISTINTA, en
-        // cuyo caso no hay que esperar a que termine esa otra y darla por
-        // buena: hay que avisar y no tocar los datos de esta plataforma
-        // (antes se seguía el progreso de la que fuera sin comprobar el
-        // platform_id, y al terminar la otra sync el botón se reseteaba
-        // como si esta plataforma ya estuviera sincronizada).
-        const current = await getSyncStatus();
-        if (current?.platform_id !== selectedPlatform.id) {
-          throw new Error(
-            `Ya hay una sincronización en curso${current?.current_platform ? ` (${formatPlatformDisplayName(current.current_platform)})` : ''}. Espera a que termine e inténtalo de nuevo.`,
-          );
-        }
-      }
-      await pollSyncStatusHere();
-      await afterSyncFinished();
+      await triggerPlatformSync(selectedPlatform.id);
+      // Reflejo optimista inmediato — el sondeo continuo (arriba) lo
+      // confirmará/corregirá en el siguiente tick como muy tarde en 2s.
+      setGlobalSync({
+        status: 'running',
+        platform_id: selectedPlatform.id,
+        current_platform: selectedPlatform.name,
+        current_step: 'Iniciando sincronización',
+      });
+      prevRunningPlatformIdRef.current = selectedPlatform.id;
     } catch (err) {
+      if (err.status === 409) return; // carrera con otro disparo casi simultáneo; el sondeo ya lo reflejará
       setSyncStatus({ status: 'failed', sync_errors: [err.message] });
-    } finally {
-      setSyncRunning(false);
     }
   }
 
@@ -659,16 +695,32 @@ export default function CoursesStudentsPage() {
               {' '}En plataformas con muchos cursos puede tardar bastante (recorre alumno por alumno); es la misma
               sincronización que el botón de Configuración.
             </p>
-            <Button type="button" className="course-breakdown-sync-btn" onClick={handleSyncCourses} disabled={syncRunning}>
-              {syncRunning ? syncStatus?.current_step || 'Sincronizando…' : 'Sincronizar plataforma'}
+            <Button
+              type="button"
+              className="course-breakdown-sync-btn"
+              onClick={handleSyncCourses}
+              disabled={syncingThisPlatform || syncingOtherPlatform}
+            >
+              {syncingThisPlatform
+                ? globalSync?.current_step || 'Sincronizando…'
+                : 'Sincronizar plataforma'}
             </Button>
-            {syncRunning && (
+            {syncingThisPlatform && (
               <Button type="button" variant="outline" onClick={handleCancelSync} disabled={cancelingSync}>
                 {cancelingSync ? 'Cancelando…' : 'Cancelar sincronización'}
               </Button>
             )}
           </div>
-          {!syncRunning && syncStatus?.status === 'failed' && Boolean(syncStatus.sync_errors?.length) && (
+          {syncingOtherPlatform && (
+            <Alert>
+              <AlertDescription>
+                Hay una sincronización en curso en otra plataforma
+                {globalSync?.current_platform ? ` (${formatPlatformDisplayName(globalSync.current_platform)})` : ''}.
+                Este botón se habilitará cuando termine.
+              </AlertDescription>
+            </Alert>
+          )}
+          {!syncingThisPlatform && !syncingOtherPlatform && syncStatus?.status === 'failed' && Boolean(syncStatus.sync_errors?.length) && (
             <Alert variant="destructive">
               <AlertDescription>{syncStatus.sync_errors[syncStatus.sync_errors.length - 1]}</AlertDescription>
             </Alert>

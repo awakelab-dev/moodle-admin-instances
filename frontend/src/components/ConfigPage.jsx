@@ -265,12 +265,17 @@ export default function ConfigPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     try {
-      const normalizedMonthlyCharge = String(form.monthlyCharge ?? '').trim();
+      const trimmedMonthlyCharge = String(form.monthlyCharge ?? '').trim();
 
-      if (normalizedMonthlyCharge && Number(normalizedMonthlyCharge) < 0) {
+      if (trimmedMonthlyCharge && Number(trimmedMonthlyCharge) < 0) {
         flash('El monto mensual debe ser mayor o igual a 0.', 'error');
         return;
       }
+
+      // El backend espera monthlyCharge como número (o ausente si no se
+      // configuró ninguno) — el campo del formulario siempre llega como
+      // string, así que hay que convertirlo antes de enviarlo.
+      const normalizedMonthlyCharge = trimmedMonthlyCharge ? Number(trimmedMonthlyCharge) : undefined;
 
       if (editingId !== null) {
         const payload = {
