@@ -36,6 +36,15 @@ $tasks = [
         'dayofweek' => '*',
     ],
     [
+        'classname' => '\\local_courseprogressnotify\\task\\check_progress_75',
+        'blocking'  => 0,
+        'minute'    => 'R',
+        'hour'      => '3',
+        'day'       => '*',
+        'month'     => '*',
+        'dayofweek' => '*',
+    ],
+    [
         'classname' => '\\local_courseprogressnotify\\task\\check_course_end_soon',
         'blocking'  => 0,
         'minute'    => '15',

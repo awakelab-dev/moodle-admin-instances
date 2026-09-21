@@ -17,6 +17,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Notificacions de progrés de curs';
+$string['settings:insights_heading'] = 'Connexió amb Moodle Insights';
+$string['settings:insights_heading_desc'] = 'Quins disparadors estan actius i quina plantilla fa servir cadascun es configura des de Moodle Insights, secció "Gestió de Notificacions" — no aquí. Aquest plugin només necessita saber com connectar-se.';
+$string['settings:insights_url'] = 'URL de Moodle Insights';
+$string['settings:insights_url_desc'] = 'Ex: https://moodle-dashboard.awakelab.world (sense barra final).';
+$string['settings:insights_api_key'] = 'API key de notificacions';
+$string['settings:insights_api_key_desc'] = 'Generada des de Moodle Insights, a Configuració > Plataformes > Gestió de Notificacions, per a aquesta plataforma en concret.';
 
 // Custom field settings.
 $string['customfield_shortname'] = 'Nom curt del camp personalitzat';
@@ -25,6 +31,7 @@ $string['customfield_shortname_desc'] = 'Introduïu el nom curt del camp persona
 // Scheduled task names.
 $string['task_check_progress_25'] = 'Notificació de progrés 25%';
 $string['task_check_progress_50'] = 'Notificació de progrés 50%';
+$string['task_check_progress_75'] = 'Notificació de progrés 75%';
 $string['task_check_course_end_soon'] = 'Avís: 7 dies abans de finalitzar el curs';
 $string['task_check_course_last_day'] = 'Avís: darrer dia del curs';
 $string['task_check_zoom_sessions'] = 'Recordatoris de sessions Zoom';
@@ -68,6 +75,7 @@ $string['coursespage:title'] = 'Plugin: Notificaciones';
 $string['coursespage:desc'] = 'Configura el mode «només diploma» i executa enviaments manuals per curs. Els canvis dels toggles es desen en fer clic a Desa.';
 $string['coursespage:saved'] = 'Configuració desada correctament.';
 $string['local/courseprogressnotify:managecourses'] = 'Gestionar la configuració de notificacions per curs';
+$string['local/courseprogressnotify:run'] = 'Executar manualment les verificacions de notificacions';
 $string['run_now_button'] = 'Verificar notificacions ara';
 $string['run_now_done'] = 'La verificació s\'ha executat correctament.';
 $string['run_now_error'] = 'S\'ha produït un error durant l\'execució:';

@@ -22,6 +22,7 @@ use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\progress_calculator;
 use local_courseprogressnotify\notification_log;
+use local_courseprogressnotify\insights_client;
 
 /**
  * Task to notify users when they reach 25% progress.
@@ -42,6 +43,17 @@ class check_progress_25 extends scheduled_task {
     public function execute() {
         global $DB;
         mtrace('=== Running task: progress 25% ===');
+
+        // La plantilla y si este disparador está activo o no se controla
+        // desde Moodle Insights (Gestión de Notificaciones), no aquí — si
+        // no hay nada configurado ahí, no se envía ningún email, sin
+        // importar qué cursos tengan el campo personalizado marcado.
+        $config = insights_client::get_config();
+        if (empty($config['progress_25']['template'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "progress_25"; no se enviará ningún email.');
+            return;
+        }
+        $template = $config['progress_25']['template'];
 
         $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
         
@@ -81,6 +93,7 @@ class check_progress_25 extends scheduled_task {
 
         $processedcount = 0;
         $sentcount = 0;
+        $results = [];
 
         // Filter out diploma-only courses (they should only receive the diploma email).
         $diplomaonlyids = notification_log::get_diploma_only_course_ids();
@@ -123,7 +136,13 @@ class check_progress_25 extends scheduled_task {
                         'progress_table' => progress_calculator::build_progress_table_html($course, $user),
                         'image_progress_25' => $imgurl->out(false),
                     ];
-                    $result = email_builder::send($user, $course, '25', $placeholders, 'progress_25');
+                    $result = email_builder::send_from_template($user, $course, $template, $placeholders, 'progress_25');
+                    $results[] = [
+                        'trigger' => 'progress_25',
+                        'courseId' => (int)$course->id,
+                        'userId' => (int)$user->id,
+                        'success' => $result,
+                    ];
                     if ($result) {
                         $sentcount++;
                     }
@@ -132,7 +151,8 @@ class check_progress_25 extends scheduled_task {
                 }
             }
         }
-        
+
+        insights_client::report_log($results);
         mtrace("\n=== Summary: Processed {$processedcount} student(s), sent {$sentcount} email(s) ===");
     }
 

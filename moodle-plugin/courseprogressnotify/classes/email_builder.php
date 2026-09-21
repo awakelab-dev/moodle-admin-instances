@@ -112,6 +112,64 @@ class email_builder {
     }
 
     /**
+     * Igual que send(), pero con el asunto/cuerpo YA resueltos desde
+     * Moodle Insights (ver insights_client::get_config()) en vez de leer
+     * get_string('email_{$key}_subject'/'_body') de este plugin. El resto
+     * del comportamiento es idéntico: deduplicación local, validación de
+     * email, placeholders, envío con email_to_user() y registro en el log
+     * local — el modo "combinado es+ca" y el resto de settings antiguos
+     * de idioma NO aplican aquí, porque la plantilla ya viene en un solo
+     * idioma concreto (template['language']) elegido desde el dashboard.
+     *
+     * @param \stdClass $user Recipient user
+     * @param \stdClass $course Course
+     * @param array $template ['language'=>string,'subject'=>string,'bodyHtml'=>string]
+     * @param array $placeholders Placeholder mapping
+     * @param string $notificationtype Type for the log table
+     * @param int|null $entityid Optional related entity id for de-duplication
+     * @return bool
+     */
+    public static function send_from_template(\stdClass $user, \stdClass $course, array $template, array $placeholders,
+                                string $notificationtype, ?int $entityid = null): bool {
+        global $CFG;
+        require_once($CFG->libdir . '/weblib.php');
+
+        mtrace("  → Checking notification for user {$user->id} ({$user->email}), type: {$notificationtype}");
+
+        if (notification_log::has_sent($user->id, $course->id, $notificationtype, $entityid)) {
+            mtrace("    ✓ Already sent (skipping)");
+            return false;
+        }
+
+        if (empty($user->email) || !validate_email($user->email)) {
+            mtrace("    ✗ Invalid or missing email address: {$user->email}");
+            return false;
+        }
+
+        $placeholders['firstname'] = $placeholders['firstname'] ?? $user->firstname;
+        $placeholders['lastname']  = $placeholders['lastname'] ?? $user->lastname;
+        $placeholders['coursename'] = $placeholders['coursename'] ?? format_string($course->fullname, true, ['context' => \context_course::instance($course->id)]);
+        $placeholders['campus_url'] = $placeholders['campus_url'] ?? (new moodle_url('/'))->out(false);
+
+        $subject = self::replace_placeholders((string)($template['subject'] ?? ''), $placeholders);
+        $bodyhtml = self::replace_placeholders((string)($template['bodyHtml'] ?? ''), $placeholders);
+        $bodytext = html_to_text($bodyhtml);
+
+        $from = \core_user::get_support_user();
+
+        mtrace("    → Sending email (plantilla de Moodle Insights): {$subject}");
+        $sent = email_to_user($user, $from, $subject, $bodytext, $bodyhtml);
+
+        if ($sent) {
+            notification_log::log_sent($user->id, $course->id, $notificationtype, $entityid);
+            mtrace("    ✓ Email sent successfully");
+        } else {
+            mtrace("    ✗ email_to_user() returned false - check Moodle email configuration");
+        }
+        return $sent;
+    }
+
+    /**
      * Replace {{placeholder}} occurrences with provided values.
      *
      * @param string $template

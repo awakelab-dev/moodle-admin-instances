@@ -14,8 +14,9 @@ import { NOTIFICATION_TRIGGERS } from './notification-triggers.constants';
 // local_courseprogressnotify de cada plataforma — qué disparadores están
 // activos, qué plantilla usa cada uno y el registro de qué se envió. Ver
 // NOTIFICATIONS_INTEGRATION_PLAN.md (raíz del repo) para la arquitectura
-// completa. El plugin nunca ve datos de otras plataformas: cada llamada
-// suya viene con su propio platformId + API key (PlatformApiKeyGuard).
+// completa. El plugin nunca ve datos de otras plataformas: su API key
+// (formato "<platformId>.<secreto>") identifica la plataforma por sí sola
+// (ver PlatformApiKeyGuard), sin necesidad de un campo platformId aparte.
 @Injectable()
 export class NotificationsService {
   constructor(private prisma: PrismaService) {}
@@ -113,7 +114,10 @@ export class NotificationsService {
     const platform = await this.prisma.platform.findUnique({ where: { id: platformId } });
     if (!platform) throw new NotFoundException('Plataforma no encontrada.');
 
-    const plainKey = randomBytes(32).toString('hex');
+    // "<platformId>.<secreto>": el guard extrae el platformId de aquí
+    // mismo, así el plugin no necesita guardar el id como un campo aparte
+    // (ver PlatformApiKeyGuard).
+    const plainKey = `${platformId}.${randomBytes(32).toString('hex')}`;
     const hash = await bcrypt.hash(plainKey, 10);
     await this.prisma.platform.update({ where: { id: platformId }, data: { notificationsApiKeyHash: hash } });
     return { apiKey: plainKey };

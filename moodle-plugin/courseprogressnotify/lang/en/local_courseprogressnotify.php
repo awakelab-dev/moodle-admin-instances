@@ -17,6 +17,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Course progress notifications';
+$string['settings:insights_heading'] = 'Connection to Moodle Insights';
+$string['settings:insights_heading_desc'] = 'Which triggers are active and which template each one uses is configured from Moodle Insights, "Notification Management" section — not here. This plugin only needs to know how to connect.';
+$string['settings:insights_url'] = 'Moodle Insights URL';
+$string['settings:insights_url_desc'] = 'E.g.: https://moodle-dashboard.awakelab.world (no trailing slash).';
+$string['settings:insights_api_key'] = 'Notifications API key';
+$string['settings:insights_api_key_desc'] = 'Generated from Moodle Insights, under Configuration > Platforms > Notification Management, for this specific platform.';
 
 // Custom field settings.
 $string['customfield_shortname'] = 'Custom field shortname';
@@ -25,6 +31,7 @@ $string['customfield_shortname_desc'] = 'Enter the shortname of the course custo
 // Scheduled task names.
 $string['task_check_progress_25'] = 'Progress notification 25%';
 $string['task_check_progress_50'] = 'Progress notification 50%';
+$string['task_check_progress_75'] = 'Progress notification 75%';
 $string['task_check_course_end_soon'] = 'Reminder: 7 days before course end';
 $string['task_check_course_last_day'] = 'Reminder: last day of course';
 $string['task_check_zoom_sessions'] = 'Zoom session reminders';
@@ -68,6 +75,7 @@ $string['coursespage:title'] = 'Plugin: Notificaciones';
 $string['coursespage:desc'] = 'Configure diploma-only mode and trigger manual sends per course. Toggle changes are saved when you click Save.';
 $string['coursespage:saved'] = 'Course settings saved successfully.';
 $string['local/courseprogressnotify:managecourses'] = 'Manage per-course notification settings';
+$string['local/courseprogressnotify:run'] = 'Manually run notification checks';
 $string['run_now_button'] = 'Run Now';
 $string['run_now_done'] = 'Verification completed successfully.';
 $string['run_now_error'] = 'An error occurred while running:';

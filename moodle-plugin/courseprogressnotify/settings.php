@@ -41,6 +41,34 @@ if ($hassiteconfig) {
         $versioninfo
     ));
 
+    // ── Conexión con Moodle Insights ───────────────────────────────────────
+    // Qué disparadores están activos y qué plantilla usa cada uno (progreso
+    // 25/50/75%, etc.) ya NO se configura aquí — se controla desde Moodle
+    // Insights, sección "Gestión de Notificaciones". Este plugin solo
+    // necesita saber cómo conectarse: la URL de esa app y una API key
+    // (generada desde Configuración > Plataformas > Gestión de
+    // Notificaciones allá, con formato "<platformId>.<secreto>").
+    $settings->add(new admin_setting_heading(
+        'local_courseprogressnotify_insights_heading',
+        get_string('settings:insights_heading', 'local_courseprogressnotify'),
+        get_string('settings:insights_heading_desc', 'local_courseprogressnotify')
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_courseprogressnotify/insights_url',
+        get_string('settings:insights_url', 'local_courseprogressnotify'),
+        get_string('settings:insights_url_desc', 'local_courseprogressnotify'),
+        '',
+        PARAM_URL
+    ));
+
+    $settings->add(new admin_setting_configpasswordunmask(
+        'local_courseprogressnotify/insights_api_key',
+        get_string('settings:insights_api_key', 'local_courseprogressnotify'),
+        get_string('settings:insights_api_key_desc', 'local_courseprogressnotify'),
+        ''
+    ));
+
     // Days before Zoom session to send invitation reminder.
     $settings->add(new admin_setting_configtext(
         'local_courseprogressnotify/zoomdaysbefore',

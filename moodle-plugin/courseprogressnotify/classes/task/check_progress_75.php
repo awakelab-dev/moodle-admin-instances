@@ -10,9 +10,13 @@ use local_courseprogressnotify\notification_log;
 use local_courseprogressnotify\insights_client;
 
 /**
- * Task to notify users when they reach 50% progress.
+ * Task to notify users when they reach 75% progress.
+ *
+ * Disparador nuevo, añadido junto con la integración con Moodle Insights —
+ * antes el plugin solo tenía 25%/50%. Misma estructura que
+ * check_progress_50, con el umbral cambiado.
  */
-class check_progress_50 extends scheduled_task {
+class check_progress_75 extends scheduled_task {
 
     /** @var int When > 0, only process this specific course ID. */
     protected $targetcourseid = 0;
@@ -22,39 +26,39 @@ class check_progress_50 extends scheduled_task {
     }
 
     public function get_name() {
-        return get_string('task_check_progress_50', 'local_courseprogressnotify');
+        return get_string('task_check_progress_75', 'local_courseprogressnotify');
     }
 
     public function execute() {
         global $DB;
-        mtrace('=== Running task: progress 50% ===');
+        mtrace('=== Running task: progress 75% ===');
 
         // La plantilla y si este disparador está activo o no se controla
         // desde Moodle Insights (Gestión de Notificaciones), no aquí.
         $config = insights_client::get_config();
-        if (empty($config['progress_50']['template'])) {
-            mtrace('✗ Sin plantilla configurada en Moodle Insights para "progress_50"; no se enviará ningún email.');
+        if (empty($config['progress_75']['template'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "progress_75"; no se enviará ningún email.');
             return;
         }
-        $template = $config['progress_50']['template'];
+        $template = $config['progress_75']['template'];
 
         $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
-        
+
         if (empty($customfieldshortname)) {
             mtrace('✗ No custom field configured; skipping.');
             return;
         }
-        
+
         mtrace("✓ Using custom field: {$customfieldshortname}");
 
         $courses = $DB->get_records('course', ['visible' => 1, 'enablecompletion' => 1], '', 'id, fullname, enddate, startdate, category');
         $now = time();
-        
+
         // Filter courses based on custom field.
         $courses = array_filter($courses, function($course) use ($customfieldshortname) {
             return $this->is_course_enabled($course->id, $customfieldshortname);
         });
-        
+
         $coursecount = count($courses);
         mtrace("Found {$coursecount} eligible course(s) with completion enabled");
 
@@ -91,33 +95,31 @@ class check_progress_50 extends scheduled_task {
                 mtrace("  Skipping course {$course->id} ({$course->fullname}): ended > 120 days ago");
                 continue;
             }
-            
+
             mtrace("\nProcessing course {$course->id}: {$course->fullname}");
             $students = $this->get_course_students($course->id);
             $studentcount = count($students);
             mtrace("  Found {$studentcount} enrolled student(s)");
-            
+
             if (empty($students)) { continue; }
 
             foreach ($students as $user) {
                 $processedcount++;
-                if (notification_log::has_sent($user->id, $course->id, 'progress_50')) {
+                if (notification_log::has_sent($user->id, $course->id, 'progress_75')) {
                     mtrace("  User {$user->id} ({$user->email}): already notified");
                     continue;
                 }
                 $percent = progress_calculator::get_progress_percentage($course, $user);
                 mtrace("  User {$user->id} ({$user->email}): progress = {$percent}%");
-                if ($percent >= 50.0) {
-                    $imgurl = new \moodle_url('/local/courseprogressnotify/pix/email_progress_report_50.png');
+                if ($percent >= 75.0) {
                     $placeholders = [
                         'progress_percentage' => (string)$percent,
                         'courseenddate' => $this->format_date_for_user($user, $course->enddate),
                         'progress_table' => progress_calculator::build_progress_table_html($course, $user),
-                        'image_progress_50' => $imgurl->out(false),
                     ];
-                    $result = email_builder::send_from_template($user, $course, $template, $placeholders, 'progress_50');
+                    $result = email_builder::send_from_template($user, $course, $template, $placeholders, 'progress_75');
                     $results[] = [
-                        'trigger' => 'progress_50',
+                        'trigger' => 'progress_75',
                         'courseId' => (int)$course->id,
                         'userId' => (int)$user->id,
                         'success' => $result,
@@ -126,7 +128,7 @@ class check_progress_50 extends scheduled_task {
                         $sentcount++;
                     }
                 } else {
-                    mtrace("  → Below 50% threshold, skipping");
+                    mtrace("  → Below 75% threshold, skipping");
                 }
             }
         }
@@ -163,17 +165,17 @@ class check_progress_50 extends scheduled_task {
      */
     private function is_course_enabled($courseid, $customfieldshortname) {
         global $DB;
-        
+
         $field = $DB->get_record('customfield_field', ['shortname' => $customfieldshortname]);
         if (!$field) {
             return false;
         }
-        
+
         $data = $DB->get_record('customfield_data', [
             'fieldid' => $field->id,
             'instanceid' => $courseid
         ]);
-        
+
         // Return true only if the custom field is explicitly set to 1 (checked).
         return $data && $data->value == 1;
     }

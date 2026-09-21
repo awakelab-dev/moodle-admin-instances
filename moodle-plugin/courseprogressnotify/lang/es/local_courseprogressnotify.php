@@ -17,6 +17,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Notificaciones de progreso de curso';
+$string['settings:insights_heading'] = 'Conexión con Moodle Insights';
+$string['settings:insights_heading_desc'] = 'Qué disparadores están activos y qué plantilla usa cada uno se configura desde Moodle Insights, sección "Gestión de Notificaciones" — no aquí. Este plugin solo necesita saber cómo conectarse.';
+$string['settings:insights_url'] = 'URL de Moodle Insights';
+$string['settings:insights_url_desc'] = 'Ej: https://moodle-dashboard.awakelab.world (sin barra final).';
+$string['settings:insights_api_key'] = 'API key de notificaciones';
+$string['settings:insights_api_key_desc'] = 'Generada desde Moodle Insights, en Configuración > Plataformas > Gestión de Notificaciones, para esta plataforma en concreto.';
 
 // Custom field settings.
 $string['customfield_shortname'] = 'Nombre corto del campo personalizado';
@@ -25,6 +31,7 @@ $string['customfield_shortname_desc'] = 'Introduzca el nombre corto del campo pe
 // Scheduled task names.
 $string['task_check_progress_25'] = 'Notificación de progreso 25%';
 $string['task_check_progress_50'] = 'Notificación de progreso 50%';
+$string['task_check_progress_75'] = 'Notificación de progreso 75%';
 $string['task_check_course_end_soon'] = 'Aviso: 7 días antes de finalizar el curso';
 $string['task_check_course_last_day'] = 'Aviso: último día del curso';
 $string['task_check_zoom_sessions'] = 'Recordatorios de sesiones Zoom';
@@ -68,6 +75,7 @@ $string['coursespage:title'] = 'Plugin: Notificaciones';
 $string['coursespage:desc'] = 'Configura el modo «solo diploma» y ejecuta envíos manuales por curso. Los cambios de los toggles se guardan al hacer clic en Guardar.';
 $string['coursespage:saved'] = 'Configuración guardada correctamente.';
 $string['local/courseprogressnotify:managecourses'] = 'Gestionar la configuración de notificaciones por curso';
+$string['local/courseprogressnotify:run'] = 'Ejecutar manualmente las verificaciones de notificaciones';
 $string['run_now_button'] = 'Verificar Notificaciones Ahora';
 $string['run_now_done'] = 'La verificación se ejecutó correctamente.';
 $string['run_now_error'] = 'Se produjo un error durante la ejecución:';
