@@ -3,7 +3,7 @@
 // vistas (sin react-router, solo estado local `view`) y el sidebar con sus
 // tres categorías colapsables.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users, Sun, Moon } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users, Sun, Moon, Bell } from 'lucide-react';
 import {
   clearAuthSession,
   getCurrentUser,
@@ -22,6 +22,7 @@ const Dashboard = lazy(() => import('./components/Dashboard'));
 const GlobalPanel = lazy(() => import('./components/GlobalPanel'));
 const InsightsPage = lazy(() => import('./components/InsightsPage'));
 const CoursesStudentsPage = lazy(() => import('./components/CoursesStudentsPage'));
+const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
 const ConfigPage = lazy(() => import('./components/ConfigPage'));
 const UsersPage = lazy(() => import('./components/UsersPage'));
 const ROLE_LABELS = {
@@ -158,7 +159,7 @@ export default function App() {
   // usuario "limited" tuviera alguna de estas vistas en su estado (p. ej.
   // quedó guardada de una sesión anterior con otro rol), se le manda al
   // Dashboard en vez de dejarle ver una pantalla a la que no debería llegar.
-  const ADMIN_ONLY_VIEWS = new Set(['global', 'detail', 'config', 'users']);
+  const ADMIN_ONLY_VIEWS = new Set(['global', 'detail', 'config', 'users', 'notifications']);
   const resolvedView = !isAdmin && ADMIN_ONLY_VIEWS.has(view)
     ? 'insights'
     : view === 'detail' && !selectedPlatform ? 'global' : view;
@@ -211,6 +212,7 @@ export default function App() {
       />
     ),
     'courses-students': <CoursesStudentsPage />,
+    notifications: <NotificationsPage />,
     config: <ConfigPage />,
     users: <UsersPage />,
   };
@@ -312,6 +314,16 @@ export default function App() {
                 <GraduationCap size={16} />
                 Cursos y Alumnos
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className={`sidebar-nav-item ${resolvedView === 'notifications' ? 'active' : ''}`}
+                  onClick={() => setView('notifications')}
+                >
+                  <Bell size={16} />
+                  Gestión de Notificaciones
+                </button>
+              )}
             </div>
           )}
 

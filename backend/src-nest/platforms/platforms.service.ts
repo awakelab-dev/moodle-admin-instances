@@ -152,6 +152,7 @@ export class PlatformsService {
       currency: p.currency,
       isActive: p.isActive,
       hasFinancialConfig: p.monthlyCharge !== null,
+      hasNotificationsApiKey: !!p.notificationsApiKeyHash,
       lastSyncedAt: p.lastSyncedAt,
       coursesLastSyncedAt: p.coursesLastSyncedAt,
     }));

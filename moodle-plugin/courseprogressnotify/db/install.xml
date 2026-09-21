@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XMLDB PATH="local/courseprogressnotify/db" VERSION="2025122200" COMMENT="Install XML for local_courseprogressnotify" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://moodle.org/xmldb/xmldb.xsd">
+    <TABLES>
+        <!-- Notification log table: prevents duplicate emails and records sends -->
+        <TABLE NAME="local_courseprogressnotify_log" COMMENT="Log of notifications sent to users">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="notification_type" TYPE="char" LENGTH="64" NOTNULL="true"/>
+                <FIELD NAME="entityid" TYPE="int" LENGTH="10" NOTNULL="false"/>
+                <FIELD NAME="time_sent" TYPE="int" LENGTH="10" NOTNULL="true"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="log_user_type_course_entity_uix" UNIQUE="true" FIELDS="userid, courseid, notification_type, entityid"/>
+                <INDEX NAME="log_user_idx" UNIQUE="false" FIELDS="userid"/>
+                <INDEX NAME="log_course_idx" UNIQUE="false" FIELDS="courseid"/>
+                <INDEX NAME="log_type_idx" UNIQUE="false" FIELDS="notification_type"/>
+            </INDEXES>
+        </TABLE>
+
+        <!-- Presential sessions table: exams and tutoring -->
+        <TABLE NAME="local_courseprogressnotify_sess" COMMENT="Presential sessions (exam, tutoring)">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="type" TYPE="char" LENGTH="10" NOTNULL="true" COMMENT="exam|tutoring"/>
+                <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
+                <FIELD NAME="location" TYPE="char" LENGTH="255" NOTNULL="true"/>
+                <FIELD NAME="starttime" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="endtime" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="visible" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="sess_course_idx" UNIQUE="false" FIELDS="courseid"/>
+                <INDEX NAME="sess_visible_idx" UNIQUE="false" FIELDS="visible"/>
+                <INDEX NAME="sess_type_idx" UNIQUE="false" FIELDS="type"/>
+                <INDEX NAME="sess_start_idx" UNIQUE="false" FIELDS="starttime"/>
+            </INDEXES>
+        </TABLE>
+    </TABLES>
+</XMLDB>

@@ -188,3 +188,28 @@ export const getUsers = () => request('/users', { cache: 'no-store' });
 export const createUser = (data) => request('/users', { method: 'POST', body: JSON.stringify(data) });
 export const updateUser = (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteUser = (id) => request(`/users/${id}`, { method: 'DELETE' });
+
+/* ─── Notificaciones (Gestión de Notificaciones, solo superadmin) ─── */
+export const getNotificationTriggers = () => request('/notifications/triggers', { cache: 'no-store' });
+export const getNotificationTemplates = () => request('/notifications/templates', { cache: 'no-store' });
+export const createNotificationTemplate = (data) =>
+  request('/notifications/templates', { method: 'POST', body: JSON.stringify(data) });
+export const updateNotificationTemplate = (id, data) =>
+  request(`/notifications/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteNotificationTemplate = (id) => request(`/notifications/templates/${id}`, { method: 'DELETE' });
+export const getNotificationRules = () => request('/notifications/rules', { cache: 'no-store' });
+export const upsertNotificationRule = (data) =>
+  request('/notifications/rules', { method: 'POST', body: JSON.stringify(data) });
+export const deleteNotificationRule = (id) => request(`/notifications/rules/${id}`, { method: 'DELETE' });
+export const getNotificationDeliveryLog = (params = {}) =>
+  request(buildPath('/notifications/delivery-log', params), { cache: 'no-store' });
+export const generateNotificationsApiKey = (platformId) =>
+  request(`/notifications/platforms/${platformId}/api-key`, { method: 'POST' }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });
+export const revokeNotificationsApiKey = (platformId) =>
+  request(`/notifications/platforms/${platformId}/api-key`, { method: 'DELETE' }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });

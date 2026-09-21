@@ -39,13 +39,112 @@ model Platform {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  // Credencial dedicada para que el plugin local_courseprogressnotify (que
+  // corre DENTRO de esta plataforma) llame de vuelta a nuestra API —
+  // direccion inversa al `token` de arriba (que es para que NOSOTROS
+  // llamemos al Web Service de Moodle). Null hasta que se genera desde
+  // Configuracion; se guarda ya hasheada, igual que una contrasena.
+  notificationsApiKeyHash String? @map("notifications_api_key_hash")
+
   courses     Course[]
   users       MoodleUser[]
   snapshots   PlatformSnapshot[]
   enrollments CourseEnrollment[]
   userAccess  UserPlatformAccess[]
+  notificationRules NotificationRule[]
+  notificationDeliveryLogs NotificationDeliveryLog[]
 
   @@map("platforms")
+}
+
+enum NotificationTrigger {
+  progress_25
+  progress_50
+  progress_75
+  course_end_soon
+  course_last_day
+  zoom_session
+  presential_exam
+  presential_tutoring
+  diploma_available
+  first_day
+  second_day
+
+  @@map("notification_trigger")
+}
+
+// Plantilla de email (asunto + cuerpo con placeholders {{var}}), por
+// idioma. Una NotificationRule la asocia a un disparador concreto.
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  language  String   @default("es") // es | ca | en
+  subject   String
+  bodyHtml  String   @map("body_html")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  rules NotificationRule[]
+
+  @@map("notification_templates")
+}
+
+// Asocia un disparador con la plantilla que debe usar. platformId null =
+// regla global (aplica a toda plataforma que no tenga una regla mas
+// especifica para ese mismo trigger). La unicidad real (a lo sumo una
+// regla especifica por trigger+plataforma, a lo sumo una global por
+// trigger) se aplica con DOS indices unicos parciales en la migracion
+// (ver migration.sql), no con un @@unique de Prisma: Postgres trata cada
+// NULL como distinto de si mismo en una unique constraint normal, asi que
+// un @@unique([trigger, platformId]) NO evitaria dos reglas globales
+// duplicadas para el mismo trigger (platformId siempre NULL ahi).
+model NotificationRule {
+  id         String              @id @default(uuid())
+  trigger    NotificationTrigger
+  platformId String?             @map("platform_id")
+  platform   Platform?           @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  templateId String              @map("template_id")
+  template   NotificationTemplate @relation(fields: [templateId], references: [id])
+  isActive   Boolean             @default(true) @map("is_active")
+  // Parametros propios del trigger (umbral de progreso, dias de
+  // antelacion, palabras clave de deteccion presencial, etc.) — cada
+  // trigger define su propia forma esperada, validada en el servicio, no
+  // en el schema.
+  params     Json                @default("{}")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  @@index([trigger, platformId])
+  @@map("notification_rules")
+}
+
+// Reemplaza/centraliza el log que hoy vive aislado en cada Moodle
+// (local_courseprogressnotify_log): un registro por cada intento de envio
+// que el plugin reporta despues de intentarlo. courseId/userId son ids de
+// Moodle (no unicos entre plataformas), por eso el indice unico de
+// deduplicacion siempre incluye platformId.
+model NotificationDeliveryLog {
+  id           String              @id @default(uuid())
+  platformId   String              @map("platform_id")
+  platform     Platform            @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  trigger      NotificationTrigger
+  courseId     Int                 @map("course_id")
+  userId       Int                 @map("user_id")
+  // Id de la entidad asociada cuando aplica (evento de calendario para
+  // presencial, sesion de Zoom, etc.) — '' (NO null) para triggers sin
+  // entidad propia (progreso, fin de curso, diploma, primer/segundo dia):
+  // el @@unique de abajo lo incluye, y NULL no es igual a si mismo en una
+  // unique constraint normal de Postgres, asi que null habria permitido
+  // duplicados exactos ahi (mismo fallo que se evito en NotificationRule,
+  // pero aqui con string vacio en vez de indices parciales porque no hay
+  // semantica global/especifico que resolver, solo "sin entidad").
+  entityId     String              @default("") @map("entity_id")
+  success      Boolean
+  errorMessage String?             @map("error_message")
+  sentAt       DateTime            @default(now()) @map("sent_at")
+
+  @@unique([platformId, trigger, courseId, userId, entityId])
+  @@map("notification_delivery_log")
 }
 
 model Course {

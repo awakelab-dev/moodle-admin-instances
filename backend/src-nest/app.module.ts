@@ -8,6 +8,7 @@ import { PlatformsModule } from './platforms/platforms.module';
 import { SyncModule } from './sync/sync.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { UsersModule } from './users/users.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AppController } from './app.controller';
@@ -28,6 +29,7 @@ import { AppController } from './app.controller';
     SyncModule,
     DashboardModule,
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

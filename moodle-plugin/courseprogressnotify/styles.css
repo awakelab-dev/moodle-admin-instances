@@ -1,0 +1,18 @@
+/* Make the primary nav <ul> expand so margin-left: auto can push our item right */
+.primary-navigation ul.navbar-nav,
+nav.primary-navigation .navbar-nav {
+    flex: 1 1 auto;
+}
+
+/* Push the per-course settings nav item to the right of the primary nav bar */
+li[data-key="local_courseprogressnotify_courses"] {
+    margin-left: auto;
+}
+
+/* Add a gear icon before the link text using Font Awesome 6 (bundled in Moodle 4.4) */
+li[data-key="local_courseprogressnotify_courses"] .nav-link::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f013";
+    margin-right: 0.3rem;
+}
