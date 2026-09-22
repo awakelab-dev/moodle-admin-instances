@@ -265,8 +265,43 @@ provider, `db/upgrade.php`) ya que se va a tocar el plugin de todas formas.
 
 ---
 
-*Este documento es un plan de arquitectura, no una implementación. El
-código del plugin auditado permanece intacto (no se modificó nada) en
-`courseprogressnotify v2.9.0 1/courseprogressnotify`. Próximo paso sugerido:
-confirmar las decisiones pendientes arriba y empezar por la Fase 0 (fix
-crítico) + Fase 1 (progreso 25/50/75%).*
+## 5. Estado real — Fase 0 y Fase 1 (2026-09-21/22)
+
+**Completadas e implementadas** (código en `moodle-plugin/courseprogressnotify/`
+y `backend/src-nest/notifications/`, commits `0878825` y anteriores):
+- Fase 0: fix del bug crítico de `version.php`.
+- Fase 1: módulo backend completo (plantillas, reglas, log de entrega, API
+  key por plataforma con formato `<platformId>.<secreto>`), pestaña
+  "Gestión de Notificaciones" en el frontend, y `check_progress_25`/`50`
+  adaptadas + `check_progress_75` (nueva) en el plugin.
+
+**Verificado end-to-end de verdad**, no solo por partes: se montó un Moodle
+4.5 de prueba en local (sin Docker — WSL no se pudo actualizar por falta
+de permisos de administrador; se usó PHP nativo de Windows +
+`admin/cli/install_database.php` + servidor embebido de PHP + un
+capturador SMTP mínimo en Node), con el plugin instalado y conectado al
+backend local. Se creó un curso de prueba, se llegó al 100% de progreso,
+se ejecutó `check_progress_75` por CLI (`admin/cli/scheduled_task.php`) y
+se confirmó: (1) el plugin pidió correctamente la configuración a la API,
+(2) el email se construyó con la plantilla del dashboard y los
+placeholders sustituidos de verdad (`{{firstname}}`, `{{progress_percentage}}`,
+`{{coursename}}`), (3) el envío quedó registrado en el Seguimiento del
+dashboard. Entorno de prueba descartable, eliminado tras la verificación.
+
+**Importante — esto NO significa que ya se envíen emails reales.** Todo lo
+anterior corrió contra un Moodle de prueba aislado y un backend local. Para
+que funcione en producción falta, y depende del instructor:
+1. Desplegar el código del plugin (ya commiteado) a las plataformas reales.
+2. Instalar/actualizar el plugin en cada plataforma e configurar ahí su URL
+   de Moodle Insights real + su API key (generada desde el dashboard de
+   producción, no el local).
+3. Aplicar la migración de base de datos nueva en la BD de producción.
+4. Crear de verdad las plantillas y activar los disparadores desde el
+   dashboard de producción — las usadas en la prueba solo existen en la
+   base de datos local de desarrollo, son datos, no se despliegan con el
+   código.
+
+---
+
+*Próximo paso: Fase 2 (migrar el resto de disparadores — fin de curso,
+Zoom, presencial, diploma, primer/segundo día — al mismo patrón).*
