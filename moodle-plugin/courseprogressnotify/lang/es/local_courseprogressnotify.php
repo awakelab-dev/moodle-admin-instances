@@ -17,26 +17,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Notificaciones de progreso de curso';
-
-// Privacy provider (GDPR).
-$string['privacy:metadata:local_courseprogressnotify_log'] = 'Registro de emails de notificación enviados a cada usuario (progreso, sesiones, diploma, etc.).';
-$string['privacy:metadata:local_courseprogressnotify_log:userid'] = 'ID del usuario que recibió la notificación.';
-$string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'ID del curso al que pertenece la notificación.';
-$string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Tipo de notificación enviada (progress_25, course_end_soon, etc.).';
-$string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'ID de la entidad asociada al evento (sesión de Zoom, sesión presencial), si aplica.';
-$string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Fecha y hora en que se envió la notificación.';
-$string['privacy:path:notifications'] = 'Notificaciones de progreso de curso';
-
 $string['settings:insights_heading'] = 'Conexión con Moodle Insights';
 $string['settings:insights_heading_desc'] = 'Qué disparadores están activos y qué plantilla usa cada uno se configura desde Moodle Insights, sección "Gestión de Notificaciones" — no aquí. Este plugin solo necesita saber cómo conectarse.';
 $string['settings:insights_url'] = 'URL de Moodle Insights';
 $string['settings:insights_url_desc'] = 'Ej: https://moodle-dashboard.awakelab.world (sin barra final).';
 $string['settings:insights_api_key'] = 'API key de notificaciones';
 $string['settings:insights_api_key_desc'] = 'Generada desde Moodle Insights, en Configuración > Plataformas > Gestión de Notificaciones, para esta plataforma en concreto.';
-
-// Custom field settings.
-$string['customfield_shortname'] = 'Nombre corto del campo personalizado';
-$string['customfield_shortname_desc'] = 'Introduzca el nombre corto del campo personalizado del curso (casilla de verificación) que habilita las notificaciones para cursos individuales. Solo los cursos con este campo habilitado recibirán notificaciones. El campo personalizado debe crearse en Administración del sitio → Cursos → Campos personalizados del curso. Recomendado: courseemailnotifications_enabled';
 
 // Scheduled task names.
 $string['task_check_progress_25'] = 'Notificación de progreso 25%';
@@ -81,10 +67,6 @@ $string['run_ignore_restrictions_button'] = 'Enviar a todos (ignorar fechas)';
 $string['settings:send_course_firstday'] = '1er Día (ignorar fechas)';
 $string['settings:send_course_diploma'] = 'Diploma (ignorar fechas)';
 $string['backtosettings'] = 'Volver a configuración';
-$string['coursespage:title'] = 'Plugin: Notificaciones';
-$string['coursespage:desc'] = 'Configura el modo «solo diploma» y ejecuta envíos manuales por curso. Los cambios de los toggles se guardan al hacer clic en Guardar.';
-$string['coursespage:saved'] = 'Configuración guardada correctamente.';
-$string['local/courseprogressnotify:managecourses'] = 'Gestionar la configuración de notificaciones por curso';
 $string['local/courseprogressnotify:run'] = 'Ejecutar manualmente las verificaciones de notificaciones';
 $string['run_now_button'] = 'Verificar Notificaciones Ahora';
 $string['run_now_done'] = 'La verificación se ejecutó correctamente.';
@@ -94,35 +76,8 @@ $string['runpage:course_selector_heading'] = 'Selección de curso';
 $string['runpage:course_selector_desc'] = 'Selecciona un curso específico para limitar la verificación a ese curso, o deja "Todos los cursos" para ejecutar en todos los cursos habilitados.';
 $string['runpage:all_courses'] = 'Todos los cursos';
 
-// Settings.
-$string['settings:zoomdaysbefore'] = 'Días antes para la invitación Zoom';
-$string['settings:zoomdaysbefore_desc'] = 'Número de días antes de la fecha de la sesión Zoom para enviar la invitación automática.';
-$string['settings:presentialdaysbefore'] = 'Días antes para sesiones presenciales';
-$string['settings:presentialdaysbefore_desc'] = 'Número de días antes de la sesión presencial (examen/tutoría) para enviar el recordatorio.';
-
-// Palabras clave para clasificación de sesiones presenciales.
-$string['settings:presential_keywords_heading'] = 'Palabras clave de clasificación';
-$string['settings:presential_keywords_heading_desc'] = 'Estas palabras clave determinan cómo se clasifican los eventos del calendario como exámenes o tutorías. <strong>Un evento solo se detecta como presencial si tiene una ubicación definida.</strong> Los acentos se ignoran al comparar (p.ej., &ldquo;sessi&oacute;&rdquo; también coincide con &ldquo;sessio&rdquo;). Introduce una palabra clave por línea.';
-$string['settings:presential_exam_keywords'] = 'Palabras clave para exámenes';
-$string['settings:presential_exam_keywords_desc'] = 'Si alguna de estas palabras aparece en el nombre o descripción de un evento del calendario, se clasificará como <strong>examen</strong>. Una palabra clave por línea.';
-$string['settings:presential_tutoring_keywords'] = 'Palabras clave para tutorías / sesiones';
-$string['settings:presential_tutoring_keywords_desc'] = 'Si alguna de estas palabras aparece en el nombre o descripción de un evento del calendario, se clasificará como <strong>tutoría</strong>. Una palabra clave por línea.';
-
 // Run block in settings page.
-$string['settings:run:desc'] = 'Ejecuta manualmente las verificaciones de notificaciones desde esta página. Se aplicará a los cursos con notificaciones habilitadas mediante el campo personalizado.';
-
-// Configuración cursos solo-diploma.
-$string['settings:diploma_only_heading'] = 'Configuración avanzada por curso';
-$string['settings:diploma_only_heading_desc'] = 'Configura el comportamiento del plugin para cada curso: activa el modo «solo diploma» para suprimir todos los demás correos, o ejecuta envíos manuales ignorando las restricciones de fecha.';
-$string['settings:diploma_only_courses'] = 'Configuración por curso';
-$string['settings:diploma_only_courses_desc'] = 'Los cursos marcados en <span style="color:#721c24;font-weight:700">rojo/amarillo</span> tienen el modo «solo diploma» activo — revisa bien antes de guardar.';
-$string['settings:col_course'] = 'Curso';
-$string['settings:col_diploma_only'] = 'Sólo enviar diploma';
-$string['settings:col_manual_send'] = 'Ejecutar envío manual (sin fechas)';
-$string['settings:diploma_only_configure_first'] = 'Configura primero el nombre corto del campo personalizado.';
-$string['settings:diploma_only_no_courses'] = 'No hay cursos habilitados para este plugin (ningún curso tiene el campo personalizado activo).';
-$string['settings:diploma_only_active_badge'] = '⚠ SOLO DIPLOMA';
-$string['settings:diploma_only_warning_active'] = 'ATENCIÓN: uno o más cursos tienen el modo solo-diploma activo. NO se enviarán correos no-diploma a los estudiantes de esos cursos.';
+$string['settings:run:desc'] = 'Ejecuta manualmente las verificaciones de notificaciones desde esta página. Se aplicará a los cursos con notificaciones habilitadas mediante el campo personalizado configurado en Moodle Insights.';
 
 // Progress table.
 $string['progress:header:activity'] = 'Actividad';
@@ -138,6 +93,7 @@ $string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'Curso aso
 $string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Tipo de notificación enviada';
 $string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'Identificador de la entidad asociada (p.ej., Zoom o sesión)';
 $string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Marca temporal del envío';
+$string['privacy:path:notifications'] = 'Notificaciones de progreso de curso';
 
 // Email templates (from emails_es.txt).
 $string['email_zoom_subject'] = 'Sesión Zoom del curso {{coursename}}';
@@ -236,106 +192,6 @@ $string['email_last_day_body'] = '<p>Hola {{firstname}},</p>
 
 <p>Un cordial saludo,</p>';
 
-// ── Informe de actividad ──────────────────────────────────────────────────────
-$string['report:title']   = 'Informe de actividad de notificaciones';
-$string['report:heading'] = 'Informe de actividad de notificaciones';
-$string['settings:report_link']      = 'Informe de actividad';
-$string['settings:report_link_desc'] = 'Ver un informe detallado de los correos enviados por curso habilitado y por qué los pendientes no se han disparado todavía.';
-$string['report:viewreport'] = 'Ver informe de actividad';
-
-// Resumen del curso.
-$string['report:intro']             = 'Mostrando actividad de {$a} curso(s) con notificaciones habilitadas.';
-$string['report:nocourses']         = 'Ningún curso tiene notificaciones habilitadas con el campo personalizado configurado.';
-$string['report:no_courses_in_filter'] = 'Ningún curso coincide con el filtro actual.';
-$string['report:haswarnings']       = 'Tiene advertencias de configuración';
-$string['report:open_course']       = 'Abrir curso';
-$string['report:startdate']         = 'Fecha de inicio';
-$string['report:enddate']           = 'Fecha de fin';
-$string['report:students']          = 'Estudiantes matriculados';
-$string['report:completion']        = 'Finalización habilitada';
-$string['report:notset']            = 'No configurado';
-
-// Barra de resumen.
-$string['report:summary_total']    = '{$a} curso(s) habilitado(s)';
-$string['report:summary_warnings'] = '{$a} con advertencias de configuración';
-$string['report:summary_sent']     = '{$a} registros de correo total';
-$string['report:filter_label']     = 'Mostrar:';
-$string['report:filter_all']       = 'Todos los cursos ({$a})';
-$string['report:filter_warnings']  = 'Solo con advertencias ({$a})';
-
-// Advertencias.
-$string['report:warnings']               = 'Advertencias de configuración';
-$string['report:warn_start_past_year']   = 'La fecha de inicio está configurada en {$a->year} ({$a->date}). Las tareas de primer y segundo día solo se ejecutan en la fecha exacta de inicio — con esta configuración esos correos nunca se enviarán.';
-$string['report:warn_end_past_year']     = 'La fecha de fin está configurada en {$a->year} ({$a->date}). Los correos de fin de curso (7 días antes, último día, diploma) nunca se dispararán.';
-$string['report:warn_no_completion']     = 'La finalización de curso está desactivada. Los correos de progreso (25%, 50%) no pueden enviarse.';
-$string['report:warn_no_enddate']        = 'No hay fecha de fin configurada. Los correos de fin de curso y diploma no se dispararán.';
-
-// Historial de notificaciones.
-$string['report:notificationsent'] = 'Historial de notificaciones';
-$string['report:notiftype']        = 'Tipo de notificación';
-$string['report:sentcount']        = 'Enviados';
-$string['report:lastsent']         = 'Último envío';
-$string['report:statusreason']     = 'Estado / Motivo';
-
-// Etiquetas de tipo de notificación.
-$string['report:notiftype_first_day']           = 'Tareas del primer día';
-$string['report:notiftype_second_day']          = 'Segundo día (info de navegadores)';
-$string['report:notiftype_progress25']          = 'Progreso 25%';
-$string['report:notiftype_progress50']          = 'Progreso 50%';
-$string['report:notiftype_end_soon']            = 'Fin de curso próximo (7 días)';
-$string['report:notiftype_last_day']            = 'Recordatorio último día';
-$string['report:notiftype_zoom']                = 'Recordatorio sesión Zoom';
-$string['report:notiftype_presential_exam']     = 'Recordatorio examen presencial';
-$string['report:notiftype_presential_tutoring'] = 'Recordatorio tutoría presencial';
-$string['report:notiftype_diploma']             = 'Diploma disponible';
-
-// Motivos de estado.
-$string['report:reason_sent_n']            = 'Enviado a {$a->n} de {$a->total} estudiantes matriculados';
-$string['report:reason_no_startdate']      = 'No hay fecha de inicio configurada';
-$string['report:reason_wrong_start_year']  = 'El año de la fecha de inicio es {$a->year} ({$a->date}) — las tareas solo se ejecutan en la fecha exacta de inicio. Corrige el año al año actual.';
-$string['report:reason_starts_today']      = 'El curso empieza hoy — la tarea se ejecutará en la próxima ejecución programada de hoy';
-$string['report:reason_future_start']      = 'El curso aún no ha empezado — la tarea se ejecutará el {$a->date}';
-$string['report:reason_window_passed']          = 'Ventana pasada (hace {$a->days} días desde la fecha de inicio).';
-$string['report:reason_fires_today']            = 'Condición cumplida hoy — la tarea se ejecutará en la próxima ejecución programada';
-$string['report:reason_in_recovery_window']     = 'Dentro de la ventana de recuperación — el próximo cron lo enviará';
-$string['report:firstday_diag_toggle']          = 'Diagnosticar';
-$string['report:firstday_diag_window']          = 'Ventana activa del cron:';
-$string['report:firstday_diag_startdate']       = 'Fecha de inicio del curso:';
-$string['report:firstday_diag_inwindow']        = '¿En ventana?';
-$string['report:firstday_diag_inwindow_yes']    = 'Sí — el próximo cron enviará el email';
-$string['report:firstday_diag_inwindow_no']     = 'No — fuera de la ventana de 2 días. El email no se puede enviar automáticamente.';
-$string['report:firstday_diag_viewlogs']        = 'Ver logs del cron →';
-$string['report:reason_no_completion']     = 'La finalización de curso está desactivada — no se puede rastrear el progreso';
-$string['report:reason_below_threshold']   = 'Ningún estudiante ha alcanzado el umbral del {$a->pct}% de progreso todavía';
-$string['report:reason_no_enddate']        = 'No hay fecha de fin configurada';
-$string['report:reason_end_in_n_days']     = 'El curso finaliza en {$a->days} días — este correo se disparará en {$a->fires} días (cuando queden exactamente 7 días)';
-$string['report:reason_end_window_passed_n'] = 'La ventana de 7 días ha pasado sin envío. La fecha de fin era {$a->date}. Verifica que la tarea se ejecutó en el momento correcto.';
-$string['report:reason_course_ended']      = 'El curso finalizó el {$a->date}';
-$string['report:reason_last_day_future']   = 'Se disparará el {$a->date} (en {$a->days} días — el día antes del fin del curso)';
-$string['report:reason_diploma_future']    = 'Se disparará el {$a->date} (30 días después del fin del curso)';
-$string['report:reason_diploma_pending']   = 'Se disparará en {$a->days} día(s) (30 días después del fin del curso)';
-$string['report:reason_diploma_window_passed'] = 'Ventana pasada. El curso finalizó el {$a->date}. Verifica que la tarea se ejecutó 30 días después del fin.';
-$string['report:reason_zoom_sent']         = 'Enviado a {$a->users} estudiantes en {$a->sessions} sesión(es) Zoom';
-$string['report:reason_zoom_none']         = 'No hay recordatorios de Zoom registrados para este curso todavía';
-$string['report:reason_presential_sent']   = 'Enviado a {$a->users} estudiantes en {$a->sessions} sesión(es)';
-$string['report:reason_presential_none']   = 'No hay recordatorios registrados todavía — ver la sección de eventos presenciales abajo';
-
-// Sección de eventos presenciales.
-$string['report:presentialevents']      = 'Eventos de sesiones presenciales (últimos 30 días → próximos 60 días)';
-$string['report:presentialevents_none'] = 'No se encontraron eventos de calendario para este curso en la ventana del informe (últimos 30 → próximos 60 días).';
-$string['report:eventname']             = 'Nombre del evento';
-$string['report:eventdate']             = 'Fecha';
-$string['report:eventlocation']         = 'Ubicación';
-$string['report:eventdetected']         = 'Detectado como';
-$string['report:eventreason']           = 'Problema / Estado';
-$string['report:nolocation']            = 'Sin ubicación';
-$string['report:detected_no']           = 'No detectado';
-$string['report:notified_n']            = 'Notificados: {$a}';
-$string['report:event_will_notify']     = 'Se enviará notificación N días antes del evento (según configuración)';
-$string['report:reason_event_nokeyword']        = 'El evento tiene ubicación configurada pero no se encontró ninguna palabra clave de examen o tutoría en el título o descripción.';
-$string['report:reason_event_keywords_no_location'] = 'El evento tiene una palabra clave coincidente pero NO tiene ubicación. Añade una ubicación física al evento del calendario para activar la detección presencial.';
-$string['report:current_exam_kw']     = 'Palabras clave de examen actuales:';
-$string['report:current_tutoring_kw'] = 'Palabras clave de tutoría actuales:';
 
 $string['email_exam_subject'] = 'Examen presencial obligatorio del curso {{coursename}}';
 $string['email_exam_body'] = '<p>Hola {{firstname}},</p>

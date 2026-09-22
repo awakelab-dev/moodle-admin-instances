@@ -36,7 +36,7 @@ class check_second_day_tasks extends scheduled_task {
         }
         $template = $config['second_day']['template'];
 
-        $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
+        $customfieldshortname = insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
         
         if (empty($customfieldshortname)) {
             mtrace('No custom field configured; skipping.');

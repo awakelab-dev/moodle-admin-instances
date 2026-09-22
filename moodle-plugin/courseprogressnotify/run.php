@@ -266,16 +266,11 @@ if ($confirm && !empty($type) && confirm_sesskey()) {
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('runpage:heading', 'local_courseprogressnotify'));
 
-$customfield = get_config('local_courseprogressnotify', 'customfield_shortname');
+$customfield = \local_courseprogressnotify\insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
 if (empty($customfield)) {
     echo $OUTPUT->notification(get_string('runpage:nocategory', 'local_courseprogressnotify'), notification::NOTIFY_WARNING);
 } else {
     echo html_writer::tag('p', get_string('runpage:desc', 'local_courseprogressnotify'));
-
-    if (has_capability('local/courseprogressnotify:managecourses', $context)) {
-        $coursesurl = new moodle_url('/local/courseprogressnotify/courses.php');
-        echo html_writer::link($coursesurl, get_string('coursespage:title', 'local_courseprogressnotify'), ['class' => 'btn btn-outline-info btn-sm mb-3']);
-    }
 
     // Course selector.
     $enabledcourses = \local_courseprogressnotify\course_diagnostics::get_enabled_courses($customfield);

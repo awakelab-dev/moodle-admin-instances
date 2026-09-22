@@ -378,6 +378,75 @@ duplicación de `get_course_students`/`format_date_for_user`/
 
 ---
 
+## 8. Fase 5 completa (2026-09-22) — cerrar el hueco "el plugin no debe tener nada, ni interfaces"
+
+Al revisar el encargo original literalmente ("el plugin no debería tener
+nada, ni interfaces [de configuración de plantillas/disparadores]") se
+encontró que, pese a que las 9 tareas ya pedían plantillas a Moodle
+Insights, el plugin seguía guardando localmente varios parámetros de
+negocio y conservaba páginas de administración completas — un
+incumplimiento parcial del encargo que esta fase cierra:
+
+- **Parámetros movidos al backend** (`Platform.notificationSettings`,
+  columna JSON nueva por plataforma, con defaults en el servicio para que
+  el plugin siempre reciba un objeto completo):
+  - `courseCustomFieldShortname` — antes `local_courseprogressnotify/customfield_shortname`.
+  - `diplomaOnlyCourseIds` — antes `local_courseprogressnotify/diploma_only_courses`
+    (una lista de IDs en texto plano); ahora se elige con un selector de
+    cursos real en el dashboard (pestaña nueva "Ajustes por plataforma"),
+    alimentado por los cursos ya sincronizados (`Course`), sin llamar a
+    Moodle en el momento.
+  - Nuevos endpoints: `GET/PUT /notifications/platforms/:id/settings`,
+    `GET /notifications/platforms/:id/courses`.
+- **Días de antelación y palabras clave de detección presencial, movidos a
+  `NotificationRule.params` por disparador** (el mecanismo ya existía en
+  el `paramsSchema` de `zoom_session`/`presential_exam`/`presential_tutoring`
+  desde la Fase 1, pero no tenía ninguna interfaz para editarlo — un
+  disparador con params sin UI es tan "sin configurar" como uno sin
+  código). Se añadió un formulario de parámetros a la pestaña
+  "Disparadores" del dashboard (número para `daysBefore`, textarea de una
+  palabra por línea para las listas de keywords). `check_presential_sessions`
+  ahora también respeta `daysBefore` desde Moodle Insights (antes solo
+  `zoom_session` lo hacía, con caída al ajuste local `zoomdaysbefore` —
+  esa caída ya no existe, todo viene del dashboard).
+- **Interfaces eliminadas del plugin** (duplicaban o directamente
+  contradecían la gestión centralizada): `report.php` (duplicado con la
+  pestaña "Seguimiento" del dashboard), `courses.php` y
+  `admin_setting_diploma_only_courses.php` (selector de cursos "solo
+  diploma", ahora en el dashboard), el enlace de navegación a `courses.php`
+  en `lib.php`, y la capability `local/courseprogressnotify:managecourses`
+  que solo protegía esa página. `run.php` se mantuvo — no configura nada,
+  solo dispara `task->execute()`, que ya lee todo desde Moodle Insights.
+- **Limpieza de código muerto asociada**: `classes/course_diagnostics.php`
+  se redujo de ~450 a ~50 líneas (todos sus métodos, salvo
+  `get_enabled_courses()`, solo los usaba `report.php`); se retiraron del
+  todo los ~140 strings de idioma `report:*`/`settings:diploma_only_*`/
+  `settings:presential_*_keywords*` que quedaron huérfanos en los 3
+  idiomas.
+- **`settings.php` final**: solo conserva info de versión, conexión con
+  Moodle Insights (URL + API key) y el bloque de ejecución manual — nada
+  de parámetros de negocio, tal como pedía el encargo.
+- **Versión del plugin**: `2026092202` / release `3.0.0` (major, porque
+  quita capacidades/ajustes que una instalación existente podía estar
+  usando).
+- **Verificado end-to-end tras el resync**: `php -l` limpio en todo el
+  plugin; `admin/cli/upgrade.php --non-interactive` corrido sin errores
+  (retira la capability sola, sin pasos manuales); se repitieron
+  ejecuciones reales de `check_course_end_soon` (leyó correctamente el
+  campo personalizado desde Moodle Insights, "✓ Using custom field:
+  courseemailnotifications_enabled"), `check_presential_sessions` y
+  `check_zoom_sessions` (sin errores PHP); y se confirmó por `curl` directo
+  contra el backend, con la API key real de la plataforma de prueba, que
+  `GET /api/notifications/plugin/config` ya devuelve el nuevo bloque
+  `"settings"` junto a `"triggers"`.
+- **Frontend**: nueva pestaña "Ajustes por plataforma" en Gestión de
+  Notificaciones (selector de plataforma + campo personalizado + selector
+  de cursos "solo diploma" con buscador) y formulario de parámetros por
+  disparador en la pestaña "Disparadores"; `npm run build` sin errores,
+  `tsc --noEmit` del backend sin errores.
+
+---
+
 *Próximo paso: Fase 3 — disparadores nuevos pedidos por el instructor
 (aviso al instructor de actividad pendiente de calificar, evaluación
 próxima). Requiere decidir con él qué evento exacto de Moodle dispara cada

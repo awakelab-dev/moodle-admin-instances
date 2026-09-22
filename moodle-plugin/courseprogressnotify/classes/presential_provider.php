@@ -57,25 +57,34 @@ class presential_provider {
     /**
      * Determine the type of presential event (exam or tutoring).
      *
-     * Keywords are loaded from plugin settings (configurable by administrators).
-     * Matching is case-insensitive and accent-insensitive.
+     * Las palabras clave vienen de los `params` de los disparadores
+     * presential_exam/presential_tutoring en Moodle Insights (ver
+     * check_presential_sessions::execute()); si no se pasan (o están
+     * vacías), se usa una lista de respaldo razonable para que la
+     * detección siga funcionando aunque nadie las haya configurado
+     * todavía. Matching is case-insensitive and accent-insensitive.
      *
      * @param \calendar_event $event The calendar event object
+     * @param string[]|null $examkeywords
+     * @param string[]|null $tutoringkeywords
      * @return string|null 'exam', 'tutoring', or null if type cannot be determined
      */
-    public static function get_presential_type(\calendar_event $event): ?string {
+    public static function get_presential_type(
+        \calendar_event $event,
+        ?array $examkeywords = null,
+        ?array $tutoringkeywords = null
+    ): ?string {
         $searchtext = strtolower($event->name . ' ' . $event->description);
 
         // Remove accents for more flexible matching
         $searchtext = self::remove_accents($searchtext);
 
-        // Load keywords from config (falls back to defaults if not set)
-        $examkeywords = self::get_keywords_from_config(
-            'presential_exam_keywords',
+        $examkeywords = self::normalize_keywords(
+            $examkeywords,
             "examen\nexam\nevaluacion\nprueba"
         );
-        $tutoringkeywords = self::get_keywords_from_config(
-            'presential_tutoring_keywords',
+        $tutoringkeywords = self::normalize_keywords(
+            $tutoringkeywords,
             "tutoria\ntuto\nasesoria\nconsulta\nsesion\nsessio"
         );
 
@@ -100,23 +109,18 @@ class presential_provider {
     }
 
     /**
-     * Parse a keyword list from plugin config.
+     * Normalize a keyword list coming from a trigger's params in Moodle
+     * Insights, falling back to a hardcoded default when it's empty (no
+     * keywords configured yet, or Moodle Insights unreachable).
      *
-     * Each keyword is stored on its own line (newlines are the separator;
-     * commas are also accepted).  Accents are stripped so that, for example,
-     * "sessió" stored in config correctly matches "sessio" in a calendar event.
-     *
-     * @param string $configkey  The plugin config key to read.
-     * @param string $default    Newline-separated default keywords to use when config is empty.
-     * @return string[]          Lowercase, accent-stripped, deduplicated keywords.
+     * @param string[]|null $keywords  Raw keywords from the trigger's params.
+     * @param string $default          Newline-separated default keywords to use when $keywords is empty.
+     * @return string[]                Lowercase, accent-stripped, deduplicated keywords.
      */
-    private static function get_keywords_from_config(string $configkey, string $default): array {
-        $raw = get_config('local_courseprogressnotify', $configkey);
-        if ($raw === false || trim((string) $raw) === '') {
-            $raw = $default;
+    private static function normalize_keywords(?array $keywords, string $default): array {
+        if (empty($keywords)) {
+            $keywords = preg_split('/[\n,]+/', $default);
         }
-        // Accept newline- or comma-separated lists
-        $keywords = preg_split('/[\n,]+/', (string) $raw);
         $keywords = array_map('trim', $keywords);
         $keywords = array_filter($keywords, fn($k) => $k !== '');
         // Strip accents and lowercase to match the pre-processed search text
@@ -131,9 +135,17 @@ class presential_provider {
      * @param int $courseid The course ID
      * @param int $starttime Start of time window (timestamp)
      * @param int $endtime End of time window (timestamp)
+     * @param string[]|null $examkeywords
+     * @param string[]|null $tutoringkeywords
      * @return array Array of presential events with classification
      */
-    public static function get_presential_events(int $courseid, int $starttime, int $endtime): array {
+    public static function get_presential_events(
+        int $courseid,
+        int $starttime,
+        int $endtime,
+        ?array $examkeywords = null,
+        ?array $tutoringkeywords = null
+    ): array {
         global $DB;
 
         // Get all calendar events for this course in the time window
@@ -163,7 +175,7 @@ class presential_provider {
             }
 
             // Determine type
-            $type = self::get_presential_type($event);
+            $type = self::get_presential_type($event, $examkeywords, $tutoringkeywords);
             
             // Skip if we can't determine type
             if ($type === null) {

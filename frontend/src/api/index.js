@@ -213,3 +213,9 @@ export const revokeNotificationsApiKey = (platformId) =>
     invalidateCache('platforms');
     return result;
   });
+export const getNotificationPlatformSettings = (platformId) =>
+  request(`/notifications/platforms/${platformId}/settings`, { cache: 'no-store' });
+export const updateNotificationPlatformSettings = (platformId, data) =>
+  request(`/notifications/platforms/${platformId}/settings`, { method: 'PUT', body: JSON.stringify(data) });
+export const getNotificationPlatformCourses = (platformId) =>
+  request(`/notifications/platforms/${platformId}/courses`, { cache: 'no-store' });

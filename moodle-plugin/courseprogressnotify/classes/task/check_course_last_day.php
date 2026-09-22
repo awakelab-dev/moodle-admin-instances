@@ -40,7 +40,7 @@ class check_course_last_day extends scheduled_task {
         }
         $template = $config['course_last_day']['template'];
 
-        $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
+        $customfieldshortname = insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
         
         if (empty($customfieldshortname)) {
             mtrace('✗ No custom field configured; skipping.');

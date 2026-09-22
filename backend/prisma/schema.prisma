@@ -46,6 +46,18 @@ model Platform {
   // Configuracion; se guarda ya hasheada, igual que una contrasena.
   notificationsApiKeyHash String? @map("notifications_api_key_hash")
 
+  // Parametros de configuracion del plugin de notificaciones para ESTA
+  // plataforma (campo personalizado que activa notificaciones por curso,
+  // dias de antelacion de Zoom/presencial, palabras clave de deteccion,
+  // cursos "solo diploma"). El plugin ya no guarda nada de esto
+  // localmente — lo recibe entero en GET /api/notifications/plugin/config
+  // (ver NotificationsService.getConfigForPlatform). Forma esperada (todo
+  // opcional, con defaults en el servicio):
+  // { courseCustomFieldShortname?: string, zoomDaysBefore?: number,
+  //   presentialDaysBefore?: number, presentialExamKeywords?: string,
+  //   presentialTutoringKeywords?: string, diplomaOnlyCourseIds?: number[] }
+  notificationSettings Json @default("{}") @map("notification_settings")
+
   courses     Course[]
   users       MoodleUser[]
   snapshots   PlatformSnapshot[]

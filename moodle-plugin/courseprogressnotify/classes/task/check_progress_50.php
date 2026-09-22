@@ -38,7 +38,7 @@ class check_progress_50 extends scheduled_task {
         }
         $template = $config['progress_50']['template'];
 
-        $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
+        $customfieldshortname = insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
         
         if (empty($customfieldshortname)) {
             mtrace('✗ No custom field configured; skipping.');

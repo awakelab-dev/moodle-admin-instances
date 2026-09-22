@@ -36,19 +36,15 @@ class check_zoom_sessions extends scheduled_task {
         }
         $template = $config['zoom_session']['template'];
 
-        // "Días de antelación" puede venir de Moodle Insights (params del
-        // disparador) o, si no se configuró ahí, del ajuste local antiguo —
-        // así una plataforma sin ese parámetro centralizado sigue
-        // funcionando con su valor de siempre.
+        // "Días de antelación" viene de los params del disparador en
+        // Moodle Insights (paramsSchema de zoom_session), con un valor por
+        // defecto razonable si nadie lo ha configurado todavía.
         $days = (int)($config['zoom_session']['params']['daysBefore'] ?? 0);
-        if ($days <= 0) {
-            $days = (int)get_config('local_courseprogressnotify', 'zoomdaysbefore');
-        }
         if ($days <= 0) { $days = 2; }
         mtrace("Days before setting: {$days}");
 
-        $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
-        
+        $customfieldshortname = insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
+
         if (empty($customfieldshortname)) {
             mtrace('No custom field configured; skipping.');
             return;

@@ -17,26 +17,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Course progress notifications';
-
-// Privacy provider (GDPR).
-$string['privacy:metadata:local_courseprogressnotify_log'] = 'Log of notification emails sent to each user (progress, sessions, diploma, etc.).';
-$string['privacy:metadata:local_courseprogressnotify_log:userid'] = 'ID of the user who received the notification.';
-$string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'ID of the course the notification belongs to.';
-$string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Type of notification sent (progress_25, course_end_soon, etc.).';
-$string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'ID of the entity associated with the event (Zoom session, presential session), if applicable.';
-$string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Date and time the notification was sent.';
-$string['privacy:path:notifications'] = 'Course progress notifications';
-
 $string['settings:insights_heading'] = 'Connection to Moodle Insights';
 $string['settings:insights_heading_desc'] = 'Which triggers are active and which template each one uses is configured from Moodle Insights, "Notification Management" section — not here. This plugin only needs to know how to connect.';
 $string['settings:insights_url'] = 'Moodle Insights URL';
 $string['settings:insights_url_desc'] = 'E.g.: https://moodle-dashboard.awakelab.world (no trailing slash).';
 $string['settings:insights_api_key'] = 'Notifications API key';
 $string['settings:insights_api_key_desc'] = 'Generated from Moodle Insights, under Configuration > Platforms > Notification Management, for this specific platform.';
-
-// Custom field settings.
-$string['customfield_shortname'] = 'Custom field shortname';
-$string['customfield_shortname_desc'] = 'Enter the shortname of the course custom field (checkbox) that enables notifications for individual courses. Only courses with this field enabled will receive notifications. The custom field must be created in Site administration → Courses → Course custom fields. Recommended: courseemailnotifications_enabled';
 
 // Scheduled task names.
 $string['task_check_progress_25'] = 'Progress notification 25%';
@@ -81,10 +67,6 @@ $string['run_ignore_restrictions_button'] = 'Send to All (Ignore Date Restrictio
 $string['settings:send_course_firstday'] = '1st Day (ignore dates)';
 $string['settings:send_course_diploma'] = 'Diploma (ignore dates)';
 $string['backtosettings'] = 'Back to settings';
-$string['coursespage:title'] = 'Plugin: Notificaciones';
-$string['coursespage:desc'] = 'Configure diploma-only mode and trigger manual sends per course. Toggle changes are saved when you click Save.';
-$string['coursespage:saved'] = 'Course settings saved successfully.';
-$string['local/courseprogressnotify:managecourses'] = 'Manage per-course notification settings';
 $string['local/courseprogressnotify:run'] = 'Manually run notification checks';
 $string['run_now_button'] = 'Run Now';
 $string['run_now_done'] = 'Verification completed successfully.';
@@ -94,35 +76,8 @@ $string['runpage:course_selector_heading'] = 'Course selection';
 $string['runpage:course_selector_desc'] = 'Select a specific course to limit the check to that course only, or leave on "All courses" to run on every enabled course.';
 $string['runpage:all_courses'] = 'All courses';
 
-// Settings.
-$string['settings:zoomdaysbefore'] = 'Days before Zoom invitation';
-$string['settings:zoomdaysbefore_desc'] = 'Number of days before the Zoom session date to send the automatic invitation.';
-$string['settings:presentialdaysbefore'] = 'Days before on-site sessions';
-$string['settings:presentialdaysbefore_desc'] = 'Number of days before the on-site session (exam/tutoring) to send the reminder.';
-
-// Matching keywords for presential session classification.
-$string['settings:presential_keywords_heading'] = 'Matching keywords';
-$string['settings:presential_keywords_heading_desc'] = 'These keywords determine how presential calendar events are classified as exams or tutoring sessions. <strong>An event is only detected as presential if it has a location set.</strong> Accents are ignored when matching (e.g., &ldquo;sessi&oacute;&rdquo; also matches &ldquo;sessio&rdquo;). Enter one keyword per line.';
-$string['settings:presential_exam_keywords'] = 'Exam keywords';
-$string['settings:presential_exam_keywords_desc'] = 'If any of these words appears in a calendar event\'s name or description, it will be classified as an <strong>exam</strong>. One keyword per line.';
-$string['settings:presential_tutoring_keywords'] = 'Tutoring / session keywords';
-$string['settings:presential_tutoring_keywords_desc'] = 'If any of these words appears in a calendar event\'s name or description, it will be classified as a <strong>tutoring session</strong>. One keyword per line.';
-
 // Run block in settings page.
-$string['settings:run:desc'] = 'Manually run the notifications verification from this page. It will apply to courses with notifications enabled via the custom field.';
-
-// Diploma-only course settings.
-$string['settings:diploma_only_heading'] = 'Per-course configuration';
-$string['settings:diploma_only_heading_desc'] = 'Configure plugin behaviour per course: enable diploma-only mode to suppress all other emails, or trigger manual sends ignoring date restrictions.';
-$string['settings:diploma_only_courses'] = 'Course settings';
-$string['settings:diploma_only_courses_desc'] = 'Courses marked in <span style="color:#721c24;font-weight:700">red/yellow</span> have diploma-only mode active — double-check before saving.';
-$string['settings:col_course'] = 'Course';
-$string['settings:col_diploma_only'] = 'Diploma-only mode';
-$string['settings:col_manual_send'] = 'Manual send (ignore dates)';
-$string['settings:diploma_only_configure_first'] = 'Configure the custom field shortname above first.';
-$string['settings:diploma_only_no_courses'] = 'No courses are currently enabled for this plugin (no course has the custom field active).';
-$string['settings:diploma_only_active_badge'] = '⚠ DIPLOMA ONLY';
-$string['settings:diploma_only_warning_active'] = 'WARNING: one or more courses have diploma-only mode active. Non-diploma emails will NOT be sent to students in those courses.';
+$string['settings:run:desc'] = 'Manually run the notifications verification from this page. It will apply to courses with notifications enabled via the custom field configured in Moodle Insights.';
 
 // Progress table.
 $string['progress:header:activity'] = 'Activity';
@@ -131,13 +86,13 @@ $string['progress:status:complete'] = 'Complete';
 $string['progress:status:incomplete'] = 'Incomplete';
 
 // Privacy.
-$string['privacy:metadata'] = 'The plugin local_courseprogressnotify stores logs of notifications sent to users.';
 $string['privacy:metadata:local_courseprogressnotify_log'] = 'Log of notifications sent';
 $string['privacy:metadata:local_courseprogressnotify_log:userid'] = 'Recipient user id';
 $string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'Course associated with the notification';
 $string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Type of notification sent';
 $string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'Associated entity id (e.g. Zoom or session)';
 $string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Timestamp of the send';
+$string['privacy:path:notifications'] = 'Course progress notifications';
 
 // Email templates (English fallback).
 $string['email_zoom_subject'] = 'Zoom session for course {{coursename}}';
@@ -323,104 +278,4 @@ $string['email_second_day_body'] = '<p>Hello {{firstname}},</p>
 
 <p>Best regards,</p>';
 
-// ── Activity report ───────────────────────────────────────────────────────────
-$string['report:title']   = 'Notifications Activity Report';
-$string['report:heading'] = 'Notifications Activity Report';
-$string['settings:report_link']      = 'Activity report';
-$string['settings:report_link_desc'] = 'View a detailed report of which emails have been sent for each enabled course, and why pending emails have not fired yet.';
-$string['report:viewreport'] = 'View activity report';
-
-// Course overview.
-$string['report:intro']             = 'Showing activity for {$a} course(s) with notifications enabled.';
-$string['report:nocourses']         = 'No courses have notifications enabled via the configured custom field.';
-$string['report:no_courses_in_filter'] = 'No courses match the current filter.';
-$string['report:haswarnings']       = 'Has configuration warnings';
-$string['report:open_course']       = 'Open course';
-$string['report:startdate']         = 'Start date';
-$string['report:enddate']           = 'End date';
-$string['report:students']          = 'Enrolled students';
-$string['report:completion']        = 'Completion enabled';
-$string['report:notset']            = 'Not set';
-
-// Summary bar.
-$string['report:summary_total']    = '{$a} enabled course(s)';
-$string['report:summary_warnings'] = '{$a} with configuration warnings';
-$string['report:summary_sent']     = '{$a} total email records';
-$string['report:filter_label']     = 'Show:';
-$string['report:filter_all']       = 'All courses ({$a})';
-$string['report:filter_warnings']  = 'Warnings only ({$a})';
-
-// Warnings.
-$string['report:warnings']               = 'Configuration warnings';
-$string['report:warn_start_past_year']   = 'Start date is set to {$a->year} ({$a->date}). The first-day and second-day email tasks only fire on the exact start date — this means those emails will never send with the current date configured.';
-$string['report:warn_end_past_year']     = 'End date is set to {$a->year} ({$a->date}). End-of-course emails (7 days before, last day, diploma) will never fire.';
-$string['report:warn_no_completion']     = 'Course completion is disabled. Progress-based emails (25%, 50%) cannot be sent.';
-$string['report:warn_no_enddate']        = 'No end date is configured. End-of-course and diploma emails will not fire.';
-
-// Notification history section.
-$string['report:notificationsent'] = 'Notification history';
-$string['report:notiftype']        = 'Notification type';
-$string['report:sentcount']        = 'Sent';
-$string['report:lastsent']         = 'Last sent';
-$string['report:statusreason']     = 'Status / Reason';
-
-// Notification type labels.
-$string['report:notiftype_first_day']           = 'First day tasks';
-$string['report:notiftype_second_day']          = 'Second day (browser info)';
-$string['report:notiftype_progress25']          = 'Progress 25%';
-$string['report:notiftype_progress50']          = 'Progress 50%';
-$string['report:notiftype_end_soon']            = 'Course ending soon (7 days)';
-$string['report:notiftype_last_day']            = 'Last day reminder';
-$string['report:notiftype_zoom']                = 'Zoom session reminder';
-$string['report:notiftype_presential_exam']     = 'Exam reminder';
-$string['report:notiftype_presential_tutoring'] = 'Tutoring reminder';
-$string['report:notiftype_diploma']             = 'Diploma available';
-
-// Status / reason strings.
-$string['report:reason_sent_n']            = 'Sent to {$a->n} of {$a->total} enrolled students';
-$string['report:reason_no_startdate']      = 'No start date configured';
-$string['report:reason_wrong_start_year']  = 'Start date year is {$a->year} ({$a->date}) — tasks only run on the exact start day. Correct the start date year to the current year.';
-$string['report:reason_starts_today']      = 'Course starts today — task will fire in today\'s scheduled run';
-$string['report:reason_future_start']      = 'Course not started yet — task will fire on {$a->date}';
-$string['report:reason_window_passed']          = 'Window passed ({$a->days} days since the start date).';
-$string['report:reason_fires_today']            = 'Condition met today — task will fire in today\'s scheduled run';
-$string['report:reason_in_recovery_window']     = 'Within recovery window — next cron run will send this';
-$string['report:firstday_diag_toggle']          = 'Diagnose';
-$string['report:firstday_diag_window']          = 'Active cron window:';
-$string['report:firstday_diag_startdate']       = 'Course start date:';
-$string['report:firstday_diag_inwindow']        = 'In window?';
-$string['report:firstday_diag_inwindow_yes']    = 'Yes — next cron run will send the email';
-$string['report:firstday_diag_inwindow_no']     = 'No — outside the 2-day window. Email cannot be sent automatically.';
-$string['report:firstday_diag_viewlogs']        = 'View cron task logs →';
-$string['report:reason_no_completion']     = 'Course completion is disabled — progress cannot be tracked';
-$string['report:reason_below_threshold']   = 'No student has reached the {$a->pct}% progress threshold yet';
-$string['report:reason_no_enddate']        = 'No end date configured';
-$string['report:reason_end_in_n_days']     = 'Course ends in {$a->days} days — this email will fire in {$a->fires} days (when exactly 7 days remain)';
-$string['report:reason_end_window_passed_n'] = 'The 7-day window has passed without sending. End date was {$a->date}. Verify the task ran at the right time.';
-$string['report:reason_course_ended']      = 'Course ended on {$a->date}';
-$string['report:reason_last_day_future']   = 'Will fire on {$a->date} (in {$a->days} days — the day before course end)';
-$string['report:reason_diploma_future']    = 'Will fire on {$a->date} (30 days after course end)';
-$string['report:reason_diploma_pending']   = 'Will fire in {$a->days} day(s) (30 days after course end)';
-$string['report:reason_diploma_window_passed'] = 'Window passed. Course ended {$a->date}. Verify the task ran 30 days after end.';
-$string['report:reason_zoom_sent']         = 'Sent to {$a->users} students across {$a->sessions} Zoom session(s)';
-$string['report:reason_zoom_none']         = 'No Zoom session reminders recorded yet for this course';
-$string['report:reason_presential_sent']   = 'Sent to {$a->users} students across {$a->sessions} session(s)';
-$string['report:reason_presential_none']   = 'No reminders recorded yet — see the presential events section below';
-
-// Presential events section.
-$string['report:presentialevents']      = 'Presential session events (last 30 days → next 60 days)';
-$string['report:presentialevents_none'] = 'No calendar events found for this course in the reporting window (last 30 → next 60 days).';
-$string['report:eventname']             = 'Event name';
-$string['report:eventdate']             = 'Date';
-$string['report:eventlocation']         = 'Location';
-$string['report:eventdetected']         = 'Detected as';
-$string['report:eventreason']           = 'Issue / Status';
-$string['report:nolocation']            = 'No location set';
-$string['report:detected_no']           = 'Not detected';
-$string['report:notified_n']            = 'Notified: {$a}';
-$string['report:event_will_notify']     = 'Will send notification N days before the event (as configured)';
-$string['report:reason_event_nokeyword']        = 'Event has a location set but no matching exam or tutoring keyword was found in the title or description.';
-$string['report:reason_event_keywords_no_location'] = 'Event has a matching keyword but NO location is set. Add a physical location to the calendar event to trigger presential detection.';
-$string['report:current_exam_kw']     = 'Current exam keywords:';
-$string['report:current_tutoring_kw'] = 'Current tutoring keywords:';
 

@@ -7,7 +7,17 @@ import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { UpsertRuleDto } from './dto/upsert-rule.dto';
 import { ReportDeliveryDto } from './dto/report-delivery.dto';
+import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { NOTIFICATION_TRIGGERS } from './notification-triggers.constants';
+
+// Defaults aplicados cuando una plataforma todavía no configuró nada en
+// `Platform.notificationSettings` (JSON, ver schema.prisma) — el plugin
+// siempre recibe un objeto completo, nunca tiene que adivinar un default
+// localmente.
+const DEFAULT_PLATFORM_SETTINGS = {
+  courseCustomFieldShortname: 'courseemailnotifications_enabled',
+  diplomaOnlyCourseIds: [] as number[],
+};
 
 // Módulo "Gestión de Notificaciones": centraliza en Moodle Insights lo que
 // hoy vive disperso en la configuración local del plugin
@@ -130,16 +140,53 @@ export class NotificationsService {
     return { message: 'API key de notificaciones revocada.' };
   }
 
+  // ─── Ajustes de plataforma (no ligados a un disparador concreto) ───
+
+  async getPlatformSettings(platformId: string) {
+    const platform = await this.prisma.platform.findUnique({ where: { id: platformId } });
+    if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    return { ...DEFAULT_PLATFORM_SETTINGS, ...((platform.notificationSettings as object) ?? {}) };
+  }
+
+  async updatePlatformSettings(platformId: string, dto: UpdatePlatformSettingsDto) {
+    const current = await this.getPlatformSettings(platformId);
+    const next = {
+      ...current,
+      ...(dto.courseCustomFieldShortname !== undefined ? { courseCustomFieldShortname: dto.courseCustomFieldShortname } : {}),
+      ...(dto.diplomaOnlyCourseIds !== undefined ? { diplomaOnlyCourseIds: dto.diplomaOnlyCourseIds } : {}),
+    };
+    await this.prisma.platform.update({
+      where: { id: platformId },
+      data: { notificationSettings: next as Prisma.InputJsonValue },
+    });
+    return next;
+  }
+
+  // Cursos sincronizados de la plataforma, para el selector de "solo
+  // diploma" — reutiliza los datos que ya trae el sync de Cursos y Alumnos,
+  // no hace falta llamar a Moodle en vivo.
+  async listPlatformCourses(platformId: string) {
+    const courses = await this.prisma.course.findMany({
+      where: { platformId },
+      select: { courseId: true, courseName: true },
+      orderBy: { courseName: 'asc' },
+    });
+    return courses;
+  }
+
   // ─── Llamadas del plugin (autenticadas por PlatformApiKeyGuard) ───
 
   // Reglas activas para ESA plataforma: las específicas suyas tienen
   // prioridad sobre las globales del mismo trigger (una plataforma nunca
   // recibe las dos a la vez para un mismo disparador).
   async getConfigForPlatform(platformId: string) {
-    const rules = await this.prisma.notificationRule.findMany({
-      where: { isActive: true, OR: [{ platformId }, { platformId: null }] },
-      include: { template: true },
-    });
+    const [rules, settings] = await Promise.all([
+      this.prisma.notificationRule.findMany({
+        where: { isActive: true, OR: [{ platformId }, { platformId: null }] },
+        include: { template: true },
+      }),
+      this.getPlatformSettings(platformId),
+    ]);
 
     const byTrigger = new Map<string, (typeof rules)[number]>();
     for (const rule of rules) {
@@ -160,6 +207,7 @@ export class NotificationsService {
           bodyHtml: rule.template.bodyHtml,
         },
       })),
+      settings,
     };
   }
 

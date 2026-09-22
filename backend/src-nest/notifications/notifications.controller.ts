@@ -3,6 +3,7 @@ import { NotificationsService } from './notifications.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { UpsertRuleDto } from './dto/upsert-rule.dto';
+import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 
 // Panel de administración ("Gestión de Notificaciones" en el frontend) —
@@ -74,5 +75,20 @@ export class NotificationsController {
   @Delete('platforms/:platformId/api-key')
   revokeApiKey(@Param('platformId') platformId: string) {
     return this.notifications.revokeApiKey(platformId);
+  }
+
+  @Get('platforms/:platformId/settings')
+  getPlatformSettings(@Param('platformId') platformId: string) {
+    return this.notifications.getPlatformSettings(platformId);
+  }
+
+  @Put('platforms/:platformId/settings')
+  updatePlatformSettings(@Param('platformId') platformId: string, @Body() dto: UpdatePlatformSettingsDto) {
+    return this.notifications.updatePlatformSettings(platformId, dto);
+  }
+
+  @Get('platforms/:platformId/courses')
+  listPlatformCourses(@Param('platformId') platformId: string) {
+    return this.notifications.listPlatformCourses(platformId);
   }
 }

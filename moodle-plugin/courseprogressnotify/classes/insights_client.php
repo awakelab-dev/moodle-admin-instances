@@ -36,21 +36,57 @@ defined('MOODLE_INTERNAL') || die();
 class insights_client {
 
     /**
+     * Respuesta cruda de /api/notifications/plugin/config, cacheada por
+     * proceso PHP (una tarea cron = un proceso = como mucho una llamada
+     * HTTP, aunque el código llame a get_config() y get_settings() por
+     * separado varias veces durante la misma ejecución).
+     *
+     * @var array{triggers:array<string,array>,settings:array}|null
+     */
+    private static ?array $cache = null;
+
+    /**
      * Disparadores activos y su plantilla, indexados por clave de
      * disparador (p. ej. 'progress_25').
      *
      * @return array<string,array> ej. ['progress_25' => ['trigger'=>'progress_25','params'=>[],'template'=>['language'=>'es','subject'=>'...','bodyHtml'=>'...']]]
      */
     public static function get_config(): array {
+        return self::fetch()['triggers'];
+    }
+
+    /**
+     * Ajustes propios de esta plataforma que no son de un disparador en
+     * concreto: campo personalizado que activa notificaciones por curso,
+     * cursos "solo diploma", etc. (ver NotificationsService.getPlatformSettings
+     * en el backend — el plugin no guarda ningún default localmente,
+     * siempre recibe el objeto completo).
+     *
+     * @return array{courseCustomFieldShortname?:string,diplomaOnlyCourseIds?:int[]}
+     */
+    public static function get_settings(): array {
+        return self::fetch()['settings'];
+    }
+
+    /**
+     * @return array{triggers:array<string,array>,settings:array}
+     */
+    private static function fetch(): array {
+        if (self::$cache !== null) {
+            return self::$cache;
+        }
+
         [$url, $apikey] = self::get_connection();
         if (!$url || !$apikey) {
             mtrace('  ✗ Moodle Insights no está configurado (URL/API key vacíos) — no se enviará ningún email.');
-            return [];
+            self::$cache = ['triggers' => [], 'settings' => []];
+            return self::$cache;
         }
 
         $response = self::call('GET', $url . '/api/notifications/plugin/config', $apikey);
         if ($response === null) {
-            return [];
+            self::$cache = ['triggers' => [], 'settings' => []];
+            return self::$cache;
         }
 
         $data = json_decode($response, true);
@@ -62,7 +98,11 @@ class insights_client {
                 $bytrigger[$trigger['trigger']] = $trigger;
             }
         }
-        return $bytrigger;
+
+        $settings = is_array($data['settings'] ?? null) ? $data['settings'] : [];
+
+        self::$cache = ['triggers' => $bytrigger, 'settings' => $settings];
+        return self::$cache;
     }
 
     /**

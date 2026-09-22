@@ -19,19 +19,10 @@ defined('MOODLE_INTERNAL') || die();
 if ($hassiteconfig) {
     $settings = new admin_settingpage('local_courseprogressnotify', get_string('pluginname', 'local_courseprogressnotify'));
 
-    // Custom field shortname for per-course notification control.
-    $settings->add(new admin_setting_configtext(
-        'local_courseprogressnotify/customfield_shortname',
-        get_string('customfield_shortname', 'local_courseprogressnotify'),
-        get_string('customfield_shortname_desc', 'local_courseprogressnotify'),
-        'courseemailnotifications_enabled',
-        PARAM_TEXT
-    ));
-
     // Plugin version info
     $plugin = new stdClass();
     require(__DIR__ . '/version.php');
-    $versioninfo = html_writer::tag('div', 
+    $versioninfo = html_writer::tag('div',
         html_writer::tag('strong', 'Version: ') . $plugin->release . ' (Build: ' . $plugin->version . ')',
         ['style' => 'padding: 10px; background: #e8f4f8; border-left: 4px solid #0066cc; margin-bottom: 20px;']
     );
@@ -42,11 +33,15 @@ if ($hassiteconfig) {
     ));
 
     // ── Conexión con Moodle Insights ───────────────────────────────────────
-    // Qué disparadores están activos y qué plantilla usa cada uno (progreso
-    // 25/50/75%, etc.) ya NO se configura aquí — se controla desde Moodle
-    // Insights, sección "Gestión de Notificaciones". Este plugin solo
-    // necesita saber cómo conectarse: la URL de esa app y una API key
-    // (generada desde Configuración > Plataformas > Gestión de
+    // Este plugin no guarda NINGÚN parámetro de negocio localmente (qué
+    // disparadores están activos, sus plantillas, el campo personalizado
+    // que activa notificaciones por curso, días de antelación de
+    // Zoom/presencial, palabras clave de detección, cursos "solo
+    // diploma"...) — todo eso se gestiona desde Moodle Insights, sección
+    // "Gestión de Notificaciones", y se recibe entero en cada ejecución
+    // (ver insights_client::get_config()/get_settings()). Lo único que
+    // necesita este ajuste es cómo conectarse: la URL de esa app y una API
+    // key (generada desde Configuración > Plataformas > Gestión de
     // Notificaciones allá, con formato "<platformId>.<secreto>").
     $settings->add(new admin_setting_heading(
         'local_courseprogressnotify_insights_heading',
@@ -69,64 +64,11 @@ if ($hassiteconfig) {
         ''
     ));
 
-    // Days before Zoom session to send invitation reminder.
-    $settings->add(new admin_setting_configtext(
-        'local_courseprogressnotify/zoomdaysbefore',
-        get_string('settings:zoomdaysbefore', 'local_courseprogressnotify'),
-        get_string('settings:zoomdaysbefore_desc', 'local_courseprogressnotify'),
-        2,
-        PARAM_INT
-    ));
-
-    // Days before presential session (exam/tutoring) to send reminder.
-    $settings->add(new admin_setting_configtext(
-        'local_courseprogressnotify/presentialdaysbefore',
-        get_string('settings:presentialdaysbefore', 'local_courseprogressnotify'),
-        get_string('settings:presentialdaysbefore_desc', 'local_courseprogressnotify'),
-        2,
-        PARAM_INT
-    ));
-
-    // ── Matching keywords ────────────────────────────────────────────────────
-    $settings->add(new admin_setting_heading(
-        'local_courseprogressnotify_presential_keywords',
-        get_string('settings:presential_keywords_heading', 'local_courseprogressnotify'),
-        get_string('settings:presential_keywords_heading_desc', 'local_courseprogressnotify')
-    ));
-
-    $settings->add(new admin_setting_configtextarea(
-        'local_courseprogressnotify/presential_exam_keywords',
-        get_string('settings:presential_exam_keywords', 'local_courseprogressnotify'),
-        get_string('settings:presential_exam_keywords_desc', 'local_courseprogressnotify'),
-        "examen\nexam\nevaluacion\nprueba",
-        PARAM_TEXT
-    ));
-
-    $settings->add(new admin_setting_configtextarea(
-        'local_courseprogressnotify/presential_tutoring_keywords',
-        get_string('settings:presential_tutoring_keywords', 'local_courseprogressnotify'),
-        get_string('settings:presential_tutoring_keywords_desc', 'local_courseprogressnotify'),
-        "tutoria\ntuto\nasesoria\nconsulta\nsesion\nsessió",
-        PARAM_TEXT
-    ));
-
-    // Activity report link.
-    $reporturl = new moodle_url('/local/courseprogressnotify/report.php');
-    $reportdesc = html_writer::tag('p', get_string('settings:report_link_desc', 'local_courseprogressnotify'));
-    $reportdesc .= html_writer::link(
-        $reporturl,
-        get_string('report:viewreport', 'local_courseprogressnotify'),
-        ['class' => 'btn btn-info']
-    );
-    $settings->add(new admin_setting_heading(
-        'local_courseprogressnotify_reportblock',
-        get_string('settings:report_link', 'local_courseprogressnotify'),
-        $reportdesc
-    ));
-
-    // Add a manual run block inside the settings page.
+    // Add a manual run block inside the settings page — no configura nada,
+    // solo dispara task->execute() de forma inmediata (que ya lee todo lo
+    // que necesita desde Moodle Insights).
     $runurl = new moodle_url('/local/courseprogressnotify/run.php');
-    $customfield = get_config('local_courseprogressnotify', 'customfield_shortname');
+    $customfield = \local_courseprogressnotify\insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
     $disabled = empty($customfield);
     $desc = html_writer::tag('p', get_string('settings:run:desc', 'local_courseprogressnotify'));
     if ($disabled) {
@@ -140,17 +82,6 @@ if ($hassiteconfig) {
     }
 
     $settings->add(new admin_setting_heading('local_courseprogressnotify_runblock', get_string('runpage:heading', 'local_courseprogressnotify'), $desc));
-
-    // ── Diploma-only course configuration ──────────────────────────────────────
-    $settings->add(new admin_setting_heading(
-        'local_courseprogressnotify_diplomaonly_heading',
-        get_string('settings:diploma_only_heading', 'local_courseprogressnotify'),
-        get_string('settings:diploma_only_heading_desc', 'local_courseprogressnotify')
-    ));
-
-    // Require the custom admin_setting class (not autoloaded by default in settings.php context).
-    require_once(__DIR__ . '/classes/admin_setting_diploma_only_courses.php');
-    $settings->add(new \local_courseprogressnotify\admin_setting_diploma_only_courses());
 
     $ADMIN->add('localplugins', $settings);
 }

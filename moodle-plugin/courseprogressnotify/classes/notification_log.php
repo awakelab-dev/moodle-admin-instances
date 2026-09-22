@@ -50,14 +50,17 @@ class notification_log {
      * Diploma-only courses only receive the diploma availability email;
      * all other notification types are suppressed for them.
      *
+     * Configurado desde Moodle Insights (ver insights_client::get_settings()),
+     * no localmente — este plugin ya no guarda esta lista.
+     *
      * @return int[]
      */
     public static function get_diploma_only_course_ids(): array {
-        $config = get_config('local_courseprogressnotify', 'diploma_only_courses');
-        if (empty($config)) {
+        $ids = insights_client::get_settings()['diplomaOnlyCourseIds'] ?? [];
+        if (!is_array($ids)) {
             return [];
         }
-        return array_values(array_filter(array_map('intval', array_filter(explode(',', $config)))));
+        return array_values(array_filter(array_map('intval', $ids)));
     }
 
     /**

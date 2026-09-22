@@ -19,6 +19,9 @@ import {
   getPlatforms,
   generateNotificationsApiKey,
   revokeNotificationsApiKey,
+  getNotificationPlatformSettings,
+  updateNotificationPlatformSettings,
+  getNotificationPlatformCourses,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -70,6 +73,7 @@ export default function NotificationsPage() {
           <TabsTrigger value="templates">Plantillas</TabsTrigger>
           <TabsTrigger value="rules">Disparadores</TabsTrigger>
           <TabsTrigger value="log">Seguimiento</TabsTrigger>
+          <TabsTrigger value="settings">Ajustes por plataforma</TabsTrigger>
           <TabsTrigger value="connection">Conexión</TabsTrigger>
         </TabsList>
         <TabsContent value="templates">
@@ -80,6 +84,9 @@ export default function NotificationsPage() {
         </TabsContent>
         <TabsContent value="log">
           <DeliveryLogTab />
+        </TabsContent>
+        <TabsContent value="settings">
+          <PlatformSettingsTab flash={flash} />
         </TabsContent>
         <TabsContent value="connection">
           <ConnectionTab flash={flash} />
@@ -288,12 +295,54 @@ function TemplatesTab({ flash }) {
 
 // ─── Disparadores (reglas globales trigger -> plantilla) ───
 
+// Convierte los params guardados (JSON) en valores de formulario según el
+// paramsSchema del disparador: daysBefore como texto numérico, los
+// string[] (listas de palabras clave) como texto con una por línea.
+function paramsToFormValues(paramsSchema, params) {
+  const values = {};
+  for (const [key, type] of Object.entries(paramsSchema || {})) {
+    const raw = params?.[key];
+    if (type === 'string[]') {
+      values[key] = Array.isArray(raw) ? raw.join('\n') : '';
+    } else {
+      values[key] = raw !== undefined && raw !== null ? String(raw) : '';
+    }
+  }
+  return values;
+}
+
+function formValuesToParams(paramsSchema, values) {
+  const params = {};
+  for (const [key, type] of Object.entries(paramsSchema || {})) {
+    const raw = values[key];
+    if (type === 'string[]') {
+      params[key] = String(raw || '')
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else if (type === 'number') {
+      const n = Number(raw);
+      params[key] = Number.isFinite(n) && raw !== '' ? n : undefined;
+    } else {
+      params[key] = raw;
+    }
+  }
+  return params;
+}
+
+const PARAM_LABELS = {
+  daysBefore: 'Días de antelación',
+  examKeywords: 'Palabras clave para detectar exámenes (una por línea)',
+  tutoringKeywords: 'Palabras clave para detectar tutorías (una por línea)',
+};
+
 function RulesTab({ flash }) {
   const [triggers, setTriggers] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingTrigger, setSavingTrigger] = useState(null);
+  const [paramsForm, setParamsForm] = useState({}); // { [triggerKey]: { [paramKey]: string } }
 
   useEffect(() => {
     load();
@@ -307,7 +356,15 @@ function RulesTab({ flash }) {
         setTemplates(templatesData);
         // Solo interesan aquí las reglas globales (platformId null) — las
         // específicas por plataforma quedan para una vista futura.
-        setRules(rulesData.filter((r) => !r.platformId));
+        const globalRules = rulesData.filter((r) => !r.platformId);
+        setRules(globalRules);
+        const initialParams = {};
+        for (const trigger of triggersData) {
+          if (!Object.keys(trigger.paramsSchema || {}).length) continue;
+          const rule = globalRules.find((r) => r.trigger === trigger.key);
+          initialParams[trigger.key] = paramsToFormValues(trigger.paramsSchema, rule?.params);
+        }
+        setParamsForm(initialParams);
       })
       .catch((err) => flash(err.message, 'error'))
       .finally(() => setLoading(false));
@@ -315,6 +372,25 @@ function RulesTab({ flash }) {
 
   function ruleFor(triggerKey) {
     return rules.find((r) => r.trigger === triggerKey) || null;
+  }
+
+  async function handleSaveParams(trigger) {
+    const rule = ruleFor(trigger.key);
+    if (!rule) {
+      flash('Elige una plantilla antes de guardar los parámetros.', 'error');
+      return;
+    }
+    setSavingTrigger(trigger.key);
+    try {
+      const params = formValuesToParams(trigger.paramsSchema, paramsForm[trigger.key] || {});
+      await upsertNotificationRule({ trigger: trigger.key, templateId: rule.templateId, isActive: rule.isActive, params });
+      flash('Parámetros guardados.');
+      load();
+    } catch (err) {
+      flash(err.message, 'error');
+    } finally {
+      setSavingTrigger(null);
+    }
   }
 
   async function handleTemplateChange(triggerKey, templateId) {
@@ -363,6 +439,7 @@ function RulesTab({ flash }) {
       <div className="platform-list">
         {triggers.map((trigger) => {
           const rule = ruleFor(trigger.key);
+          const paramKeys = Object.keys(trigger.paramsSchema || {});
           return (
             <Card key={trigger.key} className="platform-card p-4">
               <div className="platform-info">
@@ -376,6 +453,52 @@ function RulesTab({ flash }) {
                     <span className="muted">Sin plantilla asignada</span>
                   )}
                 </div>
+                {paramKeys.length > 0 && (
+                  <div className="grid gap-2.5" style={{ marginTop: '0.75rem', width: '100%', maxWidth: 420 }}>
+                    {paramKeys.map((paramKey) => {
+                      const isList = trigger.paramsSchema[paramKey] === 'string[]';
+                      return (
+                        <div key={paramKey} className="grid gap-1.5">
+                          <Label>{PARAM_LABELS[paramKey] || paramKey}</Label>
+                          {isList ? (
+                            <textarea
+                              className="flex w-full rounded-control border border-border-soft bg-surface-muted px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                              rows={3}
+                              value={paramsForm[trigger.key]?.[paramKey] ?? ''}
+                              onChange={(e) =>
+                                setParamsForm((prev) => ({
+                                  ...prev,
+                                  [trigger.key]: { ...prev[trigger.key], [paramKey]: e.target.value },
+                                }))
+                              }
+                            />
+                          ) : (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={paramsForm[trigger.key]?.[paramKey] ?? ''}
+                              onChange={(e) =>
+                                setParamsForm((prev) => ({
+                                  ...prev,
+                                  [trigger.key]: { ...prev[trigger.key], [paramKey]: e.target.value },
+                                }))
+                              }
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!rule || savingTrigger === trigger.key}
+                      onClick={() => handleSaveParams(trigger)}
+                    >
+                      Guardar parámetros
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="platform-actions" style={{ alignItems: 'center', gap: '0.75rem' }}>
                 <Select
@@ -556,6 +679,170 @@ function ConnectionTab({ flash }) {
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Ajustes por plataforma (campo personalizado + cursos "solo diploma") ───
+
+function PlatformSettingsTab({ flash }) {
+  const [platforms, setPlatforms] = useState([]);
+  const [platformId, setPlatformId] = useState('');
+  const [loadingPlatforms, setLoadingPlatforms] = useState(true);
+  const [settings, setSettings] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [courseFilter, setCourseFilter] = useState('');
+
+  useEffect(() => {
+    getPlatforms()
+      .then((data) => {
+        const sorted = [...data].sort((a, b) => formatPlatformDisplayName(a.name).localeCompare(formatPlatformDisplayName(b.name)));
+        setPlatforms(sorted);
+        if (sorted.length) setPlatformId(sorted[0].id);
+      })
+      .catch((err) => flash(err.message, 'error'))
+      .finally(() => setLoadingPlatforms(false));
+  }, []);
+
+  useEffect(() => {
+    if (!platformId) return;
+    setLoadingDetail(true);
+    setCourseFilter('');
+    Promise.all([getNotificationPlatformSettings(platformId), getNotificationPlatformCourses(platformId)])
+      .then(([settingsData, coursesData]) => {
+        setSettings(settingsData);
+        setCourses(coursesData);
+      })
+      .catch((err) => flash(err.message, 'error'))
+      .finally(() => setLoadingDetail(false));
+  }, [platformId]);
+
+  function toggleDiplomaCourse(courseId) {
+    setSettings((prev) => {
+      const ids = new Set(prev.diplomaOnlyCourseIds || []);
+      if (ids.has(courseId)) ids.delete(courseId);
+      else ids.add(courseId);
+      return { ...prev, diplomaOnlyCourseIds: Array.from(ids) };
+    });
+  }
+
+  async function handleSave() {
+    if (!settings) return;
+    setSaving(true);
+    try {
+      const saved = await updateNotificationPlatformSettings(platformId, {
+        courseCustomFieldShortname: settings.courseCustomFieldShortname,
+        diplomaOnlyCourseIds: settings.diplomaOnlyCourseIds || [],
+      });
+      setSettings(saved);
+      flash('Ajustes guardados.');
+    } catch (err) {
+      flash(err.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loadingPlatforms) return <p className="empty">Cargando plataformas…</p>;
+  if (!platforms.length) return <p className="empty">No hay plataformas configuradas todavía.</p>;
+
+  const filteredCourses = courseFilter
+    ? courses.filter((c) => c.courseName.toLowerCase().includes(courseFilter.toLowerCase()))
+    : courses;
+  const diplomaOnlyIds = new Set(settings?.diplomaOnlyCourseIds || []);
+
+  return (
+    <div className="section-stack">
+      <p className="panel-description">
+        Parámetros propios de cada plataforma (no de un disparador en concreto): el campo
+        personalizado de Moodle que activa notificaciones por curso, y qué cursos son "solo
+        diploma" (reciben únicamente el email de diploma disponible, sin progreso ni
+        recordatorios de fin de curso).
+      </p>
+
+      <div className="grid gap-1.5" style={{ maxWidth: 420 }}>
+        <Label>Plataforma</Label>
+        <Select value={platformId} onValueChange={setPlatformId}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {platforms.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {formatPlatformDisplayName(p.name)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loadingDetail || !settings ? (
+        <p className="empty">Cargando ajustes…</p>
+      ) : (
+        <>
+          <div className="grid gap-1.5" style={{ maxWidth: 420 }}>
+            <Label>Campo personalizado que activa notificaciones por curso</Label>
+            <Input
+              type="text"
+              value={settings.courseCustomFieldShortname || ''}
+              onChange={(e) => setSettings({ ...settings, courseCustomFieldShortname: e.target.value })}
+            />
+            <p className="history-note">
+              Debe coincidir con el "Nombre corto" del campo personalizado (tipo casilla de
+              verificación) creado en esta plataforma bajo Administración del sitio → Cursos →
+              Campos personalizados del curso.
+            </p>
+          </div>
+
+          <Card className="p-4">
+            <div className="panel-header panel-header-compact">
+              <div>
+                <p className="eyebrow">Cursos "solo diploma"</p>
+                <h3 className="card-title">
+                  {diplomaOnlyIds.size} curso{diplomaOnlyIds.size === 1 ? '' : 's'} seleccionado
+                  {diplomaOnlyIds.size === 1 ? '' : 's'}
+                </h3>
+              </div>
+            </div>
+            <Input
+              type="text"
+              placeholder="Buscar curso…"
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              style={{ marginBottom: '0.75rem' }}
+            />
+            {!courses.length ? (
+              <p className="empty">
+                Esta plataforma todavía no tiene cursos sincronizados (ver "Cursos y Alumnos").
+              </p>
+            ) : (
+              <div style={{ maxHeight: 320, overflowY: 'auto', display: 'grid', gap: '0.4rem' }}>
+                {filteredCourses.map((course) => (
+                  <label
+                    key={course.courseId}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={diplomaOnlyIds.has(course.courseId)}
+                      onChange={() => toggleDiplomaCourse(course.courseId)}
+                    />
+                    {course.courseName}
+                  </label>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <div>
+            <Button type="button" disabled={saving} onClick={handleSave}>
+              {saving ? 'Guardando…' : 'Guardar ajustes'}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

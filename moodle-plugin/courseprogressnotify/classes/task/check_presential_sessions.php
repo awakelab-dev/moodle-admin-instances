@@ -50,11 +50,21 @@ class check_presential_sessions extends scheduled_task {
             return;
         }
 
-        $days = (int)get_config('local_courseprogressnotify', 'presentialdaysbefore');
+        // Los dos disparadores presenciales pueden configurar su propio
+        // "días de antelación" y sus propias palabras clave de detección
+        // desde Moodle Insights (paramsSchema de presential_exam/
+        // presential_tutoring); como un solo escaneo de calendario cubre
+        // ambos tipos a la vez, se usa el primero que esté configurado
+        // (examen gana si los dos lo están) para la ventana de tiempo.
+        $examparams = $config['presential_exam']['params'] ?? [];
+        $tutoringparams = $config['presential_tutoring']['params'] ?? [];
+        $days = (int)($examparams['daysBefore'] ?? $tutoringparams['daysBefore'] ?? 0);
         if ($days <= 0) { $days = 2; }
+        $examkeywords = is_array($examparams['examKeywords'] ?? null) ? $examparams['examKeywords'] : null;
+        $tutoringkeywords = is_array($tutoringparams['tutoringKeywords'] ?? null) ? $tutoringparams['tutoringKeywords'] : null;
 
-        $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
-        
+        $customfieldshortname = insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
+
         if (empty($customfieldshortname)) {
             mtrace('No custom field configured; skipping.');
             return;
@@ -102,7 +112,9 @@ class check_presential_sessions extends scheduled_task {
             }
 
             // Get presential events for this course using smart detection
-            $presentialevents = presential_provider::get_presential_events($course->id, $from, $to);
+            $presentialevents = presential_provider::get_presential_events(
+                $course->id, $from, $to, $examkeywords, $tutoringkeywords
+            );
             
             if (empty($presentialevents)) {
                 continue;

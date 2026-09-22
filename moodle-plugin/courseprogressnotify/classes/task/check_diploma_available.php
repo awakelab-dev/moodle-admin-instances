@@ -52,7 +52,7 @@ class check_diploma_available extends scheduled_task {
         }
         $template = $config['diploma_available']['template'];
 
-        $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
+        $customfieldshortname = insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
         
         if (empty($customfieldshortname)) {
             mtrace('No custom field configured; skipping.');

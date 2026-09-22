@@ -17,26 +17,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Notificacions de progrés de curs';
-
-// Privacy provider (GDPR).
-$string['privacy:metadata:local_courseprogressnotify_log'] = 'Registre dels correus de notificació enviats a cada usuari (progrés, sessions, diploma, etc.).';
-$string['privacy:metadata:local_courseprogressnotify_log:userid'] = 'ID de l\'usuari que va rebre la notificació.';
-$string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'ID del curs al qual pertany la notificació.';
-$string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Tipus de notificació enviada (progress_25, course_end_soon, etc.).';
-$string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'ID de l\'entitat associada a l\'esdeveniment (sessió de Zoom, sessió presencial), si escau.';
-$string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Data i hora en què es va enviar la notificació.';
-$string['privacy:path:notifications'] = 'Notificacions de progrés de curs';
-
 $string['settings:insights_heading'] = 'Connexió amb Moodle Insights';
 $string['settings:insights_heading_desc'] = 'Quins disparadors estan actius i quina plantilla fa servir cadascun es configura des de Moodle Insights, secció "Gestió de Notificacions" — no aquí. Aquest plugin només necessita saber com connectar-se.';
 $string['settings:insights_url'] = 'URL de Moodle Insights';
 $string['settings:insights_url_desc'] = 'Ex: https://moodle-dashboard.awakelab.world (sense barra final).';
 $string['settings:insights_api_key'] = 'API key de notificacions';
 $string['settings:insights_api_key_desc'] = 'Generada des de Moodle Insights, a Configuració > Plataformes > Gestió de Notificacions, per a aquesta plataforma en concret.';
-
-// Custom field settings.
-$string['customfield_shortname'] = 'Nom curt del camp personalitzat';
-$string['customfield_shortname_desc'] = 'Introduïu el nom curt del camp personalitzat del curs (casella de verificació) que habilita les notificacions per a cursos individuals. Només els cursos amb aquest camp habilitat rebran notificacions. El camp personalitzat s\'ha de crear a Administració del lloc → Cursos → Camps personalitzats del curs. Recomanat: courseemailnotifications_enabled';
 
 // Scheduled task names.
 $string['task_check_progress_25'] = 'Notificació de progrés 25%';
@@ -81,10 +67,6 @@ $string['run_ignore_restrictions_button'] = 'Enviar a tots (ignorar dates)';
 $string['settings:send_course_firstday'] = '1r Dia (ignorar dates)';
 $string['settings:send_course_diploma'] = 'Diploma (ignorar dates)';
 $string['backtosettings'] = 'Tornar a configuració';
-$string['coursespage:title'] = 'Plugin: Notificaciones';
-$string['coursespage:desc'] = 'Configura el mode «només diploma» i executa enviaments manuals per curs. Els canvis dels toggles es desen en fer clic a Desa.';
-$string['coursespage:saved'] = 'Configuració desada correctament.';
-$string['local/courseprogressnotify:managecourses'] = 'Gestionar la configuració de notificacions per curs';
 $string['local/courseprogressnotify:run'] = 'Executar manualment les verificacions de notificacions';
 $string['run_now_button'] = 'Verificar notificacions ara';
 $string['run_now_done'] = 'La verificació s\'ha executat correctament.';
@@ -94,36 +76,8 @@ $string['runpage:course_selector_heading'] = 'Selecció de curs';
 $string['runpage:course_selector_desc'] = 'Seleccioneu un curs específic per limitar la verificació a aquell curs, o deixeu "Tots els cursos" per executar en tots els cursos habilitats.';
 $string['runpage:all_courses'] = 'Tots els cursos';
 
-// Settings.
-
-$string['settings:zoomdaysbefore'] = 'Dies abans per a la invitació Zoom';
-$string['settings:zoomdaysbefore_desc'] = 'Nombre de dies abans de la data de la sessió Zoom per enviar la invitació automàtica.';
-$string['settings:presentialdaysbefore'] = 'Dies abans per a sessions presencials';
-$string['settings:presentialdaysbefore_desc'] = 'Nombre de dies abans de la sessió presencial (examen/tutoria) per enviar el recordatori.';
-
-// Paraules clau per a classificació de sessions presencials.
-$string['settings:presential_keywords_heading'] = 'Paraules clau de classificació';
-$string['settings:presential_keywords_heading_desc'] = 'Aquestes paraules clau determinen com es classifiquen els esdeveniments del calendari com a exàmens o tutories. <strong>Un esdeveniment només es detecta com a presencial si té una ubicació definida.</strong> Els accents s\'ignoren en comparar (p.ex., &ldquo;sessi&oacute;&rdquo; també coincideix amb &ldquo;sessio&rdquo;). Introduïu una paraula clau per línia.';
-$string['settings:presential_exam_keywords'] = 'Paraules clau per a exàmens';
-$string['settings:presential_exam_keywords_desc'] = 'Si alguna d\'aquestes paraules apareix al nom o descripció d\'un esdeveniment del calendari, es classificarà com a <strong>examen</strong>. Una paraula clau per línia.';
-$string['settings:presential_tutoring_keywords'] = 'Paraules clau per a tutories / sessions';
-$string['settings:presential_tutoring_keywords_desc'] = 'Si alguna d\'aquestes paraules apareix al nom o descripció d\'un esdeveniment del calendari, es classificarà com a <strong>tutoria</strong>. Una paraula clau per línia.';
-
 // Run block in settings page.
-$string['settings:run:desc'] = 'Executa manualment les verificacions de notificacions des d\'aquesta pàgina. S\'aplicarà als cursos amb notificacions habilitades mitjançant el camp personalitzat.';
-
-// Configuració cursos només-diploma.
-$string['settings:diploma_only_heading'] = 'Configuració avançada per curs';
-$string['settings:diploma_only_heading_desc'] = 'Configura el comportament del plugin per a cada curs: activa el mode «només diploma» per suprimir la resta de correus, o executa enviaments manuals ignorant les restriccions de data.';
-$string['settings:diploma_only_courses'] = 'Configuració per curs';
-$string['settings:diploma_only_courses_desc'] = 'Els cursos marcats en <span style="color:#721c24;font-weight:700">vermell/groc</span> tenen el mode «només diploma» actiu — revisa-ho bé abans de desar.';
-$string['settings:col_course'] = 'Curs';
-$string['settings:col_diploma_only'] = 'Només enviar diploma';
-$string['settings:col_manual_send'] = 'Enviament manual (sense dates)';
-$string['settings:diploma_only_configure_first'] = 'Configura primer el nom curt del camp personalitzat.';
-$string['settings:diploma_only_no_courses'] = 'No hi ha cursos habilitats per a aquest connector (cap curs té el camp personalitzat actiu).';
-$string['settings:diploma_only_active_badge'] = '⚠ NOMÉS DIPLOMA';
-$string['settings:diploma_only_warning_active'] = 'ATENCIÓ: un o més cursos tenen el mode només-diploma actiu. NO s\'enviaran correus no-diploma als estudiants d\'aquells cursos.';
+$string['settings:run:desc'] = 'Executa manualment les verificacions de notificacions des d\'aquesta pàgina. S\'aplicarà als cursos amb notificacions habilitades mitjançant el camp personalitzat configurat a Moodle Insights.';
 
 // Progress table.
 $string['progress:header:activity'] = 'Activitat';
@@ -132,13 +86,13 @@ $string['progress:status:complete'] = 'Completat';
 $string['progress:status:incomplete'] = 'Pendent';
 
 // Privacy.
-$string['privacy:metadata'] = 'El connector local_courseprogressnotify emmagatzema registres de notificacions enviades als usuaris.';
 $string['privacy:metadata:local_courseprogressnotify_log'] = 'Registre de notificacions enviades';
 $string['privacy:metadata:local_courseprogressnotify_log:userid'] = 'Usuari destinatari';
 $string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'Curs associat a la notificació';
 $string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Tipus de notificació enviada';
 $string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'Identificador de l\'entitat associada (p. ex., Zoom o sessió)';
 $string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Marca temporal de l\'enviament';
+$string['privacy:path:notifications'] = 'Notificacions de progrés de curs';
 
 // Email templates (from emails_ca.txt).
 $string['email_zoom_subject'] = 'Sessió Zoom del curs {{coursename}}';
@@ -234,107 +188,6 @@ $string['email_last_day_body'] = '<p>Hola {{firstname}},</p>
 <p>Gràcies per la teva participació.</p>
 
 <p>Una cordial salutació,</p>';
-
-// ── Informe d'activitat ───────────────────────────────────────────────────────
-$string['report:title']   = 'Informe d\'activitat de notificacions';
-$string['report:heading'] = 'Informe d\'activitat de notificacions';
-$string['settings:report_link']      = 'Informe d\'activitat';
-$string['settings:report_link_desc'] = 'Visualitza un informe detallat dels correus enviats per cada curs habilitat i per què els pendents encara no s\'han activat.';
-$string['report:viewreport'] = 'Veure informe d\'activitat';
-
-// Resum del curs.
-$string['report:intro']             = 'Mostrant activitat de {$a} curs(os) amb notificacions habilitades.';
-$string['report:nocourses']         = 'Cap curs té les notificacions habilitades amb el camp personalitzat configurat.';
-$string['report:no_courses_in_filter'] = 'Cap curs coincideix amb el filtre actual.';
-$string['report:haswarnings']       = 'Té advertències de configuració';
-$string['report:open_course']       = 'Obrir curs';
-$string['report:startdate']         = 'Data d\'inici';
-$string['report:enddate']           = 'Data de fi';
-$string['report:students']          = 'Estudiants matriculats';
-$string['report:completion']        = 'Finalització habilitada';
-$string['report:notset']            = 'No configurat';
-
-// Barra de resum.
-$string['report:summary_total']    = '{$a} curs(os) habilitat(s)';
-$string['report:summary_warnings'] = '{$a} amb advertències de configuració';
-$string['report:summary_sent']     = '{$a} registres de correu total';
-$string['report:filter_label']     = 'Mostrar:';
-$string['report:filter_all']       = 'Tots els cursos ({$a})';
-$string['report:filter_warnings']  = 'Només amb advertències ({$a})';
-
-// Advertències.
-$string['report:warnings']               = 'Advertències de configuració';
-$string['report:warn_start_past_year']   = 'La data d\'inici està configurada a {$a->year} ({$a->date}). Les tasques de primer i segon dia només s\'executen en la data exacta d\'inici — amb aquesta configuració aquests correus no s\'enviaran mai.';
-$string['report:warn_end_past_year']     = 'La data de fi està configurada a {$a->year} ({$a->date}). Els correus de fi de curs (7 dies abans, últim dia, diploma) no es dispararan mai.';
-$string['report:warn_no_completion']     = 'La finalització del curs està desactivada. Els correus de progrés (25%, 50%) no es poden enviar.';
-$string['report:warn_no_enddate']        = 'No hi ha cap data de fi configurada. Els correus de fi de curs i diploma no es dispararan.';
-
-// Historial de notificacions.
-$string['report:notificationsent'] = 'Historial de notificacions';
-$string['report:notiftype']        = 'Tipus de notificació';
-$string['report:sentcount']        = 'Enviats';
-$string['report:lastsent']         = 'Darrer enviament';
-$string['report:statusreason']     = 'Estat / Motiu';
-
-// Etiquetes de tipus de notificació.
-$string['report:notiftype_first_day']           = 'Tasques del primer dia';
-$string['report:notiftype_second_day']          = 'Segon dia (info de navegadors)';
-$string['report:notiftype_progress25']          = 'Progrés 25%';
-$string['report:notiftype_progress50']          = 'Progrés 50%';
-$string['report:notiftype_end_soon']            = 'Fi de curs proper (7 dies)';
-$string['report:notiftype_last_day']            = 'Recordatori últim dia';
-$string['report:notiftype_zoom']                = 'Recordatori sessió Zoom';
-$string['report:notiftype_presential_exam']     = 'Recordatori examen presencial';
-$string['report:notiftype_presential_tutoring'] = 'Recordatori tutoria presencial';
-$string['report:notiftype_diploma']             = 'Diploma disponible';
-
-// Motius d'estat.
-$string['report:reason_sent_n']            = 'Enviat a {$a->n} de {$a->total} estudiants matriculats';
-$string['report:reason_no_startdate']      = 'No hi ha cap data d\'inici configurada';
-$string['report:reason_wrong_start_year']  = 'L\'any de la data d\'inici és {$a->year} ({$a->date}) — les tasques només s\'executen en la data exacta d\'inici. Corregeix l\'any a l\'any actual.';
-$string['report:reason_starts_today']      = 'El curs comença avui — la tasca s\'executarà en la propera execució programada d\'avui';
-$string['report:reason_future_start']      = 'El curs encara no ha començat — la tasca s\'executarà el {$a->date}';
-$string['report:reason_window_passed']          = 'Finestra passada (fa {$a->days} dies des de la data d\'inici).';
-$string['report:reason_fires_today']            = 'Condició complerta avui — la tasca s\'executarà en la propera execució programada';
-$string['report:reason_in_recovery_window']     = 'Dins de la finestra de recuperació — el proper cron ho enviarà';
-$string['report:firstday_diag_toggle']          = 'Diagnosticar';
-$string['report:firstday_diag_window']          = 'Finestra activa del cron:';
-$string['report:firstday_diag_startdate']       = 'Data d\'inici del curs:';
-$string['report:firstday_diag_inwindow']        = 'A la finestra?';
-$string['report:firstday_diag_inwindow_yes']    = 'Sí — el proper cron enviarà el correu';
-$string['report:firstday_diag_inwindow_no']     = 'No — fora de la finestra de 2 dies. El correu no es pot enviar automàticament.';
-$string['report:firstday_diag_viewlogs']        = 'Veure logs del cron →';
-$string['report:reason_no_completion']     = 'La finalització del curs està desactivada — no es pot fer seguiment del progrés';
-$string['report:reason_below_threshold']   = 'Cap estudiant ha assolit encara el llindar del {$a->pct}% de progrés';
-$string['report:reason_no_enddate']        = 'No hi ha cap data de fi configurada';
-$string['report:reason_end_in_n_days']     = 'El curs finalitza en {$a->days} dies — aquest correu es dispararà en {$a->fires} dies (quan quedin exactament 7 dies)';
-$string['report:reason_end_window_passed_n'] = 'La finestra de 7 dies ha passat sense enviament. La data de fi era {$a->date}. Verifica que la tasca s\'ha executat en el moment correcte.';
-$string['report:reason_course_ended']      = 'El curs va finalitzar el {$a->date}';
-$string['report:reason_last_day_future']   = 'Es dispararà el {$a->date} (d\'aquí a {$a->days} dies — el dia abans del fi del curs)';
-$string['report:reason_diploma_future']    = 'Es dispararà el {$a->date} (30 dies després del fi del curs)';
-$string['report:reason_diploma_pending']   = 'Es dispararà en {$a->days} dia(es) (30 dies després del fi del curs)';
-$string['report:reason_diploma_window_passed'] = 'Finestra passada. El curs va finalitzar el {$a->date}. Verifica que la tasca es va executar 30 dies després del fi.';
-$string['report:reason_zoom_sent']         = 'Enviat a {$a->users} estudiants en {$a->sessions} sessió(ns) Zoom';
-$string['report:reason_zoom_none']         = 'No hi ha recordatoris Zoom registrats per a aquest curs encara';
-$string['report:reason_presential_sent']   = 'Enviat a {$a->users} estudiants en {$a->sessions} sessió(ns)';
-$string['report:reason_presential_none']   = 'No hi ha recordatoris registrats encara — veure la secció d\'esdeveniments presencials avall';
-
-// Secció d'esdeveniments presencials.
-$string['report:presentialevents']      = 'Esdeveniments de sessions presencials (darrers 30 dies → propers 60 dies)';
-$string['report:presentialevents_none'] = 'No s\'han trobat esdeveniments de calendari per a aquest curs a la finestra de l\'informe (darrers 30 → propers 60 dies).';
-$string['report:eventname']             = 'Nom de l\'esdeveniment';
-$string['report:eventdate']             = 'Data';
-$string['report:eventlocation']         = 'Ubicació';
-$string['report:eventdetected']         = 'Detectat com';
-$string['report:eventreason']           = 'Problema / Estat';
-$string['report:nolocation']            = 'Sense ubicació';
-$string['report:detected_no']           = 'No detectat';
-$string['report:notified_n']            = 'Notificats: {$a}';
-$string['report:event_will_notify']     = 'S\'enviarà notificació N dies abans de l\'esdeveniment (segons configuració)';
-$string['report:reason_event_nokeyword']        = 'L\'esdeveniment té ubicació configurada però no s\'ha trobat cap paraula clau d\'examen o tutoria al títol o descripció.';
-$string['report:reason_event_keywords_no_location'] = 'L\'esdeveniment té una paraula clau coincident però NO té ubicació. Afegeix una ubicació física a l\'esdeveniment del calendari per activar la detecció presencial.';
-$string['report:current_exam_kw']     = 'Paraules clau d\'examen actuals:';
-$string['report:current_tutoring_kw'] = 'Paraules clau de tutoria actuals:';
 
 $string['email_exam_subject'] = 'Examen presencial obligatori del curs {{coursename}}';
 $string['email_exam_body'] = '<p>Hola {{firstname}},</p>
