@@ -330,12 +330,55 @@ Notas de esta fase:
   patrón compartido funciona igual para un segundo tipo de disparador, no
   solo para progreso.
 
+## 7. Fase 4 completa (2026-09-22) — limpieza y hallazgos pendientes de la auditoría
+
+Con las 9 tareas ya migradas al patrón centralizado (Fases 1 y 2), esta fase
+quitó lo que quedó obsoleto y cerró los hallazgos "Alto"/"Medio" de la
+auditoría original que seguían abiertos:
+
+- **Código muerto eliminado**: `email_builder::send()`,
+  `send_combined_email()` y `load_lang_strings()` (el flujo viejo basado en
+  `get_string()` local, sin uso desde que las 9 tareas usan
+  `send_from_template()`); `classes/hook_callbacks.php` (nunca se llegó a
+  enganchar — `db/hooks.php` define `$callbacks = []` vacío, la navegación
+  real la pone `lib.php`); el ajuste `send_combined_email` de
+  `settings.php` y sus 2 cadenas de idioma en los 3 idiomas.
+- **Privacy provider completo** (`classes/privacy/provider.php`): antes solo
+  declaraba qué se guarda (`get_metadata()`); ahora implementa también
+  exportación y borrado GDPR (`plugin\provider` + `core_userlist_provider`)
+  para `local_courseprogressnotify_log`, tratando cada fila como datos
+  "dentro" de un contexto de curso (userid + courseid), el mismo patrón que
+  usan los plugins de actividad de Moodle para sus propios logs.
+- **`db/upgrade.php` añadido** (no existía — hallazgo "Alto" de la
+  auditoría). Arranca en blanco como línea base; todos los cambios de
+  esquema anteriores pasaron directamente por `install.xml` en
+  instalaciones nuevas, así que no hay pasos retroactivos que ejecutar.
+- **Bug de negocio corregido en `check_diploma_available`**: antes enviaba
+  el email de "diploma disponible" a TODOS los alumnos matriculados 30 días
+  después de que terminara el curso, sin comprobar si de verdad aprobaron —
+  a pesar de que el nombre de la tarea y su documentación decían
+  "si están aprobados". Ahora usa `completion_info::is_course_complete()`
+  (seguimiento de finalización de curso de Moodle) para filtrar: si el
+  curso no tiene seguimiento de finalización activado, se omite el curso
+  entero (no se puede saber quién aprobó, mejor no enviar nada); si lo
+  tiene, solo se envía a quien completó/aprobó.
+- **Versión del plugin**: `2026092201` / release `2.12.0`.
+- **Verificado**: `php -l` limpio en los ~30 archivos del plugin;
+  `admin/cli/upgrade.php --non-interactive` corrido contra el Moodle
+  nativo de prueba (aplica `db/upgrade.php` sin errores); se repitió la
+  ejecución real de dos tareas (`check_diploma_available`,
+  `check_course_end_soon`) tras el resync — conectan bien con Moodle
+  Insights, no hay errores por la reestructuración de `settings.php`.
+
+Quedan fuera de esta fase, deliberadamente (deuda técnica de baja prioridad,
+no bloqueante): las ~54 cadenas de idioma `email_X_subject`/`email_X_body`
+que quedaron huérfanas (se dejan como datos inertes, no rompen nada);
+duplicación de `get_course_students`/`format_date_for_user`/
+`is_course_enabled` entre las 9 tareas; posible N+1 en alguna de ellas.
+
 ---
 
-*Próximo paso: Fase 3 (disparadores nuevos pedidos por el instructor —
-aviso al instructor de actividad pendiente de calificar, evaluación
-próxima — requieren decidir con él qué evento exacto de Moodle los
-dispara) o Fase 4 (limpieza: quitar del plugin lo que ya quedó obsoleto,
-corregir los hallazgos de la auditoría original que siguen pendientes:
-privacy provider incompleto, falta `db/upgrade.php`, el bug de diploma que
-no verifica aprobación real).*
+*Próximo paso: Fase 3 — disparadores nuevos pedidos por el instructor
+(aviso al instructor de actividad pendiente de calificar, evaluación
+próxima). Requiere decidir con él qué evento exacto de Moodle dispara cada
+uno antes de empezar a implementarlos.*

@@ -110,14 +110,6 @@ if ($hassiteconfig) {
         PARAM_TEXT
     ));
 
-    // Combined Spanish and Catalan emails.
-    $settings->add(new admin_setting_configcheckbox(
-        'local_courseprogressnotify/send_combined_email',
-        get_string('settings:send_combined_email', 'local_courseprogressnotify'),
-        get_string('settings:send_combined_email_desc', 'local_courseprogressnotify'),
-        1 // Enabled by default
-    ));
-
     // Activity report link.
     $reporturl = new moodle_url('/local/courseprogressnotify/report.php');
     $reportdesc = html_writer::tag('p', get_string('settings:report_link_desc', 'local_courseprogressnotify'));

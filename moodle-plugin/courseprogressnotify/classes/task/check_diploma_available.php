@@ -3,10 +3,13 @@ namespace local_courseprogressnotify\task;
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once(__DIR__ . '/../../../../lib/completionlib.php');
+
 use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\notification_log;
 use local_courseprogressnotify\insights_client;
+use completion_info;
 
 /**
  * Task to notify users 30 days after course end if they are approved.
@@ -117,13 +120,24 @@ class check_diploma_available extends scheduled_task {
             }
             
             $notified = 0;
-            
+            $completion = new completion_info($course);
+            $completionenabled = $completion->is_enabled();
+            if (!$completionenabled) {
+                mtrace("    ⚠ Seguimiento de finalización no activado en este curso; no se puede verificar quién aprobó, se omite el curso.");
+                continue;
+            }
+
             foreach ($students as $user) {
                 if (notification_log::has_sent($user->id, $course->id, 'diploma_available')) {
                     mtrace("    ✓ Already sent to {$user->firstname} {$user->lastname} ({$user->email}) - skipping");
                     continue;
                 }
-                
+
+                if (!$completion->is_course_complete($user->id)) {
+                    mtrace("    ⏭ {$user->firstname} {$user->lastname} ({$user->email}) no ha completado/aprobado el curso - se omite");
+                    continue;
+                }
+
                 $placeholders = [
                     'campus_url' => (new \moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
                 ];

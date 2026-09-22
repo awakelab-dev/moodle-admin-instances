@@ -17,6 +17,16 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Course progress notifications';
+
+// Privacy provider (GDPR).
+$string['privacy:metadata:local_courseprogressnotify_log'] = 'Log of notification emails sent to each user (progress, sessions, diploma, etc.).';
+$string['privacy:metadata:local_courseprogressnotify_log:userid'] = 'ID of the user who received the notification.';
+$string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'ID of the course the notification belongs to.';
+$string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Type of notification sent (progress_25, course_end_soon, etc.).';
+$string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'ID of the entity associated with the event (Zoom session, presential session), if applicable.';
+$string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Date and time the notification was sent.';
+$string['privacy:path:notifications'] = 'Course progress notifications';
+
 $string['settings:insights_heading'] = 'Connection to Moodle Insights';
 $string['settings:insights_heading_desc'] = 'Which triggers are active and which template each one uses is configured from Moodle Insights, "Notification Management" section — not here. This plugin only needs to know how to connect.';
 $string['settings:insights_url'] = 'Moodle Insights URL';
@@ -89,8 +99,6 @@ $string['settings:zoomdaysbefore'] = 'Days before Zoom invitation';
 $string['settings:zoomdaysbefore_desc'] = 'Number of days before the Zoom session date to send the automatic invitation.';
 $string['settings:presentialdaysbefore'] = 'Days before on-site sessions';
 $string['settings:presentialdaysbefore_desc'] = 'Number of days before the on-site session (exam/tutoring) to send the reminder.';
-$string['settings:send_combined_email'] = 'Send Spanish and Catalan emails combined';
-$string['settings:send_combined_email_desc'] = 'When enabled, emails will contain both Spanish and Catalan versions in the same message. When disabled, emails will be sent in the user\'s preferred language only.';
 
 // Matching keywords for presential session classification.
 $string['settings:presential_keywords_heading'] = 'Matching keywords';

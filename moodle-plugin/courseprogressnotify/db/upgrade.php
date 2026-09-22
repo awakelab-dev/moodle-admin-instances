@@ -16,10 +16,17 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'local_courseprogressnotify';
-$plugin->version   = 2026092201; // YYYYMMDDXX (build number).
-$plugin->release   = '2.12.0';
-$plugin->maturity  = MATURITY_STABLE;
-// Requires Moodle 4.4 or later (approximate build number for 4.4).
-$plugin->requires  = 2024042200;
-// Repo: https://github.com/LeoLeto/Awakelab-moodle-emails.git
+/**
+ * Upgrade steps for local_courseprogressnotify.
+ *
+ * No hubo upgrade.php hasta ahora (todos los cambios de esquema pasaron
+ * directamente por install.xml en instalaciones nuevas); este archivo
+ * arranca en blanco como línea base para futuros savepoints y solo
+ * necesita devolver true si no hay pasos que ejecutar.
+ *
+ * @param int $oldversion
+ * @return bool
+ */
+function xmldb_local_courseprogressnotify_upgrade(int $oldversion): bool {
+    return true;
+}

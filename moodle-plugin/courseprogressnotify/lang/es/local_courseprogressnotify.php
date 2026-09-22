@@ -17,6 +17,16 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Notificaciones de progreso de curso';
+
+// Privacy provider (GDPR).
+$string['privacy:metadata:local_courseprogressnotify_log'] = 'Registro de emails de notificación enviados a cada usuario (progreso, sesiones, diploma, etc.).';
+$string['privacy:metadata:local_courseprogressnotify_log:userid'] = 'ID del usuario que recibió la notificación.';
+$string['privacy:metadata:local_courseprogressnotify_log:courseid'] = 'ID del curso al que pertenece la notificación.';
+$string['privacy:metadata:local_courseprogressnotify_log:notification_type'] = 'Tipo de notificación enviada (progress_25, course_end_soon, etc.).';
+$string['privacy:metadata:local_courseprogressnotify_log:entityid'] = 'ID de la entidad asociada al evento (sesión de Zoom, sesión presencial), si aplica.';
+$string['privacy:metadata:local_courseprogressnotify_log:time_sent'] = 'Fecha y hora en que se envió la notificación.';
+$string['privacy:path:notifications'] = 'Notificaciones de progreso de curso';
+
 $string['settings:insights_heading'] = 'Conexión con Moodle Insights';
 $string['settings:insights_heading_desc'] = 'Qué disparadores están activos y qué plantilla usa cada uno se configura desde Moodle Insights, sección "Gestión de Notificaciones" — no aquí. Este plugin solo necesita saber cómo conectarse.';
 $string['settings:insights_url'] = 'URL de Moodle Insights';
@@ -89,8 +99,6 @@ $string['settings:zoomdaysbefore'] = 'Días antes para la invitación Zoom';
 $string['settings:zoomdaysbefore_desc'] = 'Número de días antes de la fecha de la sesión Zoom para enviar la invitación automática.';
 $string['settings:presentialdaysbefore'] = 'Días antes para sesiones presenciales';
 $string['settings:presentialdaysbefore_desc'] = 'Número de días antes de la sesión presencial (examen/tutoría) para enviar el recordatorio.';
-$string['settings:send_combined_email'] = 'Enviar correos combinados en español y catalán';
-$string['settings:send_combined_email_desc'] = 'Cuando está habilitado, los correos contendrán tanto la versión en español como en catalán en el mismo mensaje. Cuando está deshabilitado, los correos se enviarán solo en el idioma preferido del usuario.';
 
 // Palabras clave para clasificación de sesiones presenciales.
 $string['settings:presential_keywords_heading'] = 'Palabras clave de clasificación';
