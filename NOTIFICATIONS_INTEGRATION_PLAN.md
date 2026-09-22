@@ -301,7 +301,41 @@ que funcione en producción falta, y depende del instructor:
    base de datos local de desarrollo, son datos, no se despliegan con el
    código.
 
+## 6. Fase 2 completa (2026-09-22)
+
+Los 6 disparadores restantes migrados al mismo patrón que progreso 25/50/75%
+(piden configuración a Moodle Insights al arrancar, usan
+`email_builder::send_from_template()`, reportan resultados con
+`insights_client::report_log()`, y si no hay plantilla activa para su
+trigger no envían nada): `course_end_soon`, `course_last_day`,
+`zoom_session`, `presential_exam`/`presential_tutoring` (una sola tarea,
+`check_presential_sessions`, decide cuál de las dos según cada evento),
+`diploma_available`, `first_day`, `second_day`.
+
+Notas de esta fase:
+- `zoom_session` ahora lee "días de antelación" primero desde los `params`
+  de la regla en Moodle Insights; si no está configurado ahí, cae al ajuste
+  local antiguo (`zoomdaysbefore`) como respaldo — no rompe instalaciones
+  que aún no configuraron ese parámetro centralmente.
+- `check_presential_sessions` puede seguir enviando el tipo que SÍ tenga
+  plantilla activa aunque el otro no la tenga (p. ej. solo "examen"
+  configurado, sin "tutoría") — no es todo o nada.
+- `email_builder::send()` (el método viejo, basado en `get_string()` local)
+  quedó sin ningún uso — se deja para la Fase 4 (limpieza), no se borró
+  aquí para no mezclar migración con limpieza de código muerto.
+- **Verificado de nuevo end-to-end** (no solo sintaxis): se repitió la
+  prueba real con `course_end_soon` contra el mismo Moodle nativo de
+  prueba — email construido con la plantilla centralizada, placeholders
+  sustituidos, y registro en el Seguimiento del dashboard. Confirma que el
+  patrón compartido funciona igual para un segundo tipo de disparador, no
+  solo para progreso.
+
 ---
 
-*Próximo paso: Fase 2 (migrar el resto de disparadores — fin de curso,
-Zoom, presencial, diploma, primer/segundo día — al mismo patrón).*
+*Próximo paso: Fase 3 (disparadores nuevos pedidos por el instructor —
+aviso al instructor de actividad pendiente de calificar, evaluación
+próxima — requieren decidir con él qué evento exacto de Moodle los
+dispara) o Fase 4 (limpieza: quitar del plugin lo que ya quedó obsoleto,
+corregir los hallazgos de la auditoría original que siguen pendientes:
+privacy provider incompleto, falta `db/upgrade.php`, el bug de diploma que
+no verifica aprobación real).*

@@ -7,6 +7,7 @@ use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\notification_log;
 use local_courseprogressnotify\presential_provider;
+use local_courseprogressnotify\insights_client;
 
 /**
  * Task to notify users before presential sessions (exam/tutoring).
@@ -32,6 +33,22 @@ class check_presential_sessions extends scheduled_task {
     public function execute() {
         global $DB;
         mtrace('Running task: presential sessions (calendar-based detection)');
+
+        // Este disparador cubre DOS triggers (examen y tutoría) desde una
+        // sola tarea — cada evento del calendario decide cuál le toca según
+        // su clasificación (presential_provider). Si ninguno de los dos
+        // tiene plantilla activa en Moodle Insights, no hay nada que
+        // procesar; si solo uno la tiene, se procesa igual pero se omiten
+        // los eventos del tipo sin plantilla.
+        $config = insights_client::get_config();
+        $templates = [
+            'exam' => $config['presential_exam']['template'] ?? null,
+            'tutoring' => $config['presential_tutoring']['template'] ?? null,
+        ];
+        if (empty($templates['exam']) && empty($templates['tutoring'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "presential_exam" ni "presential_tutoring"; no se enviará ningún email.');
+            return;
+        }
 
         $days = (int)get_config('local_courseprogressnotify', 'presentialdaysbefore');
         if ($days <= 0) { $days = 2; }
@@ -72,6 +89,7 @@ class check_presential_sessions extends scheduled_task {
 
         $totalevents = 0;
         $totalnotifs = 0;
+        $results = [];
 
         // Filter out diploma-only courses (they should only receive the diploma email).
         $diplomaonlyids = notification_log::get_diploma_only_course_ids();
@@ -103,8 +121,14 @@ class check_presential_sessions extends scheduled_task {
             foreach ($presentialevents as $event) {
                 $typekey = $event['type']; // 'exam' or 'tutoring'
                 $notiftype = 'presential_' . $typekey;
-                
+                $template = $templates[$typekey] ?? null;
+
                 mtrace("    Event: {$event['name']} (Type: {$typekey}, Location: {$event['location']})");
+
+                if (empty($template)) {
+                    mtrace("      ✗ Sin plantilla configurada en Moodle Insights para \"{$notiftype}\"; se omite este evento.");
+                    continue;
+                }
 
                 foreach ($students as $user) {
                     // Check if already notified (use event ID as entity)
@@ -124,12 +148,22 @@ class check_presential_sessions extends scheduled_task {
                         $typekey . '_end' => userdate($event['timeend'], $timefmt, $usertz),
                     ];
 
-                    email_builder::send($user, $course, $typekey, $placeholders, $notiftype, $event['id']);
-                    $totalnotifs++;
+                    $sent = email_builder::send_from_template($user, $course, $template, $placeholders, $notiftype, $event['id']);
+                    $results[] = [
+                        'trigger' => $notiftype,
+                        'courseId' => (int)$course->id,
+                        'userId' => (int)$user->id,
+                        'entityId' => (string)$event['id'],
+                        'success' => $sent,
+                    ];
+                    if ($sent) {
+                        $totalnotifs++;
+                    }
                 }
             }
         }
 
+        insights_client::report_log($results);
         mtrace("Presential sessions check complete. Events found: {$totalevents}, Notifications sent: {$totalnotifs}");
     }
 

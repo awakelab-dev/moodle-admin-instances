@@ -7,6 +7,7 @@ use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\notification_log;
 use local_courseprogressnotify\zoom_provider;
+use local_courseprogressnotify\insights_client;
 
 /**
  * Task to notify users X days before Zoom sessions.
@@ -28,7 +29,21 @@ class check_zoom_sessions extends scheduled_task {
         global $CFG;
         mtrace('Running task: zoom sessions');
 
-        $days = (int)get_config('local_courseprogressnotify', 'zoomdaysbefore');
+        $config = insights_client::get_config();
+        if (empty($config['zoom_session']['template'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "zoom_session"; no se enviará ningún email.');
+            return;
+        }
+        $template = $config['zoom_session']['template'];
+
+        // "Días de antelación" puede venir de Moodle Insights (params del
+        // disparador) o, si no se configuró ahí, del ajuste local antiguo —
+        // así una plataforma sin ese parámetro centralizado sigue
+        // funcionando con su valor de siempre.
+        $days = (int)($config['zoom_session']['params']['daysBefore'] ?? 0);
+        if ($days <= 0) {
+            $days = (int)get_config('local_courseprogressnotify', 'zoomdaysbefore');
+        }
         if ($days <= 0) { $days = 2; }
         mtrace("Days before setting: {$days}");
 
@@ -56,6 +71,7 @@ class check_zoom_sessions extends scheduled_task {
         }
 
         $totalnotifs = 0;
+        $results = [];
         foreach ($sessions as $session) {
             mtrace("\nProcessing Zoom session: {$session->name} (ID: {$session->id})");
             
@@ -106,12 +122,23 @@ class check_zoom_sessions extends scheduled_task {
                     'image_zoom_link_es' => (new \moodle_url('/local/courseprogressnotify/pix/updated_es_email_zoom_link_location.png'))->out(false),
                     'image_zoom_link_ca' => (new \moodle_url('/local/courseprogressnotify/pix/updated_ca_email_zoom_link_location.png'))->out(false),
                 ];
-                email_builder::send($user, $course, 'zoom', $placeholders, 'zoom_reminder', $session->id);
-                $notified++;
-                $totalnotifs++;
+                $sent = email_builder::send_from_template($user, $course, $template, $placeholders, 'zoom_reminder', $session->id);
+                $results[] = [
+                    'trigger' => 'zoom_session',
+                    'courseId' => (int)$course->id,
+                    'userId' => (int)$user->id,
+                    'entityId' => (string)$session->id,
+                    'success' => $sent,
+                ];
+                if ($sent) {
+                    $notified++;
+                    $totalnotifs++;
+                }
             }
             mtrace("  → Sent {$notified} notifications for this session");
         }
+
+        insights_client::report_log($results);
         mtrace("\n✓ Total Zoom notifications sent: {$totalnotifs}");
     }
 

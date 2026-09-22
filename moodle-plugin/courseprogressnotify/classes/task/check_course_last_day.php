@@ -6,6 +6,7 @@ defined('MOODLE_INTERNAL') || die();
 use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\notification_log;
+use local_courseprogressnotify\insights_client;
 
 /**
  * Task to notify users on the last day of the course.
@@ -31,6 +32,13 @@ class check_course_last_day extends scheduled_task {
         $today = usergetmidnight($now);
         $tomorrow = $today + DAYSECS;
         $dayAfterTomorrow = $tomorrow + DAYSECS;
+
+        $config = insights_client::get_config();
+        if (empty($config['course_last_day']['template'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "course_last_day"; no se enviará ningún email.');
+            return;
+        }
+        $template = $config['course_last_day']['template'];
 
         $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
         
@@ -65,10 +73,11 @@ class check_course_last_day extends scheduled_task {
 
         $processedcount = 0;
         $sentcount = 0;
+        $results = [];
 
         // Filter out diploma-only courses (they should only receive the diploma email).
         $diplomaonlyids = notification_log::get_diploma_only_course_ids();
-        
+
         foreach ($courses as $course) {
             // Skip diploma-only courses.
             if (!empty($diplomaonlyids) && in_array((int)$course->id, $diplomaonlyids, true)) {
@@ -92,13 +101,20 @@ class check_course_last_day extends scheduled_task {
                     'courseenddate' => $this->format_date_for_user($user, $course->enddate),
                     'image_quality_survey' => $imgurl->out(false),
                 ];
-                $result = email_builder::send($user, $course, 'last_day', $placeholders, 'course_last_day');
+                $result = email_builder::send_from_template($user, $course, $template, $placeholders, 'course_last_day');
+                $results[] = [
+                    'trigger' => 'course_last_day',
+                    'courseId' => (int)$course->id,
+                    'userId' => (int)$user->id,
+                    'success' => $result,
+                ];
                 if ($result) {
                     $sentcount++;
                 }
             }
         }
-        
+
+        insights_client::report_log($results);
         mtrace("\n=== Summary: Processed {$processedcount} student(s), sent {$sentcount} email(s) ===");
     }
 

@@ -6,6 +6,7 @@ defined('MOODLE_INTERNAL') || die();
 use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\notification_log;
+use local_courseprogressnotify\insights_client;
 
 /**
  * Task to notify users on the first day of course about initial tasks.
@@ -40,7 +41,14 @@ class check_first_day_tasks extends scheduled_task {
         global $DB, $CFG;
         
         mtrace('Running task: first day tasks notification');
-        
+
+        $config = insights_client::get_config();
+        if (empty($config['first_day']['template'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "first_day"; no se enviará ningún email.');
+            return;
+        }
+        $template = $config['first_day']['template'];
+
         $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
         
         if (empty($customfieldshortname)) {
@@ -150,7 +158,8 @@ class check_first_day_tasks extends scheduled_task {
         }
 
         $totalnotifs = 0;
-        
+        $results = [];
+
         foreach ($courses as $course) {
             mtrace("  Course: {$course->fullname} (starts: " . userdate($course->startdate, '%Y-%m-%d') . ")");
             
@@ -177,16 +186,23 @@ class check_first_day_tasks extends scheduled_task {
                     'image_tutorial' => $imgtuturl->out(false),
                 ];
                 
-                $sent = email_builder::send($user, $course, 'first_day', $placeholders, 'first_day_tasks');
+                $sent = email_builder::send_from_template($user, $course, $template, $placeholders, 'first_day_tasks');
+                $results[] = [
+                    'trigger' => 'first_day',
+                    'courseId' => (int)$course->id,
+                    'userId' => (int)$user->id,
+                    'success' => $sent,
+                ];
                 if ($sent) {
                     $notified++;
                     $totalnotifs++;
                 }
             }
-            
+
             mtrace("    Notified: {$notified}");
         }
-        
+
+        insights_client::report_log($results);
         mtrace("First day tasks check complete. Total notifications sent: {$totalnotifs}");
     }
 

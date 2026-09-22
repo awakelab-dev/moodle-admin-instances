@@ -6,6 +6,7 @@ defined('MOODLE_INTERNAL') || die();
 use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\notification_log;
+use local_courseprogressnotify\insights_client;
 
 /**
  * Task to notify users 30 days after course end if they are approved.
@@ -40,7 +41,14 @@ class check_diploma_available extends scheduled_task {
         global $DB, $CFG;
         
         mtrace('Running task: diploma available (30 days after course end)');
-        
+
+        $config = insights_client::get_config();
+        if (empty($config['diploma_available']['template'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "diploma_available"; no se enviará ningún email.');
+            return;
+        }
+        $template = $config['diploma_available']['template'];
+
         $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
         
         if (empty($customfieldshortname)) {
@@ -97,7 +105,8 @@ class check_diploma_available extends scheduled_task {
         }
 
         $totalnotifs = 0;
-        
+        $results = [];
+
         foreach ($courses as $course) {
             mtrace("  Course: {$course->fullname} (ended: " . userdate($course->enddate, '%Y-%m-%d') . ")");
             
@@ -118,14 +127,23 @@ class check_diploma_available extends scheduled_task {
                 $placeholders = [
                     'campus_url' => (new \moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
                 ];
-                email_builder::send($user, $course, 'diploma', $placeholders, 'diploma_available');
-                $notified++;
-                $totalnotifs++;
+                $result = email_builder::send_from_template($user, $course, $template, $placeholders, 'diploma_available');
+                $results[] = [
+                    'trigger' => 'diploma_available',
+                    'courseId' => (int)$course->id,
+                    'userId' => (int)$user->id,
+                    'success' => $result,
+                ];
+                if ($result) {
+                    $notified++;
+                    $totalnotifs++;
+                }
             }
-            
+
             mtrace("    Notified: {$notified}");
         }
-        
+
+        insights_client::report_log($results);
         mtrace("Diploma check complete. Total notifications sent: {$totalnotifs}");
     }
 

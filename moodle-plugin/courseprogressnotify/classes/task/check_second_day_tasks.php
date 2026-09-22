@@ -6,6 +6,7 @@ defined('MOODLE_INTERNAL') || die();
 use core\task\scheduled_task;
 use local_courseprogressnotify\email_builder;
 use local_courseprogressnotify\notification_log;
+use local_courseprogressnotify\insights_client;
 
 /**
  * Task to notify users on the second day of course about browser compatibility.
@@ -27,7 +28,14 @@ class check_second_day_tasks extends scheduled_task {
         global $DB;
         
         mtrace('Running task: second day tasks notification (browser compatibility)');
-        
+
+        $config = insights_client::get_config();
+        if (empty($config['second_day']['template'])) {
+            mtrace('✗ Sin plantilla configurada en Moodle Insights para "second_day"; no se enviará ningún email.');
+            return;
+        }
+        $template = $config['second_day']['template'];
+
         $customfieldshortname = get_config('local_courseprogressnotify', 'customfield_shortname');
         
         if (empty($customfieldshortname)) {
@@ -90,6 +98,7 @@ class check_second_day_tasks extends scheduled_task {
         }
 
         $totalnotifs = 0;
+        $results = [];
 
         // Filter out diploma-only courses (they should only receive the diploma email).
         $diplomaonlyids = notification_log::get_diploma_only_course_ids();
@@ -119,16 +128,23 @@ class check_second_day_tasks extends scheduled_task {
                 
                 $placeholders = [];
                 
-                $sent = email_builder::send($user, $course, 'second_day', $placeholders, 'second_day_tasks');
+                $sent = email_builder::send_from_template($user, $course, $template, $placeholders, 'second_day_tasks');
+                $results[] = [
+                    'trigger' => 'second_day',
+                    'courseId' => (int)$course->id,
+                    'userId' => (int)$user->id,
+                    'success' => $sent,
+                ];
                 if ($sent) {
                     $notified++;
                     $totalnotifs++;
                 }
             }
-            
+
             mtrace("    Notified: {$notified}");
         }
-        
+
+        insights_client::report_log($results);
         mtrace("Second day tasks check complete. Total notifications sent: {$totalnotifs}");
     }
 
