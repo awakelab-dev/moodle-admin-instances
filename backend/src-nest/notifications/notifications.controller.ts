@@ -77,6 +77,11 @@ export class NotificationsController {
     return this.notifications.revokeApiKey(platformId);
   }
 
+  @Get('custom-field-shortnames')
+  listKnownCustomFieldShortnames() {
+    return this.notifications.listKnownCustomFieldShortnames();
+  }
+
   @Get('platforms/:platformId/settings')
   getPlatformSettings(@Param('platformId') platformId: string) {
     return this.notifications.getPlatformSettings(platformId);

@@ -162,6 +162,27 @@ export class NotificationsService {
     return next;
   }
 
+  // Nombres cortos de campo personalizado ya usados en OTRAS plataformas —
+  // alimenta el desplegable del formulario de ajustes para reducir el
+  // riesgo de typo (la causa más común de "no llega ningún email": el
+  // nombre no coincide exactamente con el campo real de esa Moodle). No es
+  // una lista en vivo de los campos que existen en Moodle porque esa
+  // consulta necesitaría una función de Web Service que no todas las
+  // ~24 plataformas reales tienen habilitada en su token (ver
+  // NOTIFICATIONS_INTEGRATION_PLAN.md) — así que se ofrece como sugerencia
+  // editable, no como una lista cerrada.
+  async listKnownCustomFieldShortnames(): Promise<string[]> {
+    const platforms = await this.prisma.platform.findMany({ select: { notificationSettings: true } });
+    const values = new Set<string>([DEFAULT_PLATFORM_SETTINGS.courseCustomFieldShortname]);
+    for (const p of platforms) {
+      const shortname = (p.notificationSettings as any)?.courseCustomFieldShortname;
+      if (typeof shortname === 'string' && shortname.trim()) {
+        values.add(shortname.trim());
+      }
+    }
+    return Array.from(values).sort();
+  }
+
   // Cursos sincronizados de la plataforma, para el selector de "solo
   // diploma" — reutiliza los datos que ya trae el sync de Cursos y Alumnos,
   // no hace falta llamar a Moodle en vivo.

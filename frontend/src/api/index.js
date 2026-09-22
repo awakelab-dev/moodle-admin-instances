@@ -213,6 +213,8 @@ export const revokeNotificationsApiKey = (platformId) =>
     invalidateCache('platforms');
     return result;
   });
+export const getNotificationCustomFieldShortnames = () =>
+  request('/notifications/custom-field-shortnames', { cache: 'no-store' });
 export const getNotificationPlatformSettings = (platformId) =>
   request(`/notifications/platforms/${platformId}/settings`, { cache: 'no-store' });
 export const updateNotificationPlatformSettings = (platformId, data) =>

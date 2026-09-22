@@ -6,7 +6,7 @@
 // del repo) para la arquitectura completa. El plugin en sí no tiene
 // interfaz propia: solo guarda la URL de esta app + la API key que se
 // genera en la pestaña "Conexión".
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getNotificationTriggers,
   getNotificationTemplates,
@@ -22,6 +22,7 @@ import {
   getNotificationPlatformSettings,
   updateNotificationPlatformSettings,
   getNotificationPlatformCourses,
+  getNotificationCustomFieldShortnames,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -29,7 +30,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -38,6 +47,110 @@ import ConfirmDialog from './ConfirmDialog';
 const LANGUAGE_LABELS = { es: 'Español', ca: 'Català', en: 'English' };
 
 const EMPTY_TEMPLATE_FORM = { name: '', language: 'es', subject: '', bodyHtml: '' };
+
+// Catálogo completo de placeholders que el plugin sabe rellenar, agrupado
+// por disparador (ver classes/task/*.php de local_courseprogressnotify).
+// firstname/lastname/coursename los rellena email_builder para CUALQUIER
+// disparador; el resto solo existe si la plantilla se asocia al disparador
+// correspondiente — un placeholder de otro grupo se queda sin sustituir
+// (se envía el email con el texto "{{...}}" literal).
+const PLACEHOLDER_GROUPS = [
+  {
+    label: 'Común (cualquier disparador)',
+    items: [
+      { key: 'firstname', desc: 'Nombre del alumno' },
+      { key: 'lastname', desc: 'Apellidos del alumno' },
+      { key: 'coursename', desc: 'Nombre del curso' },
+    ],
+  },
+  {
+    label: 'Progreso 25% / 50% / 75%',
+    items: [
+      { key: 'progress_percentage', desc: '% de progreso alcanzado' },
+      { key: 'courseenddate', desc: 'Fecha de fin del curso' },
+      { key: 'progress_table', desc: 'Tabla HTML con el detalle por actividad' },
+    ],
+  },
+  {
+    label: 'Fin de curso próximo / último día',
+    items: [{ key: 'courseenddate', desc: 'Fecha de fin del curso' }],
+  },
+  {
+    label: 'Recordatorio Zoom',
+    items: [
+      { key: 'zoom_name', desc: 'Nombre de la sesión' },
+      { key: 'zoom_date', desc: 'Fecha de la sesión' },
+      { key: 'zoom_start', desc: 'Hora de inicio' },
+      { key: 'zoom_end', desc: 'Hora de fin' },
+      { key: 'zoom_time', desc: 'Rango horario (inicio - fin)' },
+      { key: 'zoom_link', desc: 'Enlace a la sesión' },
+    ],
+  },
+  {
+    label: 'Examen presencial',
+    items: [
+      { key: 'exam_location', desc: 'Ubicación del examen' },
+      { key: 'exam_date', desc: 'Fecha del examen' },
+      { key: 'exam_start', desc: 'Hora de inicio' },
+      { key: 'exam_end', desc: 'Hora de fin' },
+    ],
+  },
+  {
+    label: 'Tutoría presencial',
+    items: [
+      { key: 'tutoring_location', desc: 'Ubicación de la tutoría' },
+      { key: 'tutoring_date', desc: 'Fecha de la tutoría' },
+      { key: 'tutoring_start', desc: 'Hora de inicio' },
+      { key: 'tutoring_end', desc: 'Hora de fin' },
+    ],
+  },
+  {
+    label: 'Diploma disponible',
+    items: [{ key: 'campus_url', desc: 'Enlace al curso en el campus' }],
+  },
+];
+
+// Inserta {{key}} en la posición del cursor de un <input>/<textarea>
+// controlado y devuelve el cursor justo después de lo insertado.
+function insertAtCursor(ref, value, setValue, key) {
+  const el = ref.current;
+  const token = `{{${key}}}`;
+  if (!el) {
+    setValue(value + token);
+    return;
+  }
+  const start = el.selectionStart ?? value.length;
+  const end = el.selectionEnd ?? value.length;
+  const next = value.slice(0, start) + token + value.slice(end);
+  setValue(next);
+  requestAnimationFrame(() => {
+    el.focus();
+    const pos = start + token.length;
+    el.setSelectionRange(pos, pos);
+  });
+}
+
+function PlaceholderPicker({ onPick }) {
+  return (
+    <Select value="" onValueChange={onPick}>
+      <SelectTrigger style={{ width: 200 }}>
+        <SelectValue placeholder="Insertar placeholder…" />
+      </SelectTrigger>
+      <SelectContent>
+        {PLACEHOLDER_GROUPS.map((group) => (
+          <SelectGroup key={group.label}>
+            <SelectLabel>{group.label}</SelectLabel>
+            {group.items.map((item) => (
+              <SelectItem key={`${group.label}:${item.key}`} value={item.key}>
+                <span className="mono">{`{{${item.key}}}`}</span> — {item.desc}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function NotificationsPage() {
   const [tab, setTab] = useState('templates');
@@ -106,6 +219,8 @@ function TemplatesTab({ flash }) {
   const [form, setForm] = useState(EMPTY_TEMPLATE_FORM);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const subjectRef = useRef(null);
+  const bodyRef = useRef(null);
 
   useEffect(() => {
     load();
@@ -225,8 +340,16 @@ function TemplatesTab({ flash }) {
               </div>
             </div>
             <div className="grid gap-1.5">
-              <Label>Asunto</Label>
+              <div className="config-header" style={{ marginBottom: 0 }}>
+                <Label style={{ margin: 0 }}>Asunto</Label>
+                <PlaceholderPicker
+                  onPick={(key) =>
+                    insertAtCursor(subjectRef, form.subject, (v) => setForm((f) => ({ ...f, subject: v })), key)
+                  }
+                />
+              </div>
               <Input
+                ref={subjectRef}
                 type="text"
                 placeholder="Vas al 25%, {{firstname}}!"
                 value={form.subject}
@@ -235,8 +358,16 @@ function TemplatesTab({ flash }) {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Cuerpo (HTML)</Label>
+              <div className="config-header" style={{ marginBottom: 0 }}>
+                <Label style={{ margin: 0 }}>Cuerpo (HTML)</Label>
+                <PlaceholderPicker
+                  onPick={(key) =>
+                    insertAtCursor(bodyRef, form.bodyHtml, (v) => setForm((f) => ({ ...f, bodyHtml: v })), key)
+                  }
+                />
+              </div>
               <textarea
+                ref={bodyRef}
                 className="flex w-full rounded-control border border-border-soft bg-surface-muted px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent font-mono"
                 rows={10}
                 placeholder="<p>Hola {{firstname}}, ya llevas el {{progress_percentage}}% de {{coursename}}...</p>"
@@ -694,6 +825,7 @@ function PlatformSettingsTab({ flash }) {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [courseFilter, setCourseFilter] = useState('');
+  const [customFieldOptions, setCustomFieldOptions] = useState([]);
 
   useEffect(() => {
     getPlatforms()
@@ -704,6 +836,9 @@ function PlatformSettingsTab({ flash }) {
       })
       .catch((err) => flash(err.message, 'error'))
       .finally(() => setLoadingPlatforms(false));
+    getNotificationCustomFieldShortnames()
+      .then(setCustomFieldOptions)
+      .catch(() => setCustomFieldOptions([]));
   }, []);
 
   useEffect(() => {
@@ -786,11 +921,18 @@ function PlatformSettingsTab({ flash }) {
             <Label>Campo personalizado que activa notificaciones por curso</Label>
             <Input
               type="text"
+              list="cpn-customfield-options"
               value={settings.courseCustomFieldShortname || ''}
               onChange={(e) => setSettings({ ...settings, courseCustomFieldShortname: e.target.value })}
             />
+            <datalist id="cpn-customfield-options">
+              {customFieldOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
             <p className="history-note">
-              Debe coincidir con el "Nombre corto" del campo personalizado (tipo casilla de
+              Escribe el valor o elígelo de la lista (valores ya usados en otras plataformas). Debe
+              coincidir con el "Nombre corto" del campo personalizado (tipo casilla de
               verificación) creado en esta plataforma bajo Administración del sitio → Cursos →
               Campos personalizados del curso.
             </p>
