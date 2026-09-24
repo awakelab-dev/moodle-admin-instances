@@ -110,25 +110,39 @@ const PLACEHOLDER_GROUPS = [
   },
 ];
 
-// Inserta {{key}} en la posición del cursor de un <input>/<textarea>
-// controlado. El desplegable de Radix se lleva el foco al abrirse, así que
-// el campo casi nunca es document.activeElement cuando se elige una
-// opción — en ese caso no hay que fiarse de selectionStart/End (pueden
-// quedar en 0/0 o en valores obsoletos) y lo seguro es añadir al final.
-function insertAtCursor(ref, value, setValue, key) {
-  const el = ref.current;
+// Inserta {{key}} en la última posición de cursor conocida de un
+// <input>/<textarea> controlado. El desplegable de Radix se lleva el foco
+// al abrirse (document.activeElement ya no es el campo cuando se elige una
+// opción), así que no se puede leer selectionStart/End "en vivo" en ese
+// momento — hay que haberlos guardado ANTES, cada vez que el usuario tocó
+// o movió el cursor en el campo (ver el onSelect en el input/textarea).
+function insertAtCursor(elRef, selectionRef, value, setValue, key) {
+  const el = elRef.current;
   const token = `{{${key}}}`;
-  const trustSelection = el && document.activeElement === el && typeof el.selectionStart === 'number';
-  const start = trustSelection ? el.selectionStart : value.length;
-  const end = trustSelection ? el.selectionEnd : value.length;
+  const sel = selectionRef.current;
+  // Si el campo nunca registró una selección (el usuario no llegó a
+  // hacer clic dentro), lo más razonable es añadir al final.
+  const start = sel ? Math.min(sel.start, value.length) : value.length;
+  const end = sel ? Math.min(sel.end, value.length) : value.length;
   const next = value.slice(0, start) + token + value.slice(end);
   setValue(next);
+  const pos = start + token.length;
+  selectionRef.current = { start: pos, end: pos };
   requestAnimationFrame(() => {
     if (!el) return;
     el.focus();
-    const pos = start + token.length;
     el.setSelectionRange(pos, pos);
   });
+}
+
+// Handler de onSelect a pasar al input/textarea — se dispara con cada
+// clic, tecla de flecha o cambio de texto que mueva el cursor, así que la
+// posición queda guardada de antemano, no hay que leerla justo cuando se
+// elige un placeholder (para entonces el campo ya perdió el foco).
+function trackSelection(selectionRef) {
+  return (e) => {
+    selectionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+  };
 }
 
 function PlaceholderPicker({ onPick }) {
@@ -235,6 +249,8 @@ function TemplatesTab({ flash }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const subjectRef = useRef(null);
   const bodyRef = useRef(null);
+  const subjectSelectionRef = useRef(null);
+  const bodySelectionRef = useRef(null);
 
   useEffect(() => {
     load();
@@ -252,6 +268,8 @@ function TemplatesTab({ flash }) {
     setForm(EMPTY_TEMPLATE_FORM);
     setEditingId(null);
     setShowForm(true);
+    subjectSelectionRef.current = null;
+    bodySelectionRef.current = null;
   }
 
   function openEdit(template) {
@@ -263,6 +281,8 @@ function TemplatesTab({ flash }) {
     });
     setEditingId(template.id);
     setShowForm(true);
+    subjectSelectionRef.current = null;
+    bodySelectionRef.current = null;
   }
 
   function closeForm() {
@@ -358,7 +378,13 @@ function TemplatesTab({ flash }) {
                 <Label style={{ margin: 0 }}>Asunto</Label>
                 <PlaceholderPicker
                   onPick={(key) =>
-                    insertAtCursor(subjectRef, form.subject, (v) => setForm((f) => ({ ...f, subject: v })), key)
+                    insertAtCursor(
+                      subjectRef,
+                      subjectSelectionRef,
+                      form.subject,
+                      (v) => setForm((f) => ({ ...f, subject: v })),
+                      key,
+                    )
                   }
                 />
               </div>
@@ -368,6 +394,7 @@ function TemplatesTab({ flash }) {
                 placeholder="Vas al 25%, {{firstname}}!"
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                onSelect={trackSelection(subjectSelectionRef)}
                 required
               />
             </div>
@@ -376,7 +403,13 @@ function TemplatesTab({ flash }) {
                 <Label style={{ margin: 0 }}>Cuerpo (HTML)</Label>
                 <PlaceholderPicker
                   onPick={(key) =>
-                    insertAtCursor(bodyRef, form.bodyHtml, (v) => setForm((f) => ({ ...f, bodyHtml: v })), key)
+                    insertAtCursor(
+                      bodyRef,
+                      bodySelectionRef,
+                      form.bodyHtml,
+                      (v) => setForm((f) => ({ ...f, bodyHtml: v })),
+                      key,
+                    )
                   }
                 />
               </div>
@@ -387,6 +420,7 @@ function TemplatesTab({ flash }) {
                 placeholder="<p>Hola {{firstname}}, ya llevas el {{progress_percentage}}% de {{coursename}}...</p>"
                 value={form.bodyHtml}
                 onChange={(e) => setForm({ ...form, bodyHtml: e.target.value })}
+                onSelect={trackSelection(bodySelectionRef)}
                 required
               />
             </div>
