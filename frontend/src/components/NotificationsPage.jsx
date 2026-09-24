@@ -111,19 +111,20 @@ const PLACEHOLDER_GROUPS = [
 ];
 
 // Inserta {{key}} en la posición del cursor de un <input>/<textarea>
-// controlado y devuelve el cursor justo después de lo insertado.
+// controlado. El desplegable de Radix se lleva el foco al abrirse, así que
+// el campo casi nunca es document.activeElement cuando se elige una
+// opción — en ese caso no hay que fiarse de selectionStart/End (pueden
+// quedar en 0/0 o en valores obsoletos) y lo seguro es añadir al final.
 function insertAtCursor(ref, value, setValue, key) {
   const el = ref.current;
   const token = `{{${key}}}`;
-  if (!el) {
-    setValue(value + token);
-    return;
-  }
-  const start = el.selectionStart ?? value.length;
-  const end = el.selectionEnd ?? value.length;
+  const trustSelection = el && document.activeElement === el && typeof el.selectionStart === 'number';
+  const start = trustSelection ? el.selectionStart : value.length;
+  const end = trustSelection ? el.selectionEnd : value.length;
   const next = value.slice(0, start) + token + value.slice(end);
   setValue(next);
   requestAnimationFrame(() => {
+    if (!el) return;
     el.focus();
     const pos = start + token.length;
     el.setSelectionRange(pos, pos);
@@ -131,22 +132,35 @@ function insertAtCursor(ref, value, setValue, key) {
 }
 
 function PlaceholderPicker({ onPick }) {
+  // Un mismo placeholder (ej. courseenddate) puede aparecer en más de un
+  // grupo porque lo usan varios disparadores — Radix exige valores únicos
+  // dentro del mismo <Select>, así que solo se renderiza la primera
+  // aparición de cada clave.
+  const seen = new Set();
   return (
     <Select value="" onValueChange={onPick}>
       <SelectTrigger style={{ width: 200 }}>
         <SelectValue placeholder="Insertar placeholder…" />
       </SelectTrigger>
       <SelectContent>
-        {PLACEHOLDER_GROUPS.map((group) => (
-          <SelectGroup key={group.label}>
-            <SelectLabel>{group.label}</SelectLabel>
-            {group.items.map((item) => (
-              <SelectItem key={`${group.label}:${item.key}`} value={item.key}>
-                <span className="mono">{`{{${item.key}}}`}</span> — {item.desc}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
+        {PLACEHOLDER_GROUPS.map((group) => {
+          const items = group.items.filter((item) => {
+            if (seen.has(item.key)) return false;
+            seen.add(item.key);
+            return true;
+          });
+          if (!items.length) return null;
+          return (
+            <SelectGroup key={group.label}>
+              <SelectLabel>{group.label}</SelectLabel>
+              {items.map((item) => (
+                <SelectItem key={item.key} value={item.key}>
+                  <span className="mono">{`{{${item.key}}}`}</span> — {item.desc}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          );
+        })}
       </SelectContent>
     </Select>
   );
