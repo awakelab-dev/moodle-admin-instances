@@ -311,9 +311,6 @@ export default function CoursesStudentsPage() {
     [allCourses]
   );
 
-  const activeCount = useMemo(() => allCourses.filter((c) => !c.is_historical).length, [allCourses]);
-  const historicalCount = useMemo(() => allCourses.filter((c) => c.is_historical).length, [allCourses]);
-
   function handleCourseSort(key) {
     if (courseSortKey === key) {
       setCourseSortDir((direction) => (direction === 'asc' ? 'desc' : 'asc'));
@@ -328,10 +325,14 @@ export default function CoursesStudentsPage() {
     return courseSortDir === 'asc' ? ' ↑' : ' ↓';
   }
 
-  const filteredCourses = useMemo(() => {
+  // Todo lo que afecta al conjunto de cursos EXCEPTO el propio filtro de
+  // estado (activo/histórico) — así los contadores de las pestañas "Todos
+  // (N)"/"Activos (N)" reflejan el mismo conjunto que el título de la
+  // tabla ("Cursos de X (N)"), en vez de contar sobre allCourses sin
+  // aplicar "Ocultar plantillas"/búsqueda/fechas como antes (lo que
+  // producía dos cifras distintas para la misma pantalla).
+  const baseFilteredCourses = useMemo(() => {
     let list = hideTemplates ? allCourses.filter((c) => !isTemplateCourse(c)) : allCourses;
-    if (statusFilter === 'active') list = list.filter((c) => !c.is_historical);
-    if (statusFilter === 'historical') list = list.filter((c) => c.is_historical);
     if (dateFrom) {
       const fromSeconds = new Date(`${dateFrom}T00:00:00`).getTime() / 1000;
       list = list.filter((c) => c.start_date && c.start_date >= fromSeconds);
@@ -349,6 +350,22 @@ export default function CoursesStudentsPage() {
           c.category_name.toLowerCase().includes(term)
       );
     }
+    return list;
+  }, [allCourses, courseSearch, hideTemplates, dateFrom, dateTo]);
+
+  const activeCount = useMemo(
+    () => baseFilteredCourses.filter((c) => !c.is_historical).length,
+    [baseFilteredCourses]
+  );
+  const historicalCount = useMemo(
+    () => baseFilteredCourses.filter((c) => c.is_historical).length,
+    [baseFilteredCourses]
+  );
+
+  const filteredCourses = useMemo(() => {
+    let list = baseFilteredCourses;
+    if (statusFilter === 'active') list = list.filter((c) => !c.is_historical);
+    if (statusFilter === 'historical') list = list.filter((c) => c.is_historical);
     if (!courseSortKey) return list;
     return [...list].sort((a, b) => {
       const valA = a[courseSortKey] ?? 0;
@@ -358,7 +375,7 @@ export default function CoursesStudentsPage() {
       }
       return courseSortDir === 'asc' ? valA - valB : valB - valA;
     });
-  }, [allCourses, courseSearch, hideTemplates, statusFilter, dateFrom, dateTo, courseSortKey, courseSortDir]);
+  }, [baseFilteredCourses, statusFilter, courseSortKey, courseSortDir]);
 
   function openCourse(course) {
     setSelectedCourse(course);
@@ -689,9 +706,15 @@ export default function CoursesStudentsPage() {
             <p className="course-breakdown-warning">
               {selectedPlatform.coursesLastSyncedAt
                 ? `Última sincronización: ${new Date(selectedPlatform.coursesLastSyncedAt).toLocaleString('es-CL')}.`
-                : selectedPlatform.lastSyncedAt
-                  ? 'Esta plataforma todavía no tiene datos de cursos y alumnos.'
-                  : 'Esta plataforma todavía no se ha sincronizado.'}
+                : allCourses.length > 0
+                  // coursesLastSyncedAt puede seguir sin fijar aunque ya haya cursos
+                  // cargados (p. ej. datos migrados antes de que existiera esta marca
+                  // de tiempo) — no decir "sin datos" cuando la tabla de abajo sí los
+                  // tiene sería engañoso.
+                  ? 'Hay cursos cargados, pero la sincronización dedicada de matrícula y accesos todavía no se ha ejecutado para esta plataforma.'
+                  : selectedPlatform.lastSyncedAt
+                    ? 'Esta plataforma todavía no tiene datos de cursos y alumnos.'
+                    : 'Esta plataforma todavía no se ha sincronizado.'}
               {' '}Algunas plataformas pueden tardar algo más en sincronizar.
             </p>
             <Button

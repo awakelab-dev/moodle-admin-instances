@@ -458,7 +458,11 @@ export class DashboardService {
       moodleSource: platform.url,
       platformName: platform.name || course.moodleName || null,
       calculatedAt: platform.coursesLastSyncedAt ? platform.coursesLastSyncedAt.toISOString() : null,
-      neverSynced: !platform.coursesLastSyncedAt,
+      // `coursesLastSyncedAt` puede estar sin fijar aunque ya haya
+      // matrículas guardadas (p. ej. datos migrados antes de que existiera
+      // esta marca de tiempo) — "nunca sincronizado" solo es cierto si
+      // además no hay ni un solo registro de matrícula para este curso.
+      neverSynced: !platform.coursesLastSyncedAt && enrollments.length === 0,
       course: {
         course_id: course.courseId,
         course_name: course.courseName,
