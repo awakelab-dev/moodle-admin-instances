@@ -14,9 +14,17 @@ import { NOTIFICATION_TRIGGERS } from './notification-triggers.constants';
 // `Platform.notificationSettings` (JSON, ver schema.prisma) — el plugin
 // siempre recibe un objeto completo, nunca tiene que adivinar un default
 // localmente.
+//
+// notificationsEnabled empieza en `false` a propósito: es el interruptor
+// maestro de envío para ESA plataforma (ver getConfigForPlatform). Así se
+// puede generar la API key y conectar el plugin en una Moodle real sin
+// ningún riesgo de que empiece a mandar emails solo por estar conectado —
+// alguien tiene que activarlo explícitamente aquí, plataforma por
+// plataforma, cuando de verdad esté listo.
 const DEFAULT_PLATFORM_SETTINGS = {
   courseCustomFieldShortname: 'courseemailnotifications_enabled',
   diplomaOnlyCourseIds: [] as number[],
+  notificationsEnabled: false,
 };
 
 // Módulo "Gestión de Notificaciones": centraliza en Moodle Insights lo que
@@ -154,6 +162,7 @@ export class NotificationsService {
       ...current,
       ...(dto.courseCustomFieldShortname !== undefined ? { courseCustomFieldShortname: dto.courseCustomFieldShortname } : {}),
       ...(dto.diplomaOnlyCourseIds !== undefined ? { diplomaOnlyCourseIds: dto.diplomaOnlyCourseIds } : {}),
+      ...(dto.notificationsEnabled !== undefined ? { notificationsEnabled: dto.notificationsEnabled } : {}),
     };
     await this.prisma.platform.update({
       where: { id: platformId },
@@ -201,13 +210,21 @@ export class NotificationsService {
   // prioridad sobre las globales del mismo trigger (una plataforma nunca
   // recibe las dos a la vez para un mismo disparador).
   async getConfigForPlatform(platformId: string) {
-    const [rules, settings] = await Promise.all([
-      this.prisma.notificationRule.findMany({
-        where: { isActive: true, OR: [{ platformId }, { platformId: null }] },
-        include: { template: true },
-      }),
-      this.getPlatformSettings(platformId),
-    ]);
+    const settings = await this.getPlatformSettings(platformId);
+
+    // Interruptor maestro: con esto en false, el plugin de esa plataforma
+    // recibe cero disparadores aunque haya reglas/plantillas activas — así
+    // se puede conectar (API key pegada) sin ningún riesgo de envío hasta
+    // que alguien lo active aquí explícitamente. No hace falta tocar
+    // ninguna regla ni plantilla para "pausar" una plataforma.
+    if (!settings.notificationsEnabled) {
+      return { triggers: [], settings };
+    }
+
+    const rules = await this.prisma.notificationRule.findMany({
+      where: { isActive: true, OR: [{ platformId }, { platformId: null }] },
+      include: { template: true },
+    });
 
     const byTrigger = new Map<string, (typeof rules)[number]>();
     for (const rule of rules) {

@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -984,6 +985,21 @@ function PlatformSettingsTab({ flash }) {
     }
   }
 
+  // El interruptor maestro se guarda al instante, aparte del resto del
+  // formulario — es un control de seguridad, no debería depender de que
+  // alguien recuerde pulsar "Guardar ajustes" después de tocarlo.
+  async function handleToggleNotifications(nextValue) {
+    setSettings((prev) => ({ ...prev, notificationsEnabled: nextValue }));
+    try {
+      const saved = await updateNotificationPlatformSettings(platformId, { notificationsEnabled: nextValue });
+      setSettings(saved);
+      flash(nextValue ? 'Notificaciones activadas para esta plataforma.' : 'Notificaciones desactivadas para esta plataforma.');
+    } catch (err) {
+      setSettings((prev) => ({ ...prev, notificationsEnabled: !nextValue }));
+      flash(err.message, 'error');
+    }
+  }
+
   if (loadingPlatforms) return <p className="empty">Cargando plataformas…</p>;
   if (!platforms.length) return <p className="empty">No hay plataformas configuradas todavía.</p>;
 
@@ -1021,6 +1037,26 @@ function PlatformSettingsTab({ flash }) {
         <p className="empty">Cargando ajustes…</p>
       ) : (
         <>
+          <Card
+            className="p-4"
+            style={{ borderColor: settings.notificationsEnabled ? 'var(--color-danger)' : undefined }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <div>
+                <p className="eyebrow">Interruptor maestro</p>
+                <h3 className="card-title">
+                  {settings.notificationsEnabled ? 'Notificaciones ACTIVAS en esta plataforma' : 'Notificaciones desactivadas en esta plataforma'}
+                </h3>
+                <p className="history-note" style={{ marginTop: '0.35rem' }}>
+                  {settings.notificationsEnabled
+                    ? 'El plugin de esta plataforma puede enviar emails reales ahora mismo, para cualquier curso con el campo personalizado activado.'
+                    : 'Aunque el plugin esté conectado (API key pegada) y haya cursos con el campo personalizado activado, no se enviará ningún email hasta que actives esto — es seguro conectar la plataforma con esto apagado.'}
+                </p>
+              </div>
+              <Switch checked={Boolean(settings.notificationsEnabled)} onCheckedChange={handleToggleNotifications} />
+            </div>
+          </Card>
+
           <div className="grid gap-1.5" style={{ maxWidth: 420 }}>
             <Label>Campo personalizado que activa notificaciones por curso</Label>
             <ComboboxInput
