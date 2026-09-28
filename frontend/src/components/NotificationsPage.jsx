@@ -862,6 +862,62 @@ function ConnectionTab({ flash }) {
   );
 }
 
+// Combobox propio (texto libre + desplegable de sugerencias) porque el
+// <datalist> nativo del navegador NO muestra una opción cuando coincide
+// exactamente con el valor ya escrito en el campo — con un único valor
+// candidato (el caso normal aquí: casi todas las plataformas comparten el
+// mismo nombre de campo personalizado) el desplegable nativo se queda
+// vacío al abrirlo, aunque la sugerencia exista. Este siempre la muestra.
+function ComboboxInput({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filtered = options.filter((o) => o.toLowerCase().includes((value || '').toLowerCase()));
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && filtered.length > 0 && (
+        <div
+          className="rounded-control border border-border-soft bg-surface-muted shadow-lg"
+          style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, marginTop: 4, maxHeight: 200, overflowY: 'auto' }}
+        >
+          {filtered.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="mono"
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Ajustes por plataforma (campo personalizado + cursos "solo diploma") ───
 
 function PlatformSettingsTab({ flash }) {
@@ -967,17 +1023,11 @@ function PlatformSettingsTab({ flash }) {
         <>
           <div className="grid gap-1.5" style={{ maxWidth: 420 }}>
             <Label>Campo personalizado que activa notificaciones por curso</Label>
-            <Input
-              type="text"
-              list="cpn-customfield-options"
+            <ComboboxInput
               value={settings.courseCustomFieldShortname || ''}
-              onChange={(e) => setSettings({ ...settings, courseCustomFieldShortname: e.target.value })}
+              onChange={(value) => setSettings({ ...settings, courseCustomFieldShortname: value })}
+              options={customFieldOptions}
             />
-            <datalist id="cpn-customfield-options">
-              {customFieldOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
             <p className="history-note">
               Escribe el valor o elígelo de la lista (valores ya usados en otras plataformas). Debe
               coincidir con el "Nombre corto" del campo personalizado (tipo casilla de
