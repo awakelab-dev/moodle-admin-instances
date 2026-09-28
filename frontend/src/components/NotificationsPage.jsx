@@ -774,6 +774,26 @@ function ConnectionTab({ flash }) {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [revealedKey, setRevealedKey] = useState(null); // { platformId, key }
+  const [copiedId, setCopiedId] = useState(null);
+
+  async function handleCopyKey(platformId, key) {
+    try {
+      await navigator.clipboard.writeText(key);
+    } catch {
+      // Clipboard API bloqueada (ej. contexto no seguro o permiso denegado) —
+      // seleccionar el texto para que al menos Ctrl+C manual funcione.
+      const el = document.getElementById(`cpn-key-${platformId}`);
+      if (el) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+    setCopiedId(platformId);
+    setTimeout(() => setCopiedId((current) => (current === platformId ? null : current)), 2000);
+  }
 
   useEffect(() => {
     load();
@@ -837,9 +857,14 @@ function ConnectionTab({ flash }) {
               </div>
               {revealedKey?.platformId === platform.id && (
                 <>
-                  <p className="history-note mono" style={{ wordBreak: 'break-all' }}>
-                    {revealedKey.key}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <p id={`cpn-key-${platform.id}`} className="history-note mono" style={{ wordBreak: 'break-all', margin: 0 }}>
+                      {revealedKey.key}
+                    </p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => handleCopyKey(platform.id, revealedKey.key)}>
+                      {copiedId === platform.id ? 'Copiada ✓' : 'Copiar'}
+                    </Button>
+                  </div>
                   <p className="history-note" style={{ color: 'var(--color-danger)' }}>
                     Cópiala ahora — no se volverá a mostrar.
                   </p>
