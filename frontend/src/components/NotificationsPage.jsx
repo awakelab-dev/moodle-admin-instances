@@ -205,9 +205,17 @@ export default function NotificationsPage() {
       </div>
 
       {msg && (
-        <Alert variant={msg.type === 'error' ? 'destructive' : 'success'}>
-          <AlertDescription>{msg.text}</AlertDescription>
-        </Alert>
+        // Posición fija (no en el flujo normal del documento) — QA encontró
+        // que como alerta inline empujaba hacia abajo el resto de la
+        // pantalla al aparecer/desaparecer (ej. el interruptor maestro de
+        // "Ajustes por plataforma" cambiaba de sitio unos segundos después
+        // de tocarlo), pudiendo hacer que un clic siguiente caiga fuera de
+        // sitio.
+        <div style={{ position: 'fixed', top: '1.25rem', right: '1.25rem', zIndex: 50, maxWidth: 420 }}>
+          <Alert variant={msg.type === 'error' ? 'destructive' : 'success'}>
+            <AlertDescription>{msg.text}</AlertDescription>
+          </Alert>
+        </div>
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
