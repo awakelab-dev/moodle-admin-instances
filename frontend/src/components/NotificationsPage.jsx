@@ -1050,21 +1050,44 @@ function PlatformSettingsTab({ flash }) {
         recordatorios de fin de curso).
       </p>
 
-      <div className="grid gap-1.5" style={{ maxWidth: 420 }}>
-        <Label>Plataforma</Label>
-        <Select value={platformId} onValueChange={setPlatformId}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {platforms.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {formatPlatformDisplayName(p.name)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Card className="p-4">
+        <div className="grid grid-cols-2 gap-3.5 max-[720px]:grid-cols-1">
+          <div className="grid gap-1.5">
+            <Label>Plataforma</Label>
+            <Select value={platformId} onValueChange={setPlatformId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {platforms.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {formatPlatformDisplayName(p.name)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {settings && (
+            <div className="grid gap-1.5">
+              <Label>Campo personalizado que activa notificaciones por curso</Label>
+              <ComboboxInput
+                value={settings.courseCustomFieldShortname || ''}
+                onChange={(value) => setSettings({ ...settings, courseCustomFieldShortname: value })}
+                options={customFieldOptions}
+              />
+            </div>
+          )}
+        </div>
+        {settings && (
+          <p className="history-note" style={{ marginTop: '0.75rem' }}>
+            Campo personalizado: escribe el valor o elígelo de la lista (valores ya usados en otras
+            plataformas). Debe coincidir con el "Nombre corto" del campo personalizado (tipo
+            casilla de verificación) creado en esta plataforma bajo Administración del sitio →
+            Cursos → Campos personalizados del curso.
+          </p>
+        )}
+      </Card>
 
       {loadingDetail || !settings ? (
         <p className="empty">Cargando ajustes…</p>
@@ -1089,21 +1112,6 @@ function PlatformSettingsTab({ flash }) {
               <Switch checked={Boolean(settings.notificationsEnabled)} onCheckedChange={handleToggleNotifications} />
             </div>
           </Card>
-
-          <div className="grid gap-1.5" style={{ maxWidth: 420 }}>
-            <Label>Campo personalizado que activa notificaciones por curso</Label>
-            <ComboboxInput
-              value={settings.courseCustomFieldShortname || ''}
-              onChange={(value) => setSettings({ ...settings, courseCustomFieldShortname: value })}
-              options={customFieldOptions}
-            />
-            <p className="history-note">
-              Escribe el valor o elígelo de la lista (valores ya usados en otras plataformas). Debe
-              coincidir con el "Nombre corto" del campo personalizado (tipo casilla de
-              verificación) creado en esta plataforma bajo Administración del sitio → Cursos →
-              Campos personalizados del curso.
-            </p>
-          </div>
 
           <Card className="p-4">
             <div className="panel-header panel-header-compact">
