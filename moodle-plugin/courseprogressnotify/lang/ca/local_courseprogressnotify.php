@@ -64,6 +64,7 @@ $string['run_firstday_button'] = 'Provar Correus de Primer Dia';
 $string['run_secondday_button'] = 'Provar Correus de Segon Dia';
 $string['run_clear_button'] = 'Netejar registres i executar';
 $string['run_ignore_restrictions_button'] = 'Enviar a tots (ignorar dates)';
+$string['runpage:confirm_ignore_all_courses'] = 'No has triat cap curs concret — això processarà TOTS els cursos habilitats de la plataforma, sense cap filtre de data, i pot enviar molts correus de cop a alumnes reals. Segur que vols continuar?';
 $string['settings:send_course_firstday'] = '1r Dia (ignorar dates)';
 $string['settings:send_course_diploma'] = 'Diploma (ignorar dates)';
 $string['backtosettings'] = 'Tornar a configuració';

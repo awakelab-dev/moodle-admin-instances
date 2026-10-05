@@ -64,6 +64,7 @@ $string['run_firstday_button'] = 'Probar Emails de Primer Día';
 $string['run_secondday_button'] = 'Probar Emails de Segundo Día';
 $string['run_clear_button'] = 'Limpiar Logs y Ejecutar';
 $string['run_ignore_restrictions_button'] = 'Enviar a todos (ignorar fechas)';
+$string['runpage:confirm_ignore_all_courses'] = 'No has elegido ningún curso concreto — esto va a procesar TODOS los cursos habilitados de la plataforma, sin ningún filtro de fecha, y puede enviar muchos correos de golpe a alumnos reales. ¿Seguro que quieres continuar?';
 $string['settings:send_course_firstday'] = '1er Día (ignorar fechas)';
 $string['settings:send_course_diploma'] = 'Diploma (ignorar fechas)';
 $string['backtosettings'] = 'Volver a configuración';

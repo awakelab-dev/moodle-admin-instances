@@ -362,7 +362,7 @@ if (empty($customfield)) {
     echo html_writer::link($formurl, get_string('run_diploma_button', 'local_courseprogressnotify'), ['class' => 'btn btn-primary cpn-run-btn', 'data-basehref' => $formurl->out(false)]);
     echo ' ';
     $ignoreurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'diploma', 'ignorerestrictions' => 1]);
-    echo html_writer::link($ignoreurl, get_string('run_ignore_restrictions_button', 'local_courseprogressnotify'), ['class' => 'btn btn-outline-primary cpn-run-btn', 'data-basehref' => $ignoreurl->out(false)]);
+    echo html_writer::link($ignoreurl, get_string('run_ignore_restrictions_button', 'local_courseprogressnotify'), ['class' => 'btn btn-outline-primary cpn-run-btn cpn-run-btn-ignore', 'data-basehref' => $ignoreurl->out(false)]);
     echo ' ';
     $clearurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'diploma', 'clearlogs' => 1]);
     echo html_writer::link($clearurl, get_string('run_clear_button', 'local_courseprogressnotify'), ['class' => 'btn btn-warning cpn-run-btn', 'data-basehref' => $clearurl->out(false)]);
@@ -377,7 +377,7 @@ if (empty($customfield)) {
     echo html_writer::link($formurl, get_string('run_firstday_button', 'local_courseprogressnotify'), ['class' => 'btn btn-primary cpn-run-btn', 'data-basehref' => $formurl->out(false)]);
     echo ' ';
     $ignoreurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'firstday', 'ignorerestrictions' => 1]);
-    echo html_writer::link($ignoreurl, get_string('run_ignore_restrictions_button', 'local_courseprogressnotify'), ['class' => 'btn btn-outline-primary cpn-run-btn', 'data-basehref' => $ignoreurl->out(false)]);
+    echo html_writer::link($ignoreurl, get_string('run_ignore_restrictions_button', 'local_courseprogressnotify'), ['class' => 'btn btn-outline-primary cpn-run-btn cpn-run-btn-ignore', 'data-basehref' => $ignoreurl->out(false)]);
     echo ' ';
     $clearurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'firstday', 'clearlogs' => 1]);
     echo html_writer::link($clearurl, get_string('run_clear_button', 'local_courseprogressnotify'), ['class' => 'btn btn-warning cpn-run-btn', 'data-basehref' => $clearurl->out(false)]);
@@ -414,6 +414,25 @@ if (empty($customfield)) {
     }
     selector.addEventListener('change', updateButtons);
     updateButtons();
+
+    // Los botones de \"ignorar fechas\" (diploma / primer día) se saltan la
+    // ventana de fecha normal — con \"Todos los cursos\" seleccionado, eso
+    // significa procesar TODOS los cursos habilitados de golpe, sin ningún
+    // filtro de fecha que limite el alcance (a diferencia de los botones
+    // normales, que ya de por sí solo miran una ventana de pocos días).
+    // Pedimos confirmación explícita en ese caso para no disparar un envío
+    // masivo sin querer.
+    document.querySelectorAll('.cpn-run-btn-ignore').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (selector.value && selector.value !== '0') {
+                return; // Curso concreto elegido: sin confirmación extra.
+            }
+            var ok = window.confirm(" . json_encode(get_string('runpage:confirm_ignore_all_courses', 'local_courseprogressnotify')) . ");
+            if (!ok) {
+                e.preventDefault();
+            }
+        });
+    });
 })();
 ");
 }
