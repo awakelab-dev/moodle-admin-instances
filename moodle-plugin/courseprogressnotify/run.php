@@ -19,6 +19,7 @@ require_once(__DIR__ . '/../../config.php');
 use core\output\notification;
 use local_courseprogressnotify\task\check_progress_25;
 use local_courseprogressnotify\task\check_progress_50;
+use local_courseprogressnotify\task\check_progress_75;
 use local_courseprogressnotify\task\check_course_end_soon;
 use local_courseprogressnotify\task\check_course_last_day;
 use local_courseprogressnotify\task\check_zoom_sessions;
@@ -133,6 +134,20 @@ if ($confirm && !empty($type) && confirm_sesskey()) {
         } catch (Throwable $e) {
             $errors[] = '50% task: ' . $e->getMessage();
             $output[] = 'ERROR in 50% task: ' . $e->getMessage();
+        }
+        ob_clean();
+
+        try {
+            $output[] = '\n--- Executing 75% Progress Check' . $courselabel . ' ---';
+            $t75 = new check_progress_75();
+            if ($courseid) {
+                $t75->set_target_course_id($courseid);
+            }
+            $t75->execute();
+            $output[] = ob_get_contents();
+        } catch (Throwable $e) {
+            $errors[] = '75% task: ' . $e->getMessage();
+            $output[] = 'ERROR in 75% task: ' . $e->getMessage();
         }
     } else if ($type === 'courseend') {
         try {
