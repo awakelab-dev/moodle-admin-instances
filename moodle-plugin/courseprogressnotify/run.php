@@ -361,6 +361,9 @@ if (empty($customfield)) {
     $formurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'diploma']);
     echo html_writer::link($formurl, get_string('run_diploma_button', 'local_courseprogressnotify'), ['class' => 'btn btn-primary cpn-run-btn', 'data-basehref' => $formurl->out(false)]);
     echo ' ';
+    $ignoreurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'diploma', 'ignorerestrictions' => 1]);
+    echo html_writer::link($ignoreurl, get_string('run_ignore_restrictions_button', 'local_courseprogressnotify'), ['class' => 'btn btn-outline-primary cpn-run-btn', 'data-basehref' => $ignoreurl->out(false)]);
+    echo ' ';
     $clearurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'diploma', 'clearlogs' => 1]);
     echo html_writer::link($clearurl, get_string('run_clear_button', 'local_courseprogressnotify'), ['class' => 'btn btn-warning cpn-run-btn', 'data-basehref' => $clearurl->out(false)]);
     echo $OUTPUT->box_end();
@@ -372,6 +375,9 @@ if (empty($customfield)) {
 
     $formurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'firstday']);
     echo html_writer::link($formurl, get_string('run_firstday_button', 'local_courseprogressnotify'), ['class' => 'btn btn-primary cpn-run-btn', 'data-basehref' => $formurl->out(false)]);
+    echo ' ';
+    $ignoreurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'firstday', 'ignorerestrictions' => 1]);
+    echo html_writer::link($ignoreurl, get_string('run_ignore_restrictions_button', 'local_courseprogressnotify'), ['class' => 'btn btn-outline-primary cpn-run-btn', 'data-basehref' => $ignoreurl->out(false)]);
     echo ' ';
     $clearurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'firstday', 'clearlogs' => 1]);
     echo html_writer::link($clearurl, get_string('run_clear_button', 'local_courseprogressnotify'), ['class' => 'btn btn-warning cpn-run-btn', 'data-basehref' => $clearurl->out(false)]);
