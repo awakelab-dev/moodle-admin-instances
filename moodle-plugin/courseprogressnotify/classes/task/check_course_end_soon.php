@@ -78,7 +78,15 @@ class check_course_end_soon extends scheduled_task {
                 continue;
             }
 
-            $days = (int)floor(($course->enddate - $now) / DAYSECS);
+            // Redondear ambos lados a medianoche antes de restar — si se usa
+            // $now (con hora del momento en que corre el cron) tal cual,
+            // floor() cuenta "días completos de 24h" en vez de "días de
+            // calendario": un curso que termine a medianoche puede dar 6
+            // en vez de 7 según a qué hora del día se ejecute la tarea, y
+            // el aviso nunca se dispara. Las demás tareas de fecha
+            // (last_day, second_day, first_day, diploma_available) ya
+            // usan este mismo patrón correctamente.
+            $days = (int)round((usergetmidnight($course->enddate) - usergetmidnight($now)) / DAYSECS);
             mtrace("\nCourse {$course->id} ({$course->fullname}): ends in {$days} days (" . userdate($course->enddate) . ")");
             
             if ($days !== 7) { // Send only exactly 7 days before.
