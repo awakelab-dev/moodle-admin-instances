@@ -69,7 +69,7 @@ if ($confirm && !empty($type) && confirm_sesskey()) {
         
         switch ($type) {
             case 'progress':
-                $notificationtypes = ['progress_25', 'progress_50'];
+                $notificationtypes = ['progress_25', 'progress_50', 'progress_75'];
                 break;
             case 'courseend':
                 $notificationtypes = ['course_end_soon', 'course_last_day'];
@@ -91,12 +91,25 @@ if ($confirm && !empty($type) && confirm_sesskey()) {
                 break;
         }
         
+        // Si hay un curso concreto elegido en el desplegable, el borrado se
+        // limita a ese curso — sin esto, "Limpiar Logs y Ejecutar" borraba
+        // el historial de deduplicación de TODA la plataforma para ese
+        // tipo de aviso, aunque el envío en sí solo afectara al curso
+        // elegido. Eso dejaba sin protección de deduplicación a cualquier
+        // otro curso real con ese mismo disparador, para la siguiente
+        // ejecución normal del cron.
         foreach ($notificationtypes as $notiftype) {
-            list($insql, $params) = $DB->get_in_or_equal($notiftype);
-            $count = $DB->count_records_select('local_courseprogressnotify_log', "notification_type $insql", $params);
+            $select = 'notification_type = :notiftype';
+            $params = ['notiftype' => $notiftype];
+            if ($courseid) {
+                $select .= ' AND courseid = :courseid';
+                $params['courseid'] = $courseid;
+            }
+            $count = $DB->count_records_select('local_courseprogressnotify_log', $select, $params);
             if ($count > 0) {
-                $DB->delete_records_select('local_courseprogressnotify_log', "notification_type $insql", $params);
-                $output[] = "✓ Cleared {$count} log entries for notification type: {$notiftype}";
+                $DB->delete_records_select('local_courseprogressnotify_log', $select, $params);
+                $output[] = "✓ Cleared {$count} log entries for notification type: {$notiftype}"
+                    . ($courseid ? " (course {$courseid} only)" : ' (ALL courses)');
             }
         }
         $output[] = '';
