@@ -201,6 +201,10 @@ export const getNotificationRules = () => request('/notifications/rules', { cach
 export const upsertNotificationRule = (data) =>
   request('/notifications/rules', { method: 'POST', body: JSON.stringify(data) });
 export const deleteNotificationRule = (id) => request(`/notifications/rules/${id}`, { method: 'DELETE' });
+export const upsertNotificationTriggerVariants = (data) =>
+  request('/notifications/rules/variants', { method: 'POST', body: JSON.stringify(data) });
+export const deleteNotificationTriggerVariants = (trigger, platformId) =>
+  request(buildPath('/notifications/rules/variants', { trigger, platformId }), { method: 'DELETE' });
 export const getNotificationDeliveryLog = (params = {}) =>
   request(buildPath('/notifications/delivery-log', params), { cache: 'no-store' });
 export const generateNotificationsApiKey = (platformId) =>
@@ -221,3 +225,7 @@ export const updateNotificationPlatformSettings = (platformId, data) =>
   request(`/notifications/platforms/${platformId}/settings`, { method: 'PUT', body: JSON.stringify(data) });
 export const getNotificationPlatformCourses = (platformId) =>
   request(`/notifications/platforms/${platformId}/courses`, { cache: 'no-store' });
+export const getNotificationPlatformCategories = (platformId) =>
+  request(`/notifications/platforms/${platformId}/categories`, { cache: 'no-store' });
+export const getNotificationTemplateHistory = (templateId) =>
+  request(`/notifications/templates/${templateId}/history`, { cache: 'no-store' });

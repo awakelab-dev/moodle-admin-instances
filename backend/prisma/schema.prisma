@@ -48,14 +48,25 @@ model Platform {
 
   // Parametros de configuracion del plugin de notificaciones para ESTA
   // plataforma (campo personalizado que activa notificaciones por curso,
-  // dias de antelacion de Zoom/presencial, palabras clave de deteccion,
-  // cursos "solo diploma"). El plugin ya no guarda nada de esto
-  // localmente — lo recibe entero en GET /api/notifications/plugin/config
-  // (ver NotificationsService.getConfigForPlatform). Forma esperada (todo
+  // cursos "solo diploma", interruptor maestro, categorias habilitadas).
+  // El plugin ya no guarda nada de esto localmente — lo recibe entero en
+  // GET /api/notifications/plugin/config (ver
+  // NotificationsService.getConfigForPlatform). Forma esperada (todo
   // opcional, con defaults en el servicio):
-  // { courseCustomFieldShortname?: string, zoomDaysBefore?: number,
-  //   presentialDaysBefore?: number, presentialExamKeywords?: string,
-  //   presentialTutoringKeywords?: string, diplomaOnlyCourseIds?: number[] }
+  // { courseCustomFieldShortname?: string, diplomaOnlyCourseIds?: number[],
+  //   notificationsEnabled?: boolean, enabledCategoryIds?: number[] }
+  // (dias de antelacion de Zoom/presencial y palabras clave de deteccion
+  // presencial viven en NotificationRule.params, por disparador, no aqui)
+  //
+  // enabledCategoryIds: lista blanca de categorias de Moodle — vacia (el
+  // default) significa "sin restriccion, cualquier categoria es valida"
+  // (el comportamiento de siempre); si tiene una o mas, SOLO los cursos de
+  // esas categorias reciben notificaciones, aunque tengan el campo
+  // personalizado activado. Pedido para plataformas donde conviven varios
+  // instructores con categorias de curso distintas y solo algunos quieren
+  // activar las notificaciones. NOTA: este campo todavia no lo comprueba
+  // el plugin de Moodle (eso queda para una fase posterior que toque
+  // is_course_enabled() en cada tarea) — por ahora solo se guarda aqui.
   notificationSettings Json @default("{}") @map("notification_settings")
 
   courses     Course[]
@@ -96,9 +107,45 @@ model NotificationTemplate {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  rules NotificationRule[]
+  rules   NotificationRule[]
+  history NotificationTemplateHistory[]
 
   @@map("notification_templates")
+}
+
+enum NotificationTemplateHistoryAction {
+  created
+  updated
+  deleted
+
+  @@map("notification_template_history_action")
+}
+
+// Registro de auditoria de cambios en plantillas (pedido explicitamente:
+// "si yo entro y cambio o modifico una plantilla, que haya un historial
+// de modificaciones"). previousData/newData guardan una foto completa de
+// los campos editables (name/language/subject/bodyHtml) antes y despues
+// del cambio, no solo el campo que cambio, para poder ver el estado
+// completo de cada version sin tener que reconstruirlo.
+model NotificationTemplateHistory {
+  id         String                             @id @default(uuid())
+  // Nullable a proposito: si la plantilla se borra de verdad, el historial
+  // de su borrado debe sobrevivir (por eso onDelete: SetNull en vez de
+  // Cascade) — necesita poder quedarse sin plantilla asociada.
+  templateId String?                            @map("template_id")
+  template   NotificationTemplate?               @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  action     NotificationTemplateHistoryAction
+  // Nombre guardado aparte porque si la plantilla se borra despues, el
+  // historial de ese borrado debe poder seguir diciendo de cual se trataba.
+  templateName   String   @map("template_name")
+  previousData   Json?    @map("previous_data")
+  newData        Json?    @map("new_data")
+  changedByUserId String? @map("changed_by_user_id")
+  changedByUsername String @map("changed_by_username")
+  changedAt  DateTime @default(now()) @map("changed_at")
+
+  @@index([templateId])
+  @@map("notification_template_history")
 }
 
 // Asocia un disparador con la plantilla que debe usar. platformId null =
@@ -117,6 +164,14 @@ model NotificationRule {
   platform   Platform?           @relation(fields: [platformId], references: [id], onDelete: Cascade)
   templateId String              @map("template_id")
   template   NotificationTemplate @relation(fields: [templateId], references: [id])
+  // null = regla "normal" de siempre (una plantilla fija para el trigger).
+  // 'positive' | 'negative' identifican las dos variantes de un trigger que
+  // sí soporta elegir plantilla según un parámetro (ver `variantParam` en
+  // NOTIFICATION_TRIGGERS — por ahora solo progress_50/progress_75, según
+  // calificaciones del alumno). La unicidad real (a lo sumo una fila global
+  // y una por plataforma, por cada combinación trigger+variant) se aplica
+  // con índices únicos parciales en la migración, igual que trigger+platformId.
+  variant    String?             @map("variant")
   isActive   Boolean             @default(true) @map("is_active")
   // Parametros propios del trigger (umbral de progreso, dias de
   // antelacion, palabras clave de deteccion presencial, etc.) — cada

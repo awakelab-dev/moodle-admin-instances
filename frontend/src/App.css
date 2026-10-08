@@ -2273,3 +2273,74 @@ input:focus-visible {
     min-height: 340px;
   }
 }
+
+/* Editor de texto enriquecido (plantillas de notificaciones) */
+.rte-wrapper {
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.15));
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--color-surface-muted);
+}
+
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.15));
+}
+
+.rte-editor-content {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.rte-content {
+  min-height: 220px;
+  padding: 0.75rem;
+  outline: none;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rte-content p {
+  margin: 0 0 0.75em;
+}
+
+.rte-content p:last-child {
+  margin-bottom: 0;
+}
+
+.rte-content a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.rte-content ul,
+.rte-content ol {
+  padding-left: 1.4em;
+  margin: 0 0 0.75em;
+}
+
+/* Tailwind preflight pone list-style:none y padding:0 en ul/ol global —
+   sin esto las listas del editor no mostraban viñetas/números (visto en QA). */
+.rte-content ul {
+  list-style-type: disc;
+}
+
+.rte-content ol {
+  list-style-type: decimal;
+}
+
+.rte-content li {
+  display: list-item;
+}
+
+.rte-content:empty::before,
+.rte-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: rgba(240, 243, 252, 0.4);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}

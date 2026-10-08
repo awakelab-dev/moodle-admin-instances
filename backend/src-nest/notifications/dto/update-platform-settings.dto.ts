@@ -18,4 +18,13 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   @IsBoolean()
   notificationsEnabled?: boolean;
+
+  // Lista blanca de categorías de Moodle — vacía (o no enviada) significa
+  // "sin restricción, cualquier categoría es válida". Ver el comentario
+  // en schema.prisma para el porqué (plataformas con varios instructores
+  // que no quieren todas las categorías activas a la vez).
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  enabledCategoryIds?: number[];
 }

@@ -1,3 +1,19 @@
+// Parámetros disponibles para distinguir plantilla "positiva"/"negativa" en
+// un trigger que lo admita (ver `variantParams` más abajo). `higherIsBetter`
+// dice cómo se compara el valor calculado por el plugin contra el umbral
+// guardado en NotificationRule.params.threshold: con true, valor >= umbral
+// = positivo (calificaciones, asistencia); con false, valor <= umbral =
+// positivo (riesgo de abandono: MENOS días inactivo es mejor). `unit` es
+// solo para la UI (qué poner junto al campo de umbral).
+export const VARIANT_PARAM_DEFS = {
+  grades: { label: 'Calificaciones aprobadas', unit: '%', higherIsBetter: true },
+  attendance: { label: 'Asistencia (sesiones presenciales/Zoom)', unit: '%', higherIsBetter: true },
+  inactivity_risk: { label: 'Riesgo de abandono (días sin acceder)', unit: 'días', higherIsBetter: false },
+} as const;
+
+export type VariantParamKey = keyof typeof VARIANT_PARAM_DEFS;
+export const VARIANT_PARAM_KEYS = Object.keys(VARIANT_PARAM_DEFS) as VariantParamKey[];
+
 // Catálogo de disparadores soportados. Cada uno corresponde 1:1 a una
 // scheduled task del plugin local_courseprogressnotify — añadir un
 // disparador nuevo aquí SIN la tarea correspondiente en el plugin no hace
@@ -16,11 +32,17 @@ export const NOTIFICATION_TRIGGERS = [
     key: 'progress_50',
     label: 'Progreso de curso al 50%',
     paramsSchema: {},
+    // Pedido explícito del cliente: distinguir plantilla "positiva"/"negativa"
+    // según cómo le va al alumno a esta altura del curso, con el parámetro
+    // que se elija de VARIANT_PARAM_DEFS — ver NotificationRule.variant y
+    // upsertTriggerVariants().
+    variantParams: VARIANT_PARAM_KEYS,
   },
   {
     key: 'progress_75',
     label: 'Progreso de curso al 75%',
     paramsSchema: {},
+    variantParams: VARIANT_PARAM_KEYS,
   },
   {
     key: 'course_end_soon',

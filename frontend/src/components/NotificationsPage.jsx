@@ -6,7 +6,7 @@
 // del repo) para la arquitectura completa. El plugin en sí no tiene
 // interfaz propia: solo guarda la URL de esta app + la API key que se
 // genera en la pestaña "Conexión".
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import {
   getNotificationTriggers,
   getNotificationTemplates,
@@ -15,6 +15,8 @@ import {
   deleteNotificationTemplate,
   getNotificationRules,
   upsertNotificationRule,
+  upsertNotificationTriggerVariants,
+  deleteNotificationTriggerVariants,
   getNotificationDeliveryLog,
   getPlatforms,
   generateNotificationsApiKey,
@@ -22,7 +24,9 @@ import {
   getNotificationPlatformSettings,
   updateNotificationPlatformSettings,
   getNotificationPlatformCourses,
+  getNotificationPlatformCategories,
   getNotificationCustomFieldShortnames,
+  getNotificationTemplateHistory,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -44,8 +48,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import ConfirmDialog from './ConfirmDialog';
+import RichTextEditor from './RichTextEditor';
 
 const LANGUAGE_LABELS = { es: 'Español', ca: 'Català', en: 'English' };
+
+// Solo para mostrar un vistazo de texto plano en el historial — el HTML
+// real de la plantilla no se toca ni se renderiza en ningún otro sitio.
+function stripHtml(html) {
+  if (!html) return '';
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 const EMPTY_TEMPLATE_FORM = { name: '', language: 'es', subject: '', bodyHtml: '' };
 
@@ -152,8 +164,14 @@ function PlaceholderPicker({ onPick }) {
   // dentro del mismo <Select>, así que solo se renderiza la primera
   // aparición de cada clave.
   const seen = new Set();
+  // Radix <Select> solo dispara onValueChange cuando el valor elegido
+  // difiere del que recibió la última vez — con value="" siempre fijo
+  // desde fuera, elegir el MISMO placeholder dos veces seguidas no
+  // disparaba nada la segunda vez (visto en QA). Forzar un remount
+  // completo tras cada elección resetea ese estado interno.
+  const [resetKey, setResetKey] = useState(0);
   return (
-    <Select value="" onValueChange={onPick}>
+    <Select key={resetKey} value="" onValueChange={(value) => { onPick(value); setResetKey((k) => k + 1); }}>
       <SelectTrigger style={{ width: 200 }}>
         <SelectValue placeholder="Insertar placeholder…" />
       </SelectTrigger>
@@ -211,7 +229,9 @@ export default function NotificationsPage() {
         // "Ajustes por plataforma" cambiaba de sitio unos segundos después
         // de tocarlo), pudiendo hacer que un clic siguiente caiga fuera de
         // sitio.
-        <div style={{ position: 'fixed', top: '1.25rem', right: '1.25rem', zIndex: 50, maxWidth: 420 }}>
+        // (Abajo a la derecha, no arriba — en QA tapaba el botón "Tema
+        // claro"/"Tema oscuro" de la cabecera.)
+        <div style={{ position: 'fixed', bottom: '1.25rem', right: '1.25rem', zIndex: 50, maxWidth: 420 }}>
           <Alert variant={msg.type === 'error' ? 'destructive' : 'success'}>
             <AlertDescription>{msg.text}</AlertDescription>
           </Alert>
@@ -257,9 +277,10 @@ function TemplatesTab({ flash }) {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const subjectRef = useRef(null);
-  const bodyRef = useRef(null);
+  const bodyEditorRef = useRef(null);
   const subjectSelectionRef = useRef(null);
-  const bodySelectionRef = useRef(null);
+  const [historyTarget, setHistoryTarget] = useState(null);
+  const formCardRef = useRef(null);
 
   useEffect(() => {
     load();
@@ -273,12 +294,19 @@ function TemplatesTab({ flash }) {
       .finally(() => setLoading(false));
   }
 
+  // Al abrir el formulario, el botón que lo dispara puede estar bastante
+  // más abajo que el formulario en sí (lista larga de plantillas) — sin
+  // este scroll, "Editar" parecía no hacer nada (visto en QA).
+  function scrollToForm() {
+    requestAnimationFrame(() => formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
   function openAdd() {
     setForm(EMPTY_TEMPLATE_FORM);
     setEditingId(null);
     setShowForm(true);
     subjectSelectionRef.current = null;
-    bodySelectionRef.current = null;
+    scrollToForm();
   }
 
   function openEdit(template) {
@@ -291,7 +319,7 @@ function TemplatesTab({ flash }) {
     setEditingId(template.id);
     setShowForm(true);
     subjectSelectionRef.current = null;
-    bodySelectionRef.current = null;
+    scrollToForm();
   }
 
   function closeForm() {
@@ -347,7 +375,7 @@ function TemplatesTab({ flash }) {
       </div>
 
       {showForm && (
-        <Card className="p-4 pt-4">
+        <Card ref={formCardRef} className="p-4 pt-4">
           <div className="panel-header panel-header-compact">
             <div>
               <p className="eyebrow">{editingId !== null ? 'Edición' : 'Nueva plantilla'}</p>
@@ -404,33 +432,24 @@ function TemplatesTab({ flash }) {
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
                 onSelect={trackSelection(subjectSelectionRef)}
+                onKeyDown={(e) => {
+                  // Enter en este campo no debe enviar el formulario a
+                  // medias (visto en QA) — solo "Crear/Guardar plantilla".
+                  if (e.key === 'Enter') e.preventDefault();
+                }}
                 required
               />
             </div>
             <div className="grid gap-1.5">
               <div className="config-header" style={{ marginBottom: 0 }}>
-                <Label style={{ margin: 0 }}>Cuerpo (HTML)</Label>
-                <PlaceholderPicker
-                  onPick={(key) =>
-                    insertAtCursor(
-                      bodyRef,
-                      bodySelectionRef,
-                      form.bodyHtml,
-                      (v) => setForm((f) => ({ ...f, bodyHtml: v })),
-                      key,
-                    )
-                  }
-                />
+                <Label style={{ margin: 0 }}>Cuerpo del email</Label>
+                <PlaceholderPicker onPick={(key) => bodyEditorRef.current?.insertPlaceholder(key)} />
               </div>
-              <textarea
-                ref={bodyRef}
-                className="flex w-full rounded-control border border-border-soft bg-surface-muted px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent font-mono"
-                rows={10}
-                placeholder="<p>Hola {{firstname}}, ya llevas el {{progress_percentage}}% de {{coursename}}...</p>"
+              <RichTextEditor
+                ref={bodyEditorRef}
                 value={form.bodyHtml}
-                onChange={(e) => setForm({ ...form, bodyHtml: e.target.value })}
-                onSelect={trackSelection(bodySelectionRef)}
-                required
+                onChange={(html) => setForm((f) => ({ ...f, bodyHtml: html }))}
+                placeholder="Hola {{firstname}}, ya llevas el {{progress_percentage}}% de {{coursename}}…"
               />
             </div>
             <div className="flex gap-2.5">
@@ -457,6 +476,9 @@ function TemplatesTab({ flash }) {
                 <Badge variant="outline">{LANGUAGE_LABELS[template.language] || template.language}</Badge>
               </div>
               <div className="platform-actions">
+                <Button type="button" variant="outline" onClick={() => setHistoryTarget(template)}>
+                  Historial
+                </Button>
                 <Button type="button" variant="outline" onClick={() => openEdit(template)}>
                   Editar
                 </Button>
@@ -477,6 +499,97 @@ function TemplatesTab({ flash }) {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <TemplateHistoryDialog template={historyTarget} onClose={() => setHistoryTarget(null)} />
+    </div>
+  );
+}
+
+const HISTORY_ACTION_LABELS = {
+  created: 'Creada',
+  updated: 'Editada',
+  deleted: 'Eliminada',
+};
+
+function TemplateHistoryDialog({ template, onClose }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!template) return;
+    setLoading(true);
+    getNotificationTemplateHistory(template.id)
+      .then(setEntries)
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [template]);
+
+  if (!template) return null;
+
+  return (
+    <div className="confirm-dialog-overlay" onClick={onClose}>
+      <Card className="confirm-dialog-card p-4" style={{ maxWidth: 640, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="card-title">Historial de "{template.name}"</h3>
+        {loading ? (
+          <p className="empty">Cargando historial…</p>
+        ) : !entries.length ? (
+          <p className="empty">Todavía no hay cambios registrados para esta plantilla.</p>
+        ) : (
+          <div style={{ maxHeight: 420, overflowY: 'auto', display: 'grid', gap: '0.75rem', marginTop: '0.75rem' }}>
+            {entries.map((entry) => (
+              <Card key={entry.id} className="p-3">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                  <Badge variant={entry.action === 'deleted' ? 'destructive' : 'secondary'}>
+                    {HISTORY_ACTION_LABELS[entry.action] || entry.action}
+                  </Badge>
+                  <span className="history-note" style={{ margin: 0 }}>
+                    {entry.changedByUsername} · {new Date(entry.changedAt).toLocaleString('es-CL')}
+                  </span>
+                </div>
+                {entry.action === 'updated' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2.5 max-[560px]:grid-cols-1" style={{ marginTop: '0.6rem' }}>
+                      <div>
+                        <p className="eyebrow" style={{ marginBottom: '0.25rem' }}>Antes (asunto)</p>
+                        <p className="mono history-note" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                          {entry.previousData?.subject}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="eyebrow" style={{ marginBottom: '0.25rem' }}>Después (asunto)</p>
+                        <p className="mono history-note" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                          {entry.newData?.subject}
+                        </p>
+                      </div>
+                    </div>
+                    {entry.previousData?.bodyHtml !== entry.newData?.bodyHtml && (
+                      <div className="grid grid-cols-2 gap-2.5 max-[560px]:grid-cols-1" style={{ marginTop: '0.6rem' }}>
+                        <div>
+                          <p className="eyebrow" style={{ marginBottom: '0.25rem' }}>Antes (cuerpo)</p>
+                          <p className="history-note" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                            {stripHtml(entry.previousData?.bodyHtml)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="eyebrow" style={{ marginBottom: '0.25rem' }}>Después (cuerpo)</p>
+                          <p className="history-note" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                            {stripHtml(entry.newData?.bodyHtml)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+        <div className="confirm-dialog-actions" style={{ marginTop: '1rem' }}>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -524,38 +637,73 @@ const PARAM_LABELS = {
   tutoringKeywords: 'Palabras clave para detectar tutorías (una por línea)',
 };
 
+// Espejo de VARIANT_PARAM_DEFS en el backend (notification-triggers.constants.ts)
+// — solo para etiquetas/unidad en esta UI, la validación real vive allá.
+const VARIANT_PARAM_DEFS = {
+  grades: { label: 'Calificaciones aprobadas', unit: '%', higherIsBetter: true },
+  attendance: { label: 'Asistencia (sesiones presenciales/Zoom)', unit: '%', higherIsBetter: true },
+  inactivity_risk: { label: 'Riesgo de abandono (días sin acceder)', unit: 'días', higherIsBetter: false },
+};
+
 function RulesTab({ flash }) {
   const [triggers, setTriggers] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [rules, setRules] = useState([]);
+  const [savedVariantsByTrigger, setSavedVariantsByTrigger] = useState({}); // { [triggerKey]: boolean } — para saber si "Quitar variantes" aplica de verdad
   const [loading, setLoading] = useState(true);
   const [savingTrigger, setSavingTrigger] = useState(null);
   const [paramsForm, setParamsForm] = useState({}); // { [triggerKey]: { [paramKey]: string } }
+  const [variantForm, setVariantForm] = useState({}); // { [triggerKey]: { variantParam, positiveTemplateId, negativeTemplateId, threshold } }
+  const [removeVariantsTarget, setRemoveVariantsTarget] = useState(null);
 
   useEffect(() => {
-    load();
+    load(true);
   }, []);
 
-  function load() {
-    setLoading(true);
+  // `isInitial` solo se pasa en el useEffect de montaje — las recargas tras
+  // guardar NO deben pasar por el "Cargando disparadores…" de abajo (eso
+  // colapsaba toda la lista un instante y hacía saltar el scroll arriba,
+  // visto en QA). Los datos se actualizan igual, solo que sin el parpadeo.
+  function load(isInitial = false) {
+    if (isInitial) setLoading(true);
     Promise.all([getNotificationTriggers(), getNotificationTemplates(), getNotificationRules()])
       .then(([triggersData, templatesData, rulesData]) => {
         setTriggers(triggersData);
         setTemplates(templatesData);
         // Solo interesan aquí las reglas globales (platformId null) — las
         // específicas por plataforma quedan para una vista futura.
-        const globalRules = rulesData.filter((r) => !r.platformId);
+        const globalRules = rulesData.filter((r) => !r.platformId && !r.variant);
         setRules(globalRules);
+        const globalVariantRules = rulesData.filter((r) => !r.platformId && r.variant);
         const initialParams = {};
+        const initialVariants = {};
+        const savedVariants = {};
         for (const trigger of triggersData) {
-          if (!Object.keys(trigger.paramsSchema || {}).length) continue;
-          const rule = globalRules.find((r) => r.trigger === trigger.key);
-          initialParams[trigger.key] = paramsToFormValues(trigger.paramsSchema, rule?.params);
+          if (Object.keys(trigger.paramsSchema || {}).length) {
+            const rule = globalRules.find((r) => r.trigger === trigger.key);
+            initialParams[trigger.key] = paramsToFormValues(trigger.paramsSchema, rule?.params);
+          }
+          if (trigger.variantParams?.length) {
+            const positive = globalVariantRules.find((r) => r.trigger === trigger.key && r.variant === 'positive');
+            const negative = globalVariantRules.find((r) => r.trigger === trigger.key && r.variant === 'negative');
+            const existingParam = positive?.params?.variantParam ?? negative?.params?.variantParam;
+            savedVariants[trigger.key] = Boolean(positive || negative);
+            initialVariants[trigger.key] = {
+              variantParam: existingParam || trigger.variantParams[0],
+              positiveTemplateId: positive?.templateId || '',
+              negativeTemplateId: negative?.templateId || '',
+              threshold: String(positive?.params?.threshold ?? negative?.params?.threshold ?? 50),
+            };
+          }
         }
         setParamsForm(initialParams);
+        setVariantForm(initialVariants);
+        setSavedVariantsByTrigger(savedVariants);
       })
       .catch((err) => flash(err.message, 'error'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isInitial) setLoading(false);
+      });
   }
 
   function ruleFor(triggerKey) {
@@ -613,6 +761,39 @@ function RulesTab({ flash }) {
     }
   }
 
+  async function handleSaveVariants(trigger) {
+    const form = variantForm[trigger.key] || {};
+    if (!form.variantParam) {
+      flash('Elige qué parámetro decide la variante.', 'error');
+      return;
+    }
+    if (!form.positiveTemplateId || !form.negativeTemplateId) {
+      flash('Elige las 2 plantillas (positiva y negativa) antes de guardar.', 'error');
+      return;
+    }
+    const threshold = Number(form.threshold);
+    if (!Number.isFinite(threshold) || threshold < 0 || threshold > 365) {
+      flash('El umbral debe ser un número válido.', 'error');
+      return;
+    }
+    setSavingTrigger(trigger.key);
+    try {
+      await upsertNotificationTriggerVariants({
+        trigger: trigger.key,
+        variantParam: form.variantParam,
+        positiveTemplateId: form.positiveTemplateId,
+        negativeTemplateId: form.negativeTemplateId,
+        threshold,
+      });
+      flash('Variantes guardadas.');
+      load();
+    } catch (err) {
+      flash(err.message, 'error');
+    } finally {
+      setSavingTrigger(null);
+    }
+  }
+
   if (loading) return <p className="empty">Cargando disparadores…</p>;
 
   return (
@@ -629,7 +810,8 @@ function RulesTab({ flash }) {
           const rule = ruleFor(trigger.key);
           const paramKeys = Object.keys(trigger.paramsSchema || {});
           return (
-            <Card key={trigger.key} className="platform-card p-4">
+            <Fragment key={trigger.key}>
+            <Card className="platform-card p-4">
               <div className="platform-info">
                 <div className="platform-name">{trigger.label}</div>
                 <div className="platform-url">
@@ -715,10 +897,162 @@ function RulesTab({ flash }) {
                 </Button>
               </div>
             </Card>
+            {trigger.variantParams?.length > 0 && (
+              <TriggerVariantCard
+                trigger={trigger}
+                templates={templates}
+                form={
+                  variantForm[trigger.key] || {
+                    variantParam: trigger.variantParams[0],
+                    positiveTemplateId: '',
+                    negativeTemplateId: '',
+                    threshold: '50',
+                  }
+                }
+                hasSavedVariants={Boolean(savedVariantsByTrigger[trigger.key])}
+                onChange={(next) => setVariantForm((prev) => ({ ...prev, [trigger.key]: next }))}
+                onSave={() => handleSaveVariants(trigger)}
+                onRemove={() => setRemoveVariantsTarget(trigger)}
+                saving={savingTrigger === trigger.key}
+              />
+            )}
+            </Fragment>
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(removeVariantsTarget)}
+        title="Quitar variantes"
+        message={
+          removeVariantsTarget
+            ? `¿Quitar las plantillas de variante de "${removeVariantsTarget.label}"? Este disparador volverá a usar solo la plantilla única de arriba.`
+            : ''
+        }
+        confirmLabel="Quitar variantes"
+        onConfirm={async () => {
+          const trigger = removeVariantsTarget;
+          setRemoveVariantsTarget(null);
+          setSavingTrigger(trigger.key);
+          try {
+            await deleteNotificationTriggerVariants(trigger.key);
+            flash('Variantes eliminadas — vuelve a usar la plantilla única de arriba.');
+            load();
+          } catch (err) {
+            flash(err.message, 'error');
+          } finally {
+            setSavingTrigger(null);
+          }
+        }}
+        onCancel={() => setRemoveVariantsTarget(null)}
+      />
     </div>
+  );
+}
+
+function TriggerVariantCard({ trigger, templates, form, hasSavedVariants, onChange, onSave, onRemove, saving }) {
+  const paramDef = VARIANT_PARAM_DEFS[form.variantParam] || VARIANT_PARAM_DEFS.grades;
+  const positiveLabel = paramDef.higherIsBetter ? '≥ umbral' : '≤ umbral';
+  const negativeLabel = paramDef.higherIsBetter ? '< umbral' : '> umbral';
+  return (
+    <Card className="platform-card p-4" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
+      <div>
+        <p className="eyebrow">Variante por parámetro — {trigger.label}</p>
+        <p className="panel-description" style={{ margin: '0.25rem 0 0' }}>
+          Opcional: si configuras esto, al llegar a este disparador el plugin calcula el parámetro
+          elegido para ese alumno y elige una de estas 2 plantillas en vez de la plantilla única de
+          arriba.
+        </p>
+      </div>
+      <div className="grid gap-1.5" style={{ maxWidth: 480, width: '100%' }}>
+        <Label>Parámetro que decide la variante</Label>
+        <Select
+          value={form.variantParam}
+          onValueChange={(value) => {
+            const nextDef = VARIANT_PARAM_DEFS[value];
+            // El valor numérico no tiene sentido igual al cambiar de
+            // unidad (ej. "50" como % de calificaciones vs. "50" días de
+            // inactividad, visto en QA) — se resetea a un default propio
+            // de cada parámetro en vez de arrastrar el anterior.
+            const defaultThreshold = nextDef?.unit === 'días' ? '30' : '50';
+            onChange({ ...form, variantParam: value, threshold: defaultThreshold });
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue className="whitespace-normal" />
+          </SelectTrigger>
+          <SelectContent>
+            {trigger.variantParams.map((key) => (
+              <SelectItem key={key} value={key}>
+                {VARIANT_PARAM_DEFS[key]?.label || key}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {/* Una columna, no dos — los nombres de plantilla (shortname + idioma)
+          se cortaban con dos columnas lado a lado (visto en QA). */}
+      <div className="grid gap-3.5">
+        <div className="grid gap-1.5">
+          <Label>Plantilla "positiva" ({positiveLabel})</Label>
+          <Select
+            value={form.positiveTemplateId}
+            onValueChange={(value) => onChange({ ...form, positiveTemplateId: value })}
+            disabled={!templates.length}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Elegir plantilla" />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name} ({LANGUAGE_LABELS[t.language] || t.language})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label>Plantilla "negativa" ({negativeLabel})</Label>
+          <Select
+            value={form.negativeTemplateId}
+            onValueChange={(value) => onChange({ ...form, negativeTemplateId: value })}
+            disabled={!templates.length}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Elegir plantilla" />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name} ({LANGUAGE_LABELS[t.language] || t.language})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid gap-1.5" style={{ maxWidth: 260 }}>
+        <Label>Umbral ({paramDef.unit})</Label>
+        <Input
+          type="number"
+          min="0"
+          max="365"
+          value={form.threshold}
+          onChange={(e) => onChange({ ...form, threshold: e.target.value })}
+        />
+      </div>
+      <div className="flex gap-2.5">
+        <Button type="button" variant="outline" size="sm" disabled={saving || !templates.length} onClick={onSave}>
+          Guardar variantes
+        </Button>
+        {hasSavedVariants && (
+          <Button type="button" variant="destructive" size="sm" disabled={saving} onClick={onRemove}>
+            Quitar variantes (volver a plantilla única)
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -960,6 +1294,7 @@ function PlatformSettingsTab({ flash }) {
   const [loadingPlatforms, setLoadingPlatforms] = useState(true);
   const [settings, setSettings] = useState(null);
   const [courses, setCourses] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [courseFilter, setCourseFilter] = useState('');
@@ -983,10 +1318,15 @@ function PlatformSettingsTab({ flash }) {
     if (!platformId) return;
     setLoadingDetail(true);
     setCourseFilter('');
-    Promise.all([getNotificationPlatformSettings(platformId), getNotificationPlatformCourses(platformId)])
-      .then(([settingsData, coursesData]) => {
+    Promise.all([
+      getNotificationPlatformSettings(platformId),
+      getNotificationPlatformCourses(platformId),
+      getNotificationPlatformCategories(platformId),
+    ])
+      .then(([settingsData, coursesData, categoriesData]) => {
         setSettings(settingsData);
         setCourses(coursesData);
+        setCategories(categoriesData);
       })
       .catch((err) => flash(err.message, 'error'))
       .finally(() => setLoadingDetail(false));
@@ -1001,6 +1341,15 @@ function PlatformSettingsTab({ flash }) {
     });
   }
 
+  function toggleEnabledCategory(categoryId) {
+    setSettings((prev) => {
+      const ids = new Set(prev.enabledCategoryIds || []);
+      if (ids.has(categoryId)) ids.delete(categoryId);
+      else ids.add(categoryId);
+      return { ...prev, enabledCategoryIds: Array.from(ids) };
+    });
+  }
+
   async function handleSave() {
     if (!settings) return;
     setSaving(true);
@@ -1008,6 +1357,7 @@ function PlatformSettingsTab({ flash }) {
       const saved = await updateNotificationPlatformSettings(platformId, {
         courseCustomFieldShortname: settings.courseCustomFieldShortname,
         diplomaOnlyCourseIds: settings.diplomaOnlyCourseIds || [],
+        enabledCategoryIds: settings.enabledCategoryIds || [],
       });
       setSettings(saved);
       flash('Ajustes guardados.');
@@ -1040,6 +1390,7 @@ function PlatformSettingsTab({ flash }) {
     ? courses.filter((c) => c.courseName.toLowerCase().includes(courseFilter.toLowerCase()))
     : courses;
   const diplomaOnlyIds = new Set(settings?.diplomaOnlyCourseIds || []);
+  const enabledCategoryIds = new Set(settings?.enabledCategoryIds || []);
 
   return (
     <div className="section-stack">
@@ -1147,6 +1498,46 @@ function PlatformSettingsTab({ flash }) {
                       onChange={() => toggleDiplomaCourse(course.courseId)}
                     />
                     {course.courseName}
+                  </label>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <div className="panel-header panel-header-compact">
+              <div>
+                <p className="eyebrow">Categorías habilitadas</p>
+                <h3 className="card-title">
+                  {enabledCategoryIds.size
+                    ? `${enabledCategoryIds.size} categoría${enabledCategoryIds.size === 1 ? '' : 's'} seleccionada${enabledCategoryIds.size === 1 ? '' : 's'}`
+                    : 'Todas las categorías (sin restricción)'}
+                </h3>
+              </div>
+            </div>
+            <p className="panel-description" style={{ margin: '0 0 0.75rem' }}>
+              Si no marcas ninguna, se notifican los cursos de cualquier categoría. Marcando una o
+              más, solo se envían notificaciones para cursos de esas categorías — útil cuando varios
+              instructores comparten plataforma y no todos quieren tener las notificaciones activas
+              para sus propios cursos.
+            </p>
+            {!categories.length ? (
+              <p className="empty">
+                Esta plataforma todavía no tiene categorías sincronizadas (ver "Cursos y Alumnos").
+              </p>
+            ) : (
+              <div style={{ maxHeight: 240, overflowY: 'auto', display: 'grid', gap: '0.4rem' }}>
+                {categories.map((category) => (
+                  <label
+                    key={category.categoryId}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabledCategoryIds.has(category.categoryId)}
+                      onChange={() => toggleEnabledCategory(category.categoryId)}
+                    />
+                    {category.categoryName}
                   </label>
                 ))}
               </div>

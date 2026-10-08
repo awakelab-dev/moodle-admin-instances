@@ -36,11 +36,15 @@ class check_progress_75 extends scheduled_task {
         // La plantilla y si este disparador está activo o no se controla
         // desde Moodle Insights (Gestión de Notificaciones), no aquí.
         $config = insights_client::get_config();
-        if (empty($config['progress_75']['template'])) {
+        $trigconf = $config['progress_75'] ?? [];
+        // El disparador puede tener una plantilla única (template) o 2
+        // variantes por calificaciones (variants.positive/negative, ver
+        // progress_calculator::resolve_template_for_trigger) — hace falta
+        // al menos una de las dos para que valga la pena seguir.
+        if (empty($trigconf['template']) && empty($trigconf['variants'])) {
             mtrace('✗ Sin plantilla configurada en Moodle Insights para "progress_75"; no se enviará ningún email.');
             return;
         }
-        $template = $config['progress_75']['template'];
 
         $customfieldshortname = insights_client::get_settings()['courseCustomFieldShortname'] ?? '';
 
@@ -112,12 +116,17 @@ class check_progress_75 extends scheduled_task {
                 $percent = progress_calculator::get_progress_percentage($course, $user);
                 mtrace("  User {$user->id} ({$user->email}): progress = {$percent}%");
                 if ($percent >= 75.0) {
+                    $sendtemplate = progress_calculator::resolve_template_for_trigger($trigconf, $course, $user);
+                    if (empty($sendtemplate)) {
+                        mtrace("  → Sin plantilla disponible para este alumno (ni variante ni plantilla por defecto), omitiendo.");
+                        continue;
+                    }
                     $placeholders = [
                         'progress_percentage' => (string)$percent,
                         'courseenddate' => $this->format_date_for_user($user, $course->enddate),
                         'progress_table' => progress_calculator::build_progress_table_html($course, $user),
                     ];
-                    $result = email_builder::send_from_template($user, $course, $template, $placeholders, 'progress_75');
+                    $result = email_builder::send_from_template($user, $course, $sendtemplate, $placeholders, 'progress_75');
                     $results[] = [
                         'trigger' => 'progress_75',
                         'courseId' => (int)$course->id,

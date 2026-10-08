@@ -6,9 +6,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { UpsertRuleDto } from './dto/upsert-rule.dto';
+import { UpsertTriggerVariantsDto } from './dto/upsert-trigger-variants.dto';
 import { ReportDeliveryDto } from './dto/report-delivery.dto';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { NOTIFICATION_TRIGGERS } from './notification-triggers.constants';
+import type { PublicUser } from '../auth/auth.service';
 
 // Defaults aplicados cuando una plataforma todavía no configuró nada en
 // `Platform.notificationSettings` (JSON, ver schema.prisma) — el plugin
@@ -25,6 +27,7 @@ const DEFAULT_PLATFORM_SETTINGS = {
   courseCustomFieldShortname: 'courseemailnotifications_enabled',
   diplomaOnlyCourseIds: [] as number[],
   notificationsEnabled: false,
+  enabledCategoryIds: [] as number[],
 };
 
 // Módulo "Gestión de Notificaciones": centraliza en Moodle Insights lo que
@@ -49,17 +52,56 @@ export class NotificationsService {
     return this.prisma.notificationTemplate.findMany({ orderBy: [{ name: 'asc' }, { language: 'asc' }] });
   }
 
-  async createTemplate(dto: CreateTemplateDto) {
-    return this.prisma.notificationTemplate.create({ data: dto });
+  async createTemplate(dto: CreateTemplateDto, currentUser: PublicUser) {
+    const created = await this.prisma.notificationTemplate.create({ data: dto });
+    await this.logTemplateHistory(created.id, created.name, 'created', currentUser, null, created);
+    return created;
   }
 
-  async updateTemplate(id: string, dto: UpdateTemplateDto) {
-    await this.findTemplateOrThrow(id);
-    return this.prisma.notificationTemplate.update({ where: { id }, data: dto });
+  async updateTemplate(id: string, dto: UpdateTemplateDto, currentUser: PublicUser) {
+    const before = await this.findTemplateOrThrow(id);
+    const after = await this.prisma.notificationTemplate.update({ where: { id }, data: dto });
+    await this.logTemplateHistory(id, after.name, 'updated', currentUser, before, after);
+    return after;
   }
 
-  async deleteTemplate(id: string) {
-    await this.findTemplateOrThrow(id);
+  // Historial de cambios de una plantilla — pedido explícitamente para
+  // poder ver quién cambió qué y cuándo, con una foto completa del antes
+  // y el después (no solo el campo que cambió).
+  listTemplateHistory(templateId: string) {
+    return this.prisma.notificationTemplateHistory.findMany({
+      where: { templateId },
+      orderBy: { changedAt: 'desc' },
+    });
+  }
+
+  private async logTemplateHistory(
+    templateId: string | null,
+    templateName: string,
+    action: 'created' | 'updated' | 'deleted',
+    currentUser: PublicUser,
+    previous: { name: string; language: string; subject: string; bodyHtml: string } | null,
+    next: { name: string; language: string; subject: string; bodyHtml: string } | null,
+  ) {
+    await this.prisma.notificationTemplateHistory.create({
+      data: {
+        templateId,
+        templateName,
+        action,
+        changedByUserId: currentUser?.id ?? null,
+        changedByUsername: currentUser?.username ?? 'desconocido',
+        previousData: previous
+          ? ({ name: previous.name, language: previous.language, subject: previous.subject, bodyHtml: previous.bodyHtml } as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+        newData: next
+          ? ({ name: next.name, language: next.language, subject: next.subject, bodyHtml: next.bodyHtml } as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+      },
+    });
+  }
+
+  async deleteTemplate(id: string, currentUser: PublicUser) {
+    const template = await this.findTemplateOrThrow(id);
     const inUse = await this.prisma.notificationRule.count({ where: { templateId: id } });
     if (inUse > 0) {
       throw new BadRequestException(
@@ -67,6 +109,11 @@ export class NotificationsService {
       );
     }
     await this.prisma.notificationTemplate.delete({ where: { id } });
+    // templateId va a null a propósito: el registro se crea DESPUÉS de
+    // borrar la plantilla, así que ya no hay una fila válida a la que
+    // apuntar (poner el id borrado violaría la clave foránea). templateName
+    // guarda el nombre para que el historial siga siendo legible.
+    await this.logTemplateHistory(null, template.name, 'deleted', currentUser, template, null);
     return { message: 'Plantilla eliminada.' };
   }
 
@@ -123,6 +170,61 @@ export class NotificationsService {
     return { message: 'Regla eliminada.' };
   }
 
+  // ─── Variantes de plantilla por parámetro (ej. progreso + calificaciones) ───
+
+  // Las 2 filas (variant='positive'/'negative') de un mismo trigger+plataforma
+  // comparten el mismo variantParam+threshold en sus `params` — son
+  // parámetros del trigger, no de una plantilla en particular, guardados en
+  // ambas para que getConfigForPlatform pueda leerlos de cualquiera de las
+  // dos sin tener que consultar una tercera tabla.
+  async upsertTriggerVariants(dto: UpsertTriggerVariantsDto) {
+    const triggerDef = NOTIFICATION_TRIGGERS.find((t) => t.key === dto.trigger) as { variantParams?: readonly string[] } | undefined;
+    if (!triggerDef?.variantParams?.length) {
+      throw new BadRequestException(`El disparador "${dto.trigger}" no admite plantillas por variante.`);
+    }
+    if (!triggerDef.variantParams.includes(dto.variantParam)) {
+      throw new BadRequestException(`El parámetro "${dto.variantParam}" no es válido para este disparador.`);
+    }
+    const [positiveTemplate, negativeTemplate] = await Promise.all([
+      this.prisma.notificationTemplate.findUnique({ where: { id: dto.positiveTemplateId } }),
+      this.prisma.notificationTemplate.findUnique({ where: { id: dto.negativeTemplateId } }),
+    ]);
+    if (!positiveTemplate) throw new NotFoundException('Plantilla "positiva" no encontrada.');
+    if (!negativeTemplate) throw new NotFoundException('Plantilla "negativa" no encontrada.');
+
+    const platformId = dto.platformId || null;
+    if (platformId) {
+      const platform = await this.prisma.platform.findUnique({ where: { id: platformId } });
+      if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    }
+
+    const params = { variantParam: dto.variantParam, threshold: dto.threshold } as Prisma.InputJsonValue;
+    const upsertVariant = async (variant: 'positive' | 'negative', templateId: string) => {
+      const existing = await this.prisma.notificationRule.findFirst({ where: { trigger: dto.trigger as any, platformId, variant } });
+      if (existing) {
+        return this.prisma.notificationRule.update({ where: { id: existing.id }, data: { templateId, params, isActive: true } });
+      }
+      return this.prisma.notificationRule.create({
+        data: { trigger: dto.trigger as any, platformId, variant, templateId, params, isActive: true },
+      });
+    };
+
+    const [positive, negative] = await Promise.all([
+      upsertVariant('positive', dto.positiveTemplateId),
+      upsertVariant('negative', dto.negativeTemplateId),
+    ]);
+    return { positive, negative };
+  }
+
+  // Vuelve el trigger a modo "una sola plantilla" — borra las 2 filas de
+  // variante; la regla normal (variant null), si existe, no se toca.
+  async deleteTriggerVariants(trigger: string, platformId?: string) {
+    await this.prisma.notificationRule.deleteMany({
+      where: { trigger: trigger as any, platformId: platformId || null, variant: { not: null } },
+    });
+    return { message: 'Variantes eliminadas.' };
+  }
+
   // ─── API key del plugin (por plataforma) ───
 
   // Genera (o rota) la API key de notificaciones de una plataforma. Se
@@ -163,6 +265,7 @@ export class NotificationsService {
       ...(dto.courseCustomFieldShortname !== undefined ? { courseCustomFieldShortname: dto.courseCustomFieldShortname } : {}),
       ...(dto.diplomaOnlyCourseIds !== undefined ? { diplomaOnlyCourseIds: dto.diplomaOnlyCourseIds } : {}),
       ...(dto.notificationsEnabled !== undefined ? { notificationsEnabled: dto.notificationsEnabled } : {}),
+      ...(dto.enabledCategoryIds !== undefined ? { enabledCategoryIds: dto.enabledCategoryIds } : {}),
     };
     await this.prisma.platform.update({
       where: { id: platformId },
@@ -204,6 +307,19 @@ export class NotificationsService {
     return courses;
   }
 
+  // Categorías distintas de Moodle presentes entre los cursos sincronizados
+  // de la plataforma — para el selector de "categorías habilitadas" en
+  // Ajustes por plataforma (enabledCategoryIds).
+  async listPlatformCategories(platformId: string) {
+    const courses = await this.prisma.course.findMany({
+      where: { platformId },
+      select: { categoryId: true, categoryName: true },
+      distinct: ['categoryId'],
+      orderBy: { categoryName: 'asc' },
+    });
+    return courses;
+  }
+
   // ─── Llamadas del plugin (autenticadas por PlatformApiKeyGuard) ───
 
   // Reglas activas para ESA plataforma: las específicas suyas tienen
@@ -226,25 +342,52 @@ export class NotificationsService {
       include: { template: true },
     });
 
-    const byTrigger = new Map<string, (typeof rules)[number]>();
+    // Las reglas "normales" (variant null) y las de variante (positive/
+    // negative) se resuelven por separado — un trigger puede tener solo
+    // una normal, solo las 2 variantes, o (si alguien las dejó a medias)
+    // ninguna de las dos.
+    const defaultByTrigger = new Map<string, (typeof rules)[number]>();
+    const variantsByTrigger = new Map<string, Map<string, (typeof rules)[number]>>();
+    const prefersNewRule = (existing: (typeof rules)[number] | undefined, candidate: (typeof rules)[number]) =>
+      !existing || (existing.platformId === null && candidate.platformId !== null);
+
     for (const rule of rules) {
-      const existing = byTrigger.get(rule.trigger);
-      // Una regla con platformId propio siempre gana a una global del mismo trigger.
-      if (!existing || (existing.platformId === null && rule.platformId !== null)) {
-        byTrigger.set(rule.trigger, rule);
+      if (rule.variant) {
+        const byVariant = variantsByTrigger.get(rule.trigger) ?? new Map<string, (typeof rules)[number]>();
+        if (prefersNewRule(byVariant.get(rule.variant), rule)) byVariant.set(rule.variant, rule);
+        variantsByTrigger.set(rule.trigger, byVariant);
+      } else if (prefersNewRule(defaultByTrigger.get(rule.trigger), rule)) {
+        defaultByTrigger.set(rule.trigger, rule);
       }
     }
 
+    const triggerKeys = new Set<string>([...defaultByTrigger.keys(), ...variantsByTrigger.keys()]);
+    const toTemplatePayload = (rule: (typeof rules)[number]) => ({
+      language: rule.template.language,
+      subject: rule.template.subject,
+      bodyHtml: rule.template.bodyHtml,
+    });
+
     return {
-      triggers: Array.from(byTrigger.values()).map((rule) => ({
-        trigger: rule.trigger,
-        params: rule.params,
-        template: {
-          language: rule.template.language,
-          subject: rule.template.subject,
-          bodyHtml: rule.template.bodyHtml,
-        },
-      })),
+      triggers: Array.from(triggerKeys).map((key) => {
+        const defaultRule = defaultByTrigger.get(key);
+        const variantRules = variantsByTrigger.get(key);
+        const entry: Record<string, unknown> = {
+          trigger: key,
+          params: defaultRule?.params ?? {},
+        };
+        if (defaultRule) entry.template = toTemplatePayload(defaultRule);
+        if (variantRules?.size) {
+          const anyVariantRule = variantRules.values().next().value as (typeof rules)[number];
+          const variantParams = anyVariantRule.params as { variantParam?: string; threshold?: number };
+          entry.variantParam = variantParams?.variantParam ?? null;
+          entry.threshold = variantParams?.threshold ?? 50;
+          entry.variants = Object.fromEntries(
+            Array.from(variantRules.entries()).map(([variant, rule]) => [variant, toTemplatePayload(rule)]),
+          );
+        }
+        return entry;
+      }),
       settings,
     };
   }

@@ -3,8 +3,11 @@ import { NotificationsService } from './notifications.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { UpsertRuleDto } from './dto/upsert-rule.dto';
+import { UpsertTriggerVariantsDto } from './dto/upsert-trigger-variants.dto';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { PublicUser } from '../auth/auth.service';
 
 // Panel de administración ("Gestión de Notificaciones" en el frontend) —
 // solo superadmin, igual que Usuarios/Configuración. Ver
@@ -25,18 +28,23 @@ export class NotificationsController {
   }
 
   @Post('templates')
-  createTemplate(@Body() dto: CreateTemplateDto) {
-    return this.notifications.createTemplate(dto);
+  createTemplate(@Body() dto: CreateTemplateDto, @CurrentUser() currentUser: PublicUser) {
+    return this.notifications.createTemplate(dto, currentUser);
   }
 
   @Put('templates/:id')
-  updateTemplate(@Param('id') id: string, @Body() dto: UpdateTemplateDto) {
-    return this.notifications.updateTemplate(id, dto);
+  updateTemplate(@Param('id') id: string, @Body() dto: UpdateTemplateDto, @CurrentUser() currentUser: PublicUser) {
+    return this.notifications.updateTemplate(id, dto, currentUser);
   }
 
   @Delete('templates/:id')
-  deleteTemplate(@Param('id') id: string) {
-    return this.notifications.deleteTemplate(id);
+  deleteTemplate(@Param('id') id: string, @CurrentUser() currentUser: PublicUser) {
+    return this.notifications.deleteTemplate(id, currentUser);
+  }
+
+  @Get('templates/:id/history')
+  listTemplateHistory(@Param('id') id: string) {
+    return this.notifications.listTemplateHistory(id);
   }
 
   @Get('rules')
@@ -47,6 +55,19 @@ export class NotificationsController {
   @Post('rules')
   upsertRule(@Body() dto: UpsertRuleDto) {
     return this.notifications.upsertRule(dto);
+  }
+
+  // Rutas literales ("rules/variants") ANTES de la paramétrica
+  // ("rules/:id") a propósito — si no, Nest/Express matchea "variants"
+  // como si fuera el :id de deleteRule y esta ruta nunca se alcanza.
+  @Post('rules/variants')
+  upsertTriggerVariants(@Body() dto: UpsertTriggerVariantsDto) {
+    return this.notifications.upsertTriggerVariants(dto);
+  }
+
+  @Delete('rules/variants')
+  deleteTriggerVariants(@Query('trigger') trigger: string, @Query('platformId') platformId?: string) {
+    return this.notifications.deleteTriggerVariants(trigger, platformId);
   }
 
   @Delete('rules/:id')
@@ -95,5 +116,10 @@ export class NotificationsController {
   @Get('platforms/:platformId/courses')
   listPlatformCourses(@Param('platformId') platformId: string) {
     return this.notifications.listPlatformCourses(platformId);
+  }
+
+  @Get('platforms/:platformId/categories')
+  listPlatformCategories(@Param('platformId') platformId: string) {
+    return this.notifications.listPlatformCategories(platformId);
   }
 }
