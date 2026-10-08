@@ -1,0 +1,100 @@
+/* ── Tabela geral ────────────────────────────────────────────────────── */
+.report-accessaudit-table td {
+    vertical-align: middle;
+    font-size: 0.9em;
+}
+
+/* ── Células de acesso (aba Localização) ─────────────────────────────── */
+.access-cell {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.85em;
+    line-height: 1.6;
+    min-width: 160px;
+}
+
+.table-warning .access-cell {
+    background: #fff3cd;
+}
+
+/* ── Filtros / abas ──────────────────────────────────────────────────── */
+.report-accessaudit-filters,
+.report-accessaudit-tabs {
+    margin-bottom: 1.5rem;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────── */
+.badge-danger {
+    background-color: #dc3545;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.badge-purple {
+    background-color: #6f42c1;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+/* ── Barra de análise ────────────────────────────────────────────────── */
+.report-accessaudit-analyze-bar {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 8px;
+    padding: 14px 18px;
+}
+
+/* ── Lista de alunos no grupo ────────────────────────────────────────── */
+.pattern-users-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.88em;
+    line-height: 1.8;
+}
+
+.pattern-users-list li::before {
+    content: '👤 ';
+}
+
+/* ── Linha de alto risco ─────────────────────────────────────────────── */
+.table-danger td {
+    background-color: #f8d7da !important;
+}

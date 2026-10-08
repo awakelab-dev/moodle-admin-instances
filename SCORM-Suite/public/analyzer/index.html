@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCORM Lab — Awakelab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap">
+
+<style>
+:root {
+  --bg:       #011932;
+  --surf:     #01264C;
+  --card:     #012142;
+  --card-hi:  #003260;
+  --border:   rgba(25,247,241,.10);
+  --bhi:      rgba(25,247,241,.25);
+  --c-hi:  #D9FBFF;
+  --c1:    #19F7F1;
+  --c2:    #11EAEA;
+  --c3:    #0FCED3;
+  --c4:    #0ABCC9;
+  --c5:    #0B93AA;
+  --bmid:  #72A3C4;
+  --bdim:  #4E7EA5;
+  --bdeep: #27334F;
+  --text:  #D9FBFF;
+  --t2:    #72A3C4;
+  --t3:    #4E7EA5;
+  --green:  #19F7A0;
+  --yellow: #F7D419;
+  --orange: #F79A19;
+  --red:    #F75A50;
+  --r: 12px;
+  --r2: 18px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+  padding-inline: 20px;
+  padding-block: 28px 48px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.page { max-width: 1100px; margin-inline: auto; display: flex; flex-direction: column; gap: 28px; }
+
+/* Header */
+.hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-name { font-size: 15px; font-weight: 800; color: var(--c-hi); letter-spacing: -.02em; }
+.tool-chip {
+  background: var(--card-hi); border: 1px solid var(--bhi);
+  border-radius: 20px; padding: 4px 14px;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c1);
+}
+.server-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(25,247,160,.08); border: 1px solid rgba(25,247,160,.2);
+  border-radius: 20px; padding: 4px 12px;
+  font-size: 11px; font-weight: 600; color: var(--green);
+}
+.server-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Hero */
+.hero h1 {
+  font-size: clamp(24px, 4vw, 36px); font-weight: 800; line-height: 1.1;
+  background: linear-gradient(90deg, var(--c-hi) 0%, var(--c2) 55%, var(--c5) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hero p { color: var(--t2); margin-top: 8px; font-size: 14px; max-width: 520px; }
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed var(--bhi); border-radius: var(--r2); padding: 52px 32px;
+  text-align: center; cursor: pointer; background: var(--card);
+  transition: border-color .2s, background .2s; position: relative;
+}
+.drop-zone:hover, .drop-zone.drag { border-color: var(--c1); background: var(--card-hi); }
+.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop-icon { font-size: 48px; line-height: 1; margin-bottom: 16px; }
+.drop-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.drop-sub { font-size: 13px; color: var(--t2); }
+.drop-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 20px; padding: 8px 20px;
+  background: var(--c3); color: var(--bg);
+  border-radius: 24px; font-size: 13px; font-weight: 700; pointer-events: none;
+}
+
+/* Progress */
+.progress-wrap { display: none; }
+.progress-wrap.show { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px; }
+.spin { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--c1); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress-label { font-size: 14px; color: var(--t2); font-weight: 500; }
+.prog-bar-wrap { width: 100%; max-width: 360px; background: var(--bdeep); border-radius: 6px; height: 6px; overflow: hidden; }
+.prog-bar { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--c3), var(--c1)); transition: width .3s; width: 0%; }
+.prog-count { font-size: 12px; color: var(--t3); }
+
+/* Results */
+.results { display: none; flex-direction: column; gap: 24px; }
+.results.show { display: flex; }
+
+/* File info bar */
+.file-info-bar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  background: var(--card-hi); border: 1px solid var(--bhi); border-radius: var(--r); padding: 14px 20px;
+}
+.file-info-bar .fname { font-weight: 700; color: var(--text); font-size: 15px; word-break: break-all; }
+.file-info-bar .fsize { font-size: 13px; color: var(--t2); margin-top: 2px; }
+.reset-btn {
+  background: transparent; border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 14px; color: var(--t2); font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.reset-btn:hover { border-color: var(--bhi); color: var(--c1); }
+
+/* KPIs */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r2); padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden;
+  transition: border-color .2s, transform .18s;
+}
+.kpi:hover { border-color: var(--bhi); transform: translateY(-2px); }
+.kpi::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(15,206,211,.06) 0%, transparent 55%); pointer-events: none; }
+.kpi-lbl { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--t2); }
+.kpi-val { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi-sub { font-size: 11px; color: var(--t2); margin-top: 2px; }
+.kpi-icon { position: absolute; top: 14px; right: 16px; font-size: 20px; opacity: .6; }
+
+/* Breakdown */
+.breakdown-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r2); padding: 24px; }
+.card-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+.stacked-bar-wrap { display: flex; flex-direction: column; gap: 10px; }
+.stacked-bar { height: 32px; border-radius: 8px; overflow: hidden; display: flex; width: 100%; background: var(--bdeep); }
+.bar-seg { height: 100%; transition: width .6s cubic-bezier(.4,0,.2,1); position: relative; }
+.bar-seg:hover::after {
+  content: attr(data-tip); position: absolute; top: -32px; left: 50%; transform: translateX(-50%);
+  background: var(--card-hi); border: 1px solid var(--bhi); color: var(--text);
+  font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 10;
+}
+.legend { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 14px; }
+.leg-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--t2); cursor: pointer; }
+.leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.leg-item .leg-pct { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Cat cards */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cat-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px; cursor: pointer;
+  transition: border-color .2s, background .15s; position: relative; overflow: hidden;
+}
+.cat-card.active { border-color: var(--bhi); background: var(--card-hi); }
+.cat-card:hover { border-color: var(--bhi); }
+.cat-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; background: var(--cat-color, var(--c3)); }
+.cat-emoji { font-size: 18px; }
+.cat-name { font-size: 11px; font-weight: 600; color: var(--t2); text-transform: uppercase; letter-spacing: .04em; }
+.cat-size { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
+.cat-count { font-size: 11px; color: var(--t2); }
+
+/* Table */
+.table-section { display: flex; flex-direction: column; gap: 12px; }
+.table-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.search-wrap { position: relative; flex: 1 1 200px; }
+.search-wrap input {
+  width: 100%; background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 12px 8px 36px; color: var(--text);
+  font-size: 13px; font-family: inherit; outline: none; transition: border-color .2s;
+}
+.search-wrap input:focus { border-color: var(--bhi); }
+.search-wrap input::placeholder { color: var(--t3); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--t3); pointer-events: none; }
+.sort-sel {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; color: var(--t2); font-size: 13px; font-family: inherit; outline: none; cursor: pointer;
+}
+.sort-sel option { background: var(--surf); }
+.result-count { font-size: 12px; color: var(--t2); font-weight: 500; white-space: nowrap; }
+.table-wrap { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 540px; }
+thead tr { background: var(--card-hi); }
+thead th {
+  text-align: left; padding: 10px 14px;
+  font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--t2);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+thead th:hover { color: var(--c1); }
+thead th.sort-asc::after  { content: ' ▲'; font-size: 9px; }
+thead th.sort-desc::after { content: ' ▼'; font-size: 9px; }
+tbody tr { border-top: 1px solid var(--border); transition: background .12s; }
+tbody tr:hover { background: var(--card-hi); }
+td { padding: 10px 14px; vertical-align: middle; }
+.fname-cell { display: flex; align-items: center; gap: 10px; }
+.ftype-icon { font-size: 16px; flex-shrink: 0; }
+.fname-path { font-size: 12px; color: var(--text); word-break: break-all; }
+.fname-ext { font-size: 10px; color: var(--t2); margin-top: 1px; font-weight: 600; letter-spacing: .04em; }
+.row-virtual { opacity: .85; }
+.row-virtual td { background: rgba(15,206,211,.04); }
+.embed-badge { display:inline-block; font-size:9px; font-weight:700; letter-spacing:.06em; color:#0FCED3; background:rgba(15,206,211,.12); border:1px solid rgba(15,206,211,.25); border-radius:3px; padding:1px 4px; margin-right:4px; vertical-align:middle; }
+.size-cell { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.size-bar-cell { min-width: 100px; }
+.size-bar-track { background: var(--bdeep); border-radius: 4px; height: 5px; overflow: hidden; }
+.size-bar-fill { height: 100%; border-radius: 4px; }
+.pct-cell { font-size: 12px; color: var(--t2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.no-rows { text-align: center; padding: 40px; color: var(--t2); font-size: 13px; }
+
+/* Download button */
+.dl-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: 1px solid var(--border); border-radius: 6px;
+  padding: 3px 10px; color: var(--t2); font-size: 11px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap;
+}
+.dl-btn:hover { border-color: var(--c1); color: var(--c1); }
+
+/* Error */
+.err-banner {
+  display: none; background: rgba(247,90,80,.1); border: 1px solid rgba(247,90,80,.3);
+  border-radius: var(--r); padding: 14px 18px; color: var(--red); font-size: 13px; font-weight: 500;
+}
+.err-banner.show { display: block; }
+
+/* Not-SCORM warning */
+.notscorm-banner {
+  display: none; background: rgba(247,164,25,.08); border: 1px solid rgba(247,164,25,.3);
+  border-radius: var(--r); padding: 18px 20px; font-size: 14px; font-weight: 500;
+  color: #e6a31a; text-align: center; letter-spacing: .01em;
+}
+.notscorm-banner .ns-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+.notscorm-banner.show { display: block; }
+
+/* Alerts */
+.alerts-section { display: flex; flex-direction: column; gap: 10px; }
+.alerts-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.alerts-title { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.alert-count-badge { background: rgba(247,90,80,.15); border: 1px solid rgba(247,90,80,.3); color: var(--red); border-radius: 20px; padding: 1px 10px; font-size: 11px; font-weight: 700; }
+.alert-count-badge.warn { background: rgba(247,212,25,.1); border-color: rgba(247,212,25,.3); color: var(--yellow); }
+.alerts-toggle { font-size: 11px; color: var(--t2); cursor: pointer; background: none; border: none; font-family: inherit; padding: 4px 8px; border-radius: 6px; transition: color .15s; }
+.alerts-toggle:hover { color: var(--c1); }
+.alerts-list { display: flex; flex-direction: column; gap: 6px; }
+.alert-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
+  border-left: 3px solid var(--alert-color, var(--yellow)); transition: background .15s;
+}
+.alert-row:hover { background: var(--card-hi); }
+.alert-row.critical { --alert-color: var(--red); }
+.alert-row.warn     { --alert-color: var(--yellow); }
+.alert-level { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--alert-color); white-space: nowrap; flex-shrink: 0; }
+.alert-name { font-size: 12px; color: var(--text); word-break: break-all; flex: 1 1 160px; }
+.alert-size { font-size: 13px; font-weight: 700; color: var(--alert-color); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alert-tip  { font-size: 11px; color: var(--t2); white-space: nowrap; flex-shrink: 0; }
+
+/* Export + toolbar */
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+.export-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--bhi); border-radius: 8px;
+  padding: 8px 14px; color: var(--c1); font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: background .2s, border-color .2s; white-space: nowrap;
+}
+.export-btn:hover { background: var(--card-hi); border-color: var(--c1); }
+.preview-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bdeep); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 14px; color: var(--t3); font-size: 12px; font-weight: 700;
+  cursor: not-allowed; font-family: inherit; transition: all .25s; white-space: nowrap;
+  opacity: 0.5;
+}
+.preview-btn:not(:disabled) {
+  background: linear-gradient(135deg, #003260 0%, #003670 100%);
+  border-color: var(--c3); color: var(--c1); cursor: pointer; opacity: 1;
+}
+.preview-btn:not(:disabled):hover { background: var(--card-hi); border-color: var(--c1); color: var(--c-hi); }
+.preview-btn.loading { opacity: 0.7; cursor: wait; }
+.preview-btn.cloud-pkg {
+  background: rgba(247,154,25,.08) !important;
+  border-color: rgba(247,154,25,.35) !important;
+  color: #F79A19 !important;
+  cursor: default !important;
+  opacity: 1 !important;
+}
+.preview-btn .btn-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+  animation: none; flex-shrink: 0;
+}
+.preview-btn:not(:disabled):not(.cloud-pkg) .btn-dot { animation: pulse 1.8s infinite; }
+
+/* ── Diagnostic panel ─────────────────────────────────────── */
+.diag-panel {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 14px;
+  animation: fadeIn .3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.diag-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.diag-title  { font-size: 13px; font-weight: 700; color: var(--text); }
+.diag-badge  { border-radius: 20px; padding: 2px 12px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.diag-badge.ok    { background: rgba(25,247,160,.10); border: 1px solid rgba(25,247,160,.25); color: var(--green); }
+.diag-badge.warn  { background: rgba(247,154,25,.10); border: 1px solid rgba(247,154,25,.28); color: var(--orange); }
+.diag-badge.cloud { background: rgba(78,126,165,.12);  border: 1px solid rgba(78,126,165,.28); color: var(--bmid); }
+.diag-badge.loading { background: var(--bdeep); border: 1px solid var(--border); color: var(--t3); }
+.diag-issues { display: flex; flex-direction: column; gap: 6px; }
+.diag-issue {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: rgba(247,154,25,.06); border: 1px solid rgba(247,154,25,.15);
+  border-radius: 8px; padding: 9px 14px;
+}
+.diag-issue.cloud { background: rgba(78,126,165,.07); border-color: rgba(78,126,165,.18); }
+.diag-issue.ok    { background: rgba(25,247,160,.05); border-color: rgba(25,247,160,.18); }
+.diag-issue.info  { background: rgba(15,206,211,.05); border-color: rgba(15,206,211,.2); }
+.diag-issue-icon { font-size: 15px; flex-shrink: 0; line-height: 1.5; }
+.diag-issue-text { font-size: 12px; color: var(--t2); flex: 1; line-height: 1.55; }
+.fix-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, #0FCED3, #0B93AA);
+  border: 1px solid var(--c3); border-radius: 8px; padding: 8px 14px;
+  color: var(--bg); font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: opacity .2s, transform .15s; white-space: nowrap;
+}
+.fix-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+.fix-btn:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.4); }
+
+/* CSV Modal */
+.modal-backdrop { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(1,25,50,.82); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px; }
+.modal-backdrop.open { display: flex; }
+.modal { background: var(--surf); border: 1px solid var(--bhi); border-radius: var(--r2); padding: 24px; width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 16px; max-height: 90vh; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.modal-head h3 { font-size: 15px; font-weight: 700; }
+.modal-close { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; color: var(--t2); font-size: 18px; cursor: pointer; transition: all .2s; line-height: 1; font-family: inherit; }
+.modal-close:hover { border-color: var(--bhi); color: var(--text); }
+.modal-sub { font-size: 12px; color: var(--t2); }
+.csv-area { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: 'Courier New', monospace; font-size: 11px; color: var(--t2); resize: none; height: 260px; outline: none; overflow-y: auto; flex-shrink: 1; width: 100%; }
+.modal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.copy-btn { flex: 1; background: var(--c3); border: none; border-radius: 8px; padding: 10px 20px; color: var(--bg); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .2s; }
+.copy-btn:hover { background: var(--c1); }
+.copy-btn.copied { background: var(--green); }
+.modal-note { font-size: 11px; color: var(--t3); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <!-- Header -->
+  <div class="hdr">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+        <path d="M13 2L25 23H1L13 2Z" fill="none" stroke="#0FCED3" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M7 17L13 7L19 17" fill="none" stroke="#19F7F1" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">awakelab</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <a href="/" class="tool-chip" style="text-decoration:none;color:inherit">← Início</a>
+      <span class="tool-chip">SCORM Lab</span>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>SCORM Lab</h1>
+    <p>Analise, otimize e visualize pacotes SCORM (.zip) diretamente no navegador — inspecione o peso de cada arquivo, comprima imagens automaticamente e rode o curso sem precisar de um LMS. Sem limite de tamanho.</p>
+  </div>
+
+  <!-- Error -->
+  <div class="err-banner" id="errBanner"></div>
+
+  <!-- Not-SCORM -->
+  <div class="notscorm-banner" id="notScormBanner">
+    <span class="ns-icon">📄</span>
+    <span id="notScormMsg"></span>
+  </div>
+
+  <!-- Upload zone -->
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".zip,.scorm" />
+    <div class="drop-icon">📦</div>
+    <div class="drop-title">Arraste seu pacote SCORM aqui</div>
+    <div class="drop-sub">ou clique para selecionar · Formatos: .zip, .scorm · Sem limite de tamanho</div>
+    <div class="drop-badge"><span>⬆</span> Selecionar arquivo</div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="spin"></div>
+    <div class="progress-label" id="progressLabel">Enviando arquivo…</div>
+    <div class="prog-bar-wrap"><div class="prog-bar" id="progBar"></div></div>
+    <div class="prog-count" id="progCount"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="file-info-bar">
+      <div>
+        <div class="fname" id="rFileName">—</div>
+        <div class="fsize" id="rFileSize">—</div>
+      </div>
+      <button class="reset-btn" id="resetBtn">↩ Novo arquivo</button>
+    </div>
+
+    <!-- Diagnostic panel — shown after analysis -->
+    <div class="diag-panel" id="diagPanel" hidden>
+      <div class="diag-header">
+        <div class="diag-title">🔍 Diagnóstico do Pacote</div>
+        <span class="diag-badge loading" id="diagBadge">Analisando…</span>
+      </div>
+      <div class="diag-issues" id="diagIssues"></div>
+    </div>
+
+    <div class="alerts-section" id="alertsSection" hidden></div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <span class="kpi-icon">📁</span>
+        <span class="kpi-lbl">Total de Arquivos</span>
+        <span class="kpi-val" id="kTotal" style="color:var(--c1)">—</span>
+        <span class="kpi-sub">dentro do pacote</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-icon">⚖️</span>
+        <span class="kpi-lbl">Tamanho Total</span>
+        <span class="kpi-val" id="kSize" style="color:var(--green)">—</span>
+        <span class="kpi-sub">conteúdo descomprimido</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-icon">📸</span>
+        <span class="kpi-lbl">Imagens</span>
+        <span class="kpi-val" id="kImages" style="color:var(--c3)">—</span>
+        <span class="kpi-sub" id="kImagesSub">—</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-icon">🏋️</span>
+        <span class="kpi-lbl">Maior Arquivo</span>
+        <span class="kpi-val" id="kBiggest" style="color:var(--yellow)">—</span>
+        <span class="kpi-sub" id="kBiggestSub">—</span>
+      </div>
+    </div>
+
+    <div class="breakdown-card">
+      <div class="card-title">Distribuição por Tipo</div>
+      <div class="stacked-bar-wrap">
+        <div class="stacked-bar" id="stackedBar"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+
+    <div class="cat-grid" id="catGrid"></div>
+
+    <div class="table-section">
+      <div class="table-controls">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Filtrar por nome…">
+        </div>
+        <select class="sort-sel" id="sortSel">
+          <option value="size-desc">Maior primeiro</option>
+          <option value="size-asc">Menor primeiro</option>
+          <option value="name-asc">Nome A→Z</option>
+          <option value="name-desc">Nome Z→A</option>
+        </select>
+        <span class="result-count" id="resultCount"></span>
+        <div class="toolbar">
+          <button class="export-btn" id="exportBtn">📋 Exportar CSV</button>
+          <button class="export-btn" id="dlAllBtn">⬇ Baixar ZIP original</button>
+          <button class="export-btn" id="dlExtractedBtn" style="background:var(--c3);color:var(--bg);">🗜️ Comprimir e Baixar</button>
+          <button class="fix-btn" id="fixBtn" disabled>🔧 Corrigir e Baixar</button>
+          <button class="preview-btn" id="previewBtn" disabled><span class="btn-dot"></span>▶ Visualizar Curso</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Arquivo</th>
+              <th>Tamanho</th>
+              <th>Proporção</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fileTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CSV Modal -->
+<div class="modal-backdrop" id="csvModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>📋 Exportar CSV</h3>
+      <button class="modal-close" id="modalClose">×</button>
+    </div>
+    <p class="modal-sub">Selecione tudo (Ctrl+A) e copie, ou use o botão.</p>
+    <textarea class="csv-area" id="csvArea" readonly spellcheck="false"></textarea>
+    <div class="modal-actions">
+      <button class="copy-btn" id="copyBtn">Copiar tudo</button>
+    </div>
+    <p class="modal-note">Cole num editor de texto, salve como .csv e abra no Excel ou Google Sheets.</p>
+  </div>
+</div>
+
+<script>
+/* ── State ── */
+let allFiles = [];
+let activeFilter = 'all';
+let sortKey = 'size-desc';
+let searchQ = '';
+let maxSize = 0;
+let currentSessionId = null;
+let previewEntryPoint = null;
+let previewCourseName = null;
+
+/* ── DOM ── */
+const dropZone     = document.getElementById('dropZone');
+const fileInput    = document.getElementById('fileInput');
+const progressWrap = document.getElementById('progressWrap');
+const progBar      = document.getElementById('progBar');
+const progressLabel = document.getElementById('progressLabel');
+const progCount    = document.getElementById('progCount');
+const resultsEl    = document.getElementById('results');
+const errBanner       = document.getElementById('errBanner');
+const notScormBanner  = document.getElementById('notScormBanner');
+const notScormMsg     = document.getElementById('notScormMsg');
+
+/* ── Drop zone ── */
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) uploadFile(f); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) uploadFile(e.target.files[0]); });
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+document.getElementById('searchInput').addEventListener('input', e => { searchQ = e.target.value.toLowerCase(); renderTable(); });
+document.getElementById('sortSel').addEventListener('change', e => { sortKey = e.target.value; renderTable(); });
+document.getElementById('exportBtn').addEventListener('click', openCsvModal);
+document.getElementById('modalClose').addEventListener('click', () => document.getElementById('csvModal').classList.remove('open'));
+document.getElementById('csvModal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+document.getElementById('copyBtn').addEventListener('click', copyCsv);
+document.getElementById('dlAllBtn').addEventListener('click', downloadAll);
+document.getElementById('dlExtractedBtn').addEventListener('click', downloadExtracted);
+document.getElementById('previewBtn').addEventListener('click', openPreview);
+
+/* ── Upload + SSE ── */
+async function uploadFile(file) {
+  showError('');
+  notScormBanner.classList.remove('show');
+  showUpload(false);
+  showProgress(true);
+  setProgress('Enviando arquivo para o servidor…', 5);
+  progCount.textContent = fmtBytes(file.size);
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+    if (!res.ok) { throw new Error((await res.json()).error || 'Erro no servidor'); }
+    const { sessionId } = await res.json();
+    currentSessionId = sessionId;
+
+    // SSE para progresso
+    await listenProgress(sessionId);
+
+  } catch (err) {
+    showProgress(false);
+    showUpload(true);
+    showError('Erro: ' + err.message);
+  }
+}
+
+function listenProgress(sessionId) {
+  return new Promise((resolve, reject) => {
+    const sse = new EventSource(`/api/progress/${sessionId}`);
+    let pct = 20;
+
+    sse.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      if (data.status === 'reading') {
+        setProgress(data.message, 25);
+      } else if (data.status === 'analyzing') {
+        pct = Math.min(90, 30 + data.count * 0.5);
+        setProgress(data.message, pct);
+        progCount.textContent = `${data.count} arquivos encontrados`;
+      } else if (data.status === 'done') {
+        sse.close();
+        setProgress('Renderizando resultados…', 98);
+        allFiles = data.files;
+        maxSize = Math.max(...data.files.map(f => f.size), 1);
+        renderResults(data.originalName, data.zipSize);
+        showProgress(false);
+        showResults(true);
+        diagnosePackage(data.sessionId);
+        resolve();
+      } else if (data.status === 'not-scorm') {
+        sse.close();
+        showProgress(false);
+        showUpload(true);
+        showNotScorm(data.message);
+        resolve();
+      } else if (data.status === 'error') {
+        sse.close();
+        showProgress(false);
+        showUpload(true);
+        showError(data.message);
+        reject(new Error(data.message));
+      }
+    };
+
+    sse.onerror = () => {
+      sse.close();
+      showProgress(false);
+      showUpload(true);
+      showError('Conexão com o servidor perdida.');
+      reject(new Error('SSE error'));
+    };
+  });
+}
+
+/* ── Helpers ── */
+function fmtBytes(b) {
+  if (b === 0) return '0 B';
+  const k = 1024, units = ['B','KB','MB','GB'];
+  const i = Math.floor(Math.log(b) / Math.log(k));
+  return (b / Math.pow(k,i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+}
+function setProgress(label, pct) { progressLabel.textContent = label; progBar.style.width = pct + '%'; }
+function showUpload(v)   { dropZone.style.display = v ? '' : 'none'; }
+function showProgress(v) { progressWrap.classList.toggle('show', v); }
+function showResults(v)  { resultsEl.classList.toggle('show', v); }
+function showError(msg)  { errBanner.textContent = msg; errBanner.classList.toggle('show', !!msg); }
+function showNotScorm(msg) {
+  notScormMsg.textContent = msg;
+  notScormBanner.classList.add('show');
+}
+function truncName(name, max) {
+  if (name.length <= max) return name;
+  const parts = name.split('/'); const file = parts.pop();
+  if (file.length > max) return '…' + file.slice(-(max-1));
+  const avail = max - file.length - 4;
+  return (parts.join('/').slice(0, avail) || '…') + '/…/' + file;
+}
+
+/* ── Render ── */
+function renderResults(filename, fileSize) {
+  document.getElementById('rFileName').textContent = filename;
+  const realCount = allFiles.filter(f => !f.virtual).length;
+  const virtualCount = allFiles.filter(f => f.virtual).length;
+  const virtualInfo = virtualCount > 0 ? ` · ${virtualCount} embutidos` : '';
+  document.getElementById('rFileSize').textContent = `Tamanho do ZIP: ${fmtBytes(fileSize)} · ${realCount} arquivos internos${virtualInfo}`;
+  const totalSize = allFiles.reduce((s,f) => s + f.size, 0);
+  const biggest   = [...allFiles].sort((a,b) => b.size - a.size)[0];
+  const images    = allFiles.filter(f => f.cat.key === 'image');
+  const imgSize   = images.reduce((s,f) => s + f.size, 0);
+  document.getElementById('kTotal').textContent   = allFiles.length;
+  document.getElementById('kSize').textContent    = fmtBytes(totalSize);
+  document.getElementById('kImages').textContent  = images.length;
+  document.getElementById('kImagesSub').textContent = fmtBytes(imgSize);
+  document.getElementById('kBiggest').textContent = fmtBytes(biggest?.size || 0);
+  document.getElementById('kBiggestSub').textContent = truncName(biggest?.name || '—', 26);
+  renderAlerts();
+  renderBreakdown(totalSize);
+  renderCatCards(totalSize);
+  renderTable();
+}
+
+function renderBreakdown(totalSize) {
+  const bycat = {};
+  for (const f of allFiles) {
+    if (!bycat[f.cat.key]) bycat[f.cat.key] = { cat: f.cat, size: 0, count: 0 };
+    bycat[f.cat.key].size += f.size; bycat[f.cat.key].count++;
+  }
+  const sorted = Object.values(bycat).filter(c => c.size > 0).sort((a,b) => b.size - a.size);
+  document.getElementById('stackedBar').innerHTML = sorted.map(c => {
+    const pct = (c.size / totalSize * 100).toFixed(1);
+    return `<div class="bar-seg" style="width:${pct}%;background:${c.cat.color};min-width:${pct>0.5?'2px':'0'}" data-tip="${c.cat.label}: ${fmtBytes(c.size)} (${pct}%)"></div>`;
+  }).join('');
+  document.getElementById('legend').innerHTML = sorted.map(c => {
+    const pct = (c.size / totalSize * 100).toFixed(1);
+    return `<div class="leg-item" onclick="filterByCat('${c.cat.key}')">
+      <div class="leg-dot" style="background:${c.cat.color}"></div>
+      <span>${c.cat.emoji} ${c.cat.label}</span>
+      <span class="leg-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCatCards(totalSize) {
+  const bycat = {};
+  for (const f of allFiles) {
+    if (!bycat[f.cat.key]) bycat[f.cat.key] = { cat: f.cat, size: 0, count: 0 };
+    bycat[f.cat.key].size += f.size; bycat[f.cat.key].count++;
+  }
+  const sorted = Object.values(bycat).filter(c => c.size > 0).sort((a,b) => b.size - a.size);
+  document.getElementById('catGrid').innerHTML = [
+    `<div class="cat-card ${activeFilter==='all'?'active':''}" style="--cat-color:#0FCED3" onclick="filterByCat('all')">
+      <span class="cat-emoji">📦</span><div class="cat-name">Todos</div>
+      <div class="cat-size">${allFiles.length} arq.</div>
+      <div class="cat-count">${fmtBytes(allFiles.reduce((s,f)=>s+f.size,0))}</div>
+    </div>`,
+    ...sorted.map(c => `<div class="cat-card ${activeFilter===c.cat.key?'active':''}" style="--cat-color:${c.cat.color}" onclick="filterByCat('${c.cat.key}')">
+      <span class="cat-emoji">${c.cat.emoji}</span><div class="cat-name">${c.cat.label}</div>
+      <div class="cat-size">${fmtBytes(c.size)}</div>
+      <div class="cat-count">${c.count} arquivo${c.count!==1?'s':''} · ${(c.size/totalSize*100).toFixed(1)}%</div>
+    </div>`)
+  ].join('');
+}
+
+function filterByCat(key) {
+  activeFilter = key;
+  renderCatCards(allFiles.reduce((s,f)=>s+f.size,0));
+  renderTable();
+}
+
+function renderTable() {
+  let files = activeFilter === 'all' ? [...allFiles] : allFiles.filter(f => f.cat.key === activeFilter);
+  if (searchQ) files = files.filter(f => f.name.toLowerCase().includes(searchQ));
+  const [field, dir] = sortKey.split('-');
+  files.sort((a,b) => { const av = field==='size'?a.size:a.name; const bv=field==='size'?b.size:b.name; return dir==='asc'?(av>bv?1:-1):(av<bv?1:-1); });
+  document.getElementById('resultCount').textContent = `${files.length} arquivo${files.length!==1?'s':''}`;
+  const totalSize = allFiles.reduce((s,f)=>s+f.size,0);
+  const tbody = document.getElementById('fileTable');
+  if (files.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="no-rows">Nenhum arquivo encontrado</td></tr>`; return; }
+  tbody.innerHTML = files.map(f => {
+    const pct = totalSize > 0 ? (f.size/totalSize*100).toFixed(2) : 0;
+    const barPct = maxSize > 0 ? (f.size/maxSize*100).toFixed(1) : 0;
+    const ext = f.name.split('.').pop().toUpperCase();
+    const isVirtual = !!f.virtual;
+    // Para virtuais, mostra só a parte após o último "📎 " como nome principal
+    const displayName = isVirtual
+      ? f.name.replace(/^.*📎\s*/, '')
+      : f.name;
+    const title = isVirtual ? `Embutido em: ${f.parentFile || f.name}` : f.name;
+    const pathShort = truncName(displayName, 50);
+    const badge = isVirtual ? `<span class="embed-badge">EMBUTIDO</span>` : '';
+    return `<tr class="${isVirtual ? 'row-virtual' : ''}">
+      <td class="fname-cell">
+        <span class="ftype-icon">${f.cat.emoji}</span>
+        <div><div class="fname-path" title="${title}">${badge}${pathShort}</div><div class="fname-ext">${ext}</div></div>
+      </td>
+      <td class="size-cell" style="color:${f.cat.color}">${fmtBytes(f.size)}</td>
+      <td class="size-bar-cell"><div class="size-bar-track"><div class="size-bar-fill" style="width:${barPct}%;background:${f.cat.color}"></div></div></td>
+      <td class="pct-cell">${pct}%</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── Download individual ── */
+function downloadFile(filePath) {
+  if (!currentSessionId) return;
+  window.location.href = `/api/download/${currentSessionId}?path=${encodeURIComponent(filePath)}`;
+}
+
+/* ── Download all ── */
+function downloadAll() {
+  if (!currentSessionId) return;
+  window.location.href = `/api/download-all/${currentSessionId}`;
+}
+
+/* ── Comprimir imagem via Canvas ── */
+async function compressImage(filePath, btn) {
+  if (!currentSessionId) return;
+  const original = btn.textContent;
+  btn.textContent = '⏳ Comprimindo…';
+  btn.disabled = true;
+
+  try {
+    // Baixa a imagem do servidor
+    const url = `/api/download/${currentSessionId}?path=${encodeURIComponent(filePath)}`;
+    const res = await fetch(url);
+    const blob = await res.blob();
+
+    // Desenha no Canvas e reexporta como JPEG com qualidade 0.75
+    const img = new Image();
+    const objUrl = URL.createObjectURL(blob);
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = objUrl; });
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    URL.revokeObjectURL(objUrl);
+
+    // Tenta qualidade progressiva até atingir < 500 KB
+    let quality = 0.80;
+    let compressedBlob;
+    do {
+      compressedBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
+      quality -= 0.10;
+    } while (compressedBlob.size > 500 * 1024 && quality > 0.20);
+
+    // Dispara o download
+    const a = document.createElement('a');
+    const ext = filePath.split('.').pop().toLowerCase();
+    const baseName = filePath.split('/').pop().replace(/\.[^.]+$/, '');
+    a.href = URL.createObjectURL(compressedBlob);
+    a.download = baseName + '_comprimida.jpg';
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    const savedPct = Math.round((1 - compressedBlob.size / blob.size) * 100);
+    btn.textContent = `✅ ${savedPct}% menor`;
+    btn.style.background = 'var(--green)';
+  } catch (e) {
+    btn.textContent = '❌ Erro';
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+  }
+}
+
+/* ── Download extraído + prepara preview ── */
+async function downloadExtracted() {
+  if (!currentSessionId) return;
+
+  // 1. Dispara o download do ZIP
+  window.location.href = `/api/download-extracted/${currentSessionId}`;
+
+  // 2. Em paralelo, prepara o preview no servidor
+  const btn = document.getElementById('previewBtn');
+  btn.textContent = '⏳ Preparando…';
+  btn.classList.remove('cloud-pkg');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  btn.title = '';
+
+  try {
+    const res = await fetch(`/api/prepare-preview/${currentSessionId}`);
+    const data = await res.json();
+
+    // Pacote dependente de nuvem — não pode ser visualizado localmente
+    if (data.errorType === 'cloud_dependent') {
+      btn.classList.remove('loading');
+      btn.classList.add('cloud-pkg');
+      btn.disabled = true;
+      btn.innerHTML = `☁️ Pacote ${data.provider || 'cloud'}`;
+      btn.title = `Este pacote usa ${data.provider} e só pode ser visualizado por um LMS autorizado. O conteúdo do curso está hospedado na nuvem — não há arquivos locais para exibir.`;
+      return;
+    }
+
+    if (!res.ok) throw new Error(data.error || 'Erro ao preparar preview');
+
+    previewEntryPoint = data.entryPoint;
+    previewCourseName = data.courseName;
+
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.innerHTML = '<span class="btn-dot"></span>▶ Visualizar Curso';
+  } catch (e) {
+    console.warn('Preview não disponível:', e.message);
+    btn.classList.remove('loading');
+    btn.innerHTML = '⚠️ Preview indisponível';
+    btn.title = e.message || 'Erro desconhecido — veja o terminal do servidor para detalhes';
+    // Mostra o erro também em console de forma legível
+    console.error('[SCORM Lab] Erro no preview:', e.message);
+  }
+}
+
+/* ── Abrir player SCORM ── */
+function openPreview() {
+  if (!currentSessionId || !previewEntryPoint) return;
+  const url = `/api/preview-player/${currentSessionId}?entry=${encodeURIComponent(previewEntryPoint)}&name=${encodeURIComponent(previewCourseName || 'Curso SCORM')}`;
+  window.open(url, '_blank', 'noopener');
+}
+
+/* ── Diagnóstico ── */
+async function diagnosePackage(sessionId) {
+  const panel  = document.getElementById('diagPanel');
+  const badge  = document.getElementById('diagBadge');
+  const issues = document.getElementById('diagIssues');
+  const fixBtn = document.getElementById('fixBtn');
+
+  panel.hidden = false;
+  badge.className = 'diag-badge loading';
+  badge.textContent = 'Analisando…';
+  issues.innerHTML = '';
+  // Botão sempre visível, começa desabilitado enquanto analisa
+  fixBtn.hidden = false;
+  fixBtn.disabled = true;
+  fixBtn.innerHTML = '🔧 Corrigir e Baixar';
+
+  try {
+    const res  = await fetch(`/api/diagnose/${sessionId}`);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Erro de diagnóstico');
+
+    // Render issues list
+    if (data.issues && data.issues.length > 0) {
+      issues.innerHTML = data.issues.map(i =>
+        `<div class="diag-issue ${i.type}">
+          <span class="diag-issue-icon">${i.icon}</span>
+          <span class="diag-issue-text">${i.text}</span>
+        </div>`
+      ).join('');
+    } else {
+      issues.innerHTML = `<div class="diag-issue ok">
+        <span class="diag-issue-icon">✅</span>
+        <span class="diag-issue-text">Nenhum problema detectado — estrutura parece correta.</span>
+      </div>`;
+    }
+
+    if (data.cloudProvider) {
+      badge.className = 'diag-badge cloud';
+      badge.textContent = `☁️ ${data.cloudProvider}`;
+      fixBtn.disabled = true;
+      fixBtn.title = `Pacote ${data.cloudProvider} — conteúdo hospedado na nuvem, não pode ser corrigido localmente.`;
+    } else if (data.isFixable) {
+      const n = data.issues.length;
+      badge.className = 'diag-badge warn';
+      badge.textContent = `${n} problema${n > 1 ? 's' : ''} estrutural${n > 1 ? 'is' : ''}`;
+      fixBtn.disabled = false;
+      fixBtn.title = '';
+      fixBtn.onclick = () => fixAndDownload(sessionId);
+    } else {
+      badge.className = 'diag-badge ok';
+      badge.textContent = '✓ Sem problemas estruturais';
+      fixBtn.disabled = true;
+      fixBtn.title = 'Nenhum problema estrutural detectado — correção não necessária.';
+    }
+
+  } catch (e) {
+    console.warn('[Diagnóstico] Falhou:', e.message);
+    badge.className = 'diag-badge warn';
+    badge.textContent = '⚠ Diagnóstico indisponível';
+    issues.innerHTML = `<div class="diag-issue warn">
+      <span class="diag-issue-icon">⚠️</span>
+      <span class="diag-issue-text">Não foi possível diagnosticar o pacote. Tente recarregar ou reenviar o arquivo.</span>
+    </div>`;
+    fixBtn.disabled = true;
+    fixBtn.title = 'Diagnóstico falhou.';
+    panel.hidden = false;
+  }
+}
+
+function fixAndDownload(sessionId) {
+  if (!sessionId && !currentSessionId) return;
+  const id = sessionId || currentSessionId;
+  const btn = document.getElementById('fixBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Corrigindo e baixando…';
+
+  // Dispara o download do ZIP corrigido
+  const a = document.createElement('a');
+  a.href = `/api/fix-zip/${id}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Reativa o botão após 4s
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = '🔧 Corrigir e Baixar novamente';
+  }, 4000);
+}
+
+/* ── Alerts ── */
+const WARN_KB = 200*1024, CRITICAL_KB = 500*1024;
+function renderAlerts() {
+  const sec = document.getElementById('alertsSection');
+  const heavy = allFiles.filter(f => f.cat.key==='image' && f.size>=WARN_KB).sort((a,b)=>b.size-a.size);
+  if (heavy.length===0) { sec.hidden=true; return; }
+  const critCount = heavy.filter(f=>f.size>=CRITICAL_KB).length;
+  const warnCount = heavy.length - critCount;
+  let badgeHTML = '';
+  if (critCount) badgeHTML += `<span class="alert-count-badge">${critCount} crítico${critCount>1?'s':''}</span> `;
+  if (warnCount) badgeHTML += `<span class="alert-count-badge warn">${warnCount} atenção</span>`;
+  const MAX_VISIBLE = 8;
+  const visible = heavy.slice(0, MAX_VISIBLE), hidden = heavy.slice(MAX_VISIBLE);
+  const rowsHTML = list => list.map(f => {
+    const isCrit = f.size>=CRITICAL_KB;
+    return `<div class="alert-row ${isCrit?'critical':'warn'}">
+      <span class="alert-level">${isCrit?'🔴 Crítico':'⚠️ Atenção'}</span>
+      <span class="alert-name" title="${f.name}">${truncName(f.name,52)}</span>
+      <span class="alert-size">${fmtBytes(f.size)}</span>
+      <span class="alert-tip">${isCrit?'Comprimir para < 500 KB':'Recomendado < 200 KB'}</span>
+    </div>`;
+  }).join('');
+  sec.hidden = false;
+  sec.innerHTML = `
+    <div class="alerts-header">
+      <div class="alerts-title">🖼️ Imagens pesadas &nbsp;${badgeHTML}</div>
+      ${hidden.length ? `<button class="alerts-toggle" id="alertsToggle" onclick="toggleAlerts()">Ver mais (${hidden.length})</button>` : ''}
+    </div>
+    <div class="alerts-list" id="alertsList">${rowsHTML(visible)}</div>
+    <div class="alerts-list" id="alertsExtra" hidden>${rowsHTML(hidden)}</div>`;
+}
+function toggleAlerts() {
+  const extra = document.getElementById('alertsExtra');
+  const btn = document.getElementById('alertsToggle');
+  const show = extra.hidden;
+  extra.hidden = !show;
+  btn.textContent = show ? 'Recolher' : `Ver mais (${extra.children.length})`;
+}
+
+/* ── CSV ── */
+function buildCsv() {
+  const totalSize = allFiles.reduce((s,f)=>s+f.size,0);
+  const header = ['Arquivo','Tipo','Extensão','Tamanho (bytes)','Tamanho','% do Total'];
+  const rows = [...allFiles].sort((a,b)=>b.size-a.size).map(f => {
+    const ext = f.name.split('.').pop().toUpperCase();
+    const pct = totalSize > 0 ? (f.size/totalSize*100).toFixed(2) : '0.00';
+    return [`"${f.name.replace(/"/g,'""')}"`,`"${f.cat.label}"`,ext,f.size,`"${fmtBytes(f.size)}"`,pct].join(',');
+  });
+  return [header.join(','), ...rows].join('\r\n');
+}
+function openCsvModal() {
+  document.getElementById('csvArea').value = buildCsv();
+  document.getElementById('copyBtn').textContent = 'Copiar tudo';
+  document.getElementById('copyBtn').classList.remove('copied');
+  document.getElementById('csvModal').classList.add('open');
+}
+async function copyCsv() {
+  const btn = document.getElementById('copyBtn');
+  try {
+    await navigator.clipboard.writeText(document.getElementById('csvArea').value);
+    btn.textContent = '✓ Copiado!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='Copiar tudo'; btn.classList.remove('copied'); }, 2200);
+  } catch { document.getElementById('csvArea').select(); btn.textContent='Selecione e copie (Ctrl+C)'; }
+}
+
+/* ── Reset ── */
+function resetAll() {
+  allFiles=[]; activeFilter='all'; searchQ=''; sortKey='size-desc'; currentSessionId=null;
+  previewEntryPoint=null; previewCourseName=null;
+  fileInput.value='';
+  notScormBanner.classList.remove('show');
+  showError('');
+  document.getElementById('alertsSection').hidden=true;
+  document.getElementById('csvModal').classList.remove('open');
+  // Reseta painel de diagnóstico e botão de correção
+  document.getElementById('diagPanel').hidden = true;
+  document.getElementById('diagBadge').className = 'diag-badge loading';
+  document.getElementById('diagBadge').textContent = 'Analisando…';
+  document.getElementById('diagIssues').innerHTML = '';
+  const fixBtn = document.getElementById('fixBtn');
+  fixBtn.hidden = false;
+  fixBtn.disabled = true;
+  fixBtn.title = '';
+  fixBtn.innerHTML = '🔧 Corrigir e Baixar';
+  // Reseta botão de preview
+  const previewBtn = document.getElementById('previewBtn');
+  previewBtn.disabled = true;
+  previewBtn.classList.remove('loading', 'cloud-pkg');
+  previewBtn.innerHTML = '<span class="btn-dot"></span>▶ Visualizar Curso';
+  previewBtn.title = '';
+  showResults(false); showError(''); showUpload(true);
+}
+</script>
+</body>
+</html>

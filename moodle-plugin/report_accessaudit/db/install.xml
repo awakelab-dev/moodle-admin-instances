@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="report/accessaudit/db" VERSION="20240101" COMMENT="XMLDB file for report_accessaudit">
+  <TABLES>
+    <TABLE NAME="report_accessaudit" COMMENT="Registros de acceso de usuarios (geolocalização de logins)">
+      <FIELDS>
+        <FIELD NAME="id"          TYPE="int"  LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid"      TYPE="int"  LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="ip"          TYPE="char" LENGTH="45" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="city"        TYPE="char" LENGTH="100" NOTNULL="false" DEFAULT=""/>
+        <FIELD NAME="region"      TYPE="char" LENGTH="100" NOTNULL="false" DEFAULT=""/>
+        <FIELD NAME="country"     TYPE="char" LENGTH="100" NOTNULL="false" DEFAULT=""/>
+        <FIELD NAME="countrycode" TYPE="char" LENGTH="5"   NOTNULL="false" DEFAULT=""/>
+        <FIELD NAME="timecreated" TYPE="int"  LENGTH="10" NOTNULL="true"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="report_accessaudit_patterns" COMMENT="Padrões suspeitos de compartilhamento de conta">
+      <FIELDS>
+        <FIELD NAME="id"           TYPE="int"  LENGTH="10"  NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="ip"           TYPE="char" LENGTH="45"  NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="courseid"     TYPE="int"  LENGTH="10"  NOTNULL="true"/>
+        <FIELD NAME="coursename"   TYPE="char" LENGTH="255" NOTNULL="false" DEFAULT=""/>
+        <FIELD NAME="pattern_type" TYPE="char" LENGTH="20"  NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="userids"      TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="usernames"    TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="detail_json"  TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="risk_level"   TYPE="char" LENGTH="10"  NOTNULL="false" DEFAULT="medium"/>
+        <FIELD NAME="timecreated"  TYPE="int"  LENGTH="10"  NOTNULL="true"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="ip"          UNIQUE="false" FIELDS="ip"/>
+        <INDEX NAME="courseid"    UNIQUE="false" FIELDS="courseid"/>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

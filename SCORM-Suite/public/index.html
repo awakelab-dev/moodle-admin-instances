@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCORM Suite — Awakelab</title>
+<link rel="icon" href="https://media.awakelab.world/MARCA_AWK26/awakelab_isotipo_fondo-oscuro_transparente.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#011932; --card:#012142; --card-hi:#003260;
+  --border:rgba(25,247,241,.12); --bhi:rgba(25,247,241,.35);
+  --c1:#19F7F1; --c3:#0FCED3; --c5:#0B93AA;
+  --text:#D9FBFF; --t2:#72A3C4;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:40px 16px 60px;line-height:1.6;
+  background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(15,206,211,.14),transparent 70%);}
+header{width:100%;max-width:960px;margin-bottom:56px}
+header img{height:40px;display:block}
+.hero{text-align:center;max-width:640px;margin-bottom:44px}
+.hero h1{font-size:clamp(28px,5vw,40px);font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.hero h1 span{color:var(--c1)}
+.hero p{color:var(--t2);margin-top:12px;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;width:100%;max-width:960px}
+.tool{display:flex;flex-direction:column;gap:16px;background:var(--card);border:1px solid var(--border);
+  border-radius:18px;padding:32px 28px;text-decoration:none;color:inherit;transition:transform .18s,border-color .18s,background .18s}
+.tool:hover,.tool:focus-visible{transform:translateY(-4px);border-color:var(--bhi);background:var(--card-hi);outline:none}
+.icon{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+  background:rgba(25,247,241,.08);border:1px solid var(--border)}
+.tool h2{font-size:20px;font-weight:600}
+.tool p{color:var(--t2);font-size:14px;flex:1}
+.tool ul{list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.tool li{font-size:12px;padding:3px 10px;border-radius:20px;background:rgba(114,163,196,.12);color:var(--t2)}
+.cta{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--c1)}
+.tool:hover .cta{gap:12px}
+footer{margin-top:56px;font-size:12px;color:#4E7EA5}
+</style>
+</head>
+<body>
+<header>
+  <img src="https://media.awakelab.world/MARCA_AWK26/awakelab_logo_fondo-oscuro_transparente.png" alt="Awakelab">
+</header>
+
+<section class="hero">
+  <h1>SCORM <span>Suite</span></h1>
+  <p>Escolha a ferramenta que você quer usar.</p>
+</section>
+
+<main class="grid">
+  <a class="tool" href="/analyzer/">
+    <div class="icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#19F7F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6M11 8v6"/></svg>
+    </div>
+    <h2>SCORM Lab</h2>
+    <p>Analise, otimize e visualize pacotes SCORM (.zip / .scorm) de até 4 GB.</p>
+    <ul><li>Análise recursiva</li><li>Compressão de imagens</li><li>Player SCORM</li><li>CSV</li></ul>
+    <span class="cta">Abrir analisador →</span>
+  </a>
+
+  <a class="tool" href="/converter/">
+    <div class="icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#19F7F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h11l-3-3M20 17H9l3 3"/></svg>
+    </div>
+    <h2>SCORM Converter</h2>
+    <p>Converta vídeos ou um .zip com seu curso em um pacote SCORM 1.2 pronto para qualquer LMS.</p>
+    <ul><li>MP4, WebM, MOV…</li><li>ZIP com index.html</li><li>SCORM 1.2</li></ul>
+    <span class="cta">Abrir conversor →</span>
+  </a>
+</main>
+
+<footer>Awakelab · SCORM Suite · 2026</footer>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCORM Converter — Awakelab</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #011932;
+      --surface:   #012142;
+      --surface2:  #01264C;
+      --border:    #0FCED3;
+      --cyan:      #19F7F1;
+      --cyan-dim:  #0ABCC9;
+      --text:      #D9FBFF;
+      --text-muted:#72A3C4;
+      --error:     #ff6b6b;
+      --radius:    14px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    header {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+
+    header img { height: 36px; }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--cyan);
+      letter-spacing: -0.3px;
+    }
+
+    /* ── Card principal ─────────────────────── */
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: var(--surface);
+      border: 1px solid rgba(15, 206, 211, 0.25);
+      border-radius: var(--radius);
+      padding: 40px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .card-title span { color: var(--cyan); }
+
+    .card-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    /* ── Drop zone ──────────────────────────── */
+    .drop-zone {
+      border: 2px dashed rgba(15, 206, 211, 0.4);
+      border-radius: var(--radius);
+      padding: 48px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--surface2);
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--cyan);
+      background: rgba(25, 247, 241, 0.05);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(15, 206, 211, 0.12);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drop-icon svg { width: 28px; height: 28px; stroke: var(--cyan); }
+
+    .drop-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .drop-title span { color: var(--cyan); text-decoration: underline; }
+
+    .drop-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── Arquivo selecionado ─────────────────── */
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface2);
+      border: 1px solid rgba(15, 206, 211, 0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .file-info.visible { display: flex; }
+
+    .file-icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      background: rgba(15, 206, 211, 0.12);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .file-icon svg { width: 20px; height: 20px; stroke: var(--cyan); }
+
+    .file-details { flex: 1; min-width: 0; }
+    .file-name { font-size: 0.875rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-size { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+    .btn-remove {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      color: var(--text-muted); transition: color 0.2s;
+    }
+    .btn-remove:hover { color: var(--error); }
+    .btn-remove svg { width: 18px; height: 18px; stroke: currentColor; }
+
+    /* ── Botão converter ─────────────────────── */
+    .btn-convert {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #0FCED3, #19F7F1);
+      color: #011932;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.3px;
+    }
+
+    .btn-convert:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-convert:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── Progresso ──────────────────────────── */
+    .progress-wrap { display: none; flex-direction: column; gap: 10px; }
+    .progress-wrap.visible { display: flex; }
+
+    .progress-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.8rem; color: var(--text-muted);
+    }
+
+    .progress-bar-bg {
+      height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0FCED3, #19F7F1);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.3s ease;
+      animation: pulse-bar 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-bar {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* ── Mensagens de feedback ───────────────── */
+    .msg {
+      display: none;
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .msg.visible { display: block; }
+    .msg.success { background: rgba(25, 247, 241, 0.08); border: 1px solid rgba(25, 247, 241, 0.3); color: var(--cyan); }
+    .msg.error   { background: rgba(255, 107, 107, 0.08); border: 1px solid rgba(255, 107, 107, 0.3); color: var(--error); }
+
+    /* ── Footer ─────────────────────────────── */
+    footer {
+      margin-top: 48px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    @media (max-width: 520px) {
+      .card { padding: 28px 20px; }
+    }
+      .back-home { order:2; margin-left:auto; font-size:13px; font-weight:500; color:#D9FBFF; text-decoration:none;
+      border:1px solid rgba(25,247,241,.25); background:#003260; border-radius:20px; padding:4px 14px; }
+    .back-home:hover { border-color:#19F7F1; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/" class="back-home">← Início</a>
+    <img src="https://media.awakelab.world/MARCA_AWK26/awakelab_logo_fondo-oscuro_transparente.png" alt="Awakelab" />
+  </header>
+
+  <main class="card">
+    <div>
+      <h2 class="card-title">Converta para <span>SCORM 1.2</span></h2>
+      <p class="card-desc">
+        Envie um vídeo ou uma pasta .zip com seu curso e receba um pacote SCORM
+        pronto para subir em qualquer LMS.
+      </p>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".mp4,.webm,.mov,.avi,.mkv,.ogv,.zip" />
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <p class="drop-title">Arraste aqui ou <span>clique para selecionar</span></p>
+      <p class="drop-sub">Vídeo (mp4, webm, mov) ou arquivo .zip · Máx. 500 MB</p>
+    </div>
+
+    <!-- Arquivo selecionado -->
+    <div class="file-info" id="fileInfo">
+      <div class="file-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="file-details">
+        <p class="file-name" id="fileName">—</p>
+        <p class="file-size" id="fileSize">—</p>
+      </div>
+      <button class="btn-remove" id="btnRemove" title="Remover">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Barra de progresso -->
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-label">
+        <span id="progressLabel">Convertendo...</span>
+        <span id="progressPct">—</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <!-- Mensagem de feedback -->
+    <div class="msg" id="msgBox"></div>
+
+    <!-- Botão -->
+    <button class="btn-convert" id="btnConvert" disabled>
+      ⚡ Gerar SCORM
+    </button>
+  </main>
+
+  <footer>
+    Awakelab SCORM Converter · SCORM 1.2 · Compatível com SCORM Cloud, Moodle, TalentLMS e outros LMS
+  </footer>
+
+  <script>
+    const dropZone    = document.getElementById('dropZone');
+    const fileInput   = document.getElementById('fileInput');
+    const fileInfo    = document.getElementById('fileInfo');
+    const fileName    = document.getElementById('fileName');
+    const fileSize    = document.getElementById('fileSize');
+    const btnRemove   = document.getElementById('btnRemove');
+    const btnConvert  = document.getElementById('btnConvert');
+    const progressWrap= document.getElementById('progressWrap');
+    const progressFill= document.getElementById('progressFill');
+    const progressLabel=document.getElementById('progressLabel');
+    const progressPct = document.getElementById('progressPct');
+    const msgBox      = document.getElementById('msgBox');
+
+    let selectedFile  = null;
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function showFile(file) {
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileSize.textContent = formatBytes(file.size);
+      fileInfo.classList.add('visible');
+      btnConvert.disabled = false;
+      hideMsg();
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      fileInfo.classList.remove('visible');
+      btnConvert.disabled = true;
+      hideMsg();
+    }
+
+    function showMsg(text, type) {
+      msgBox.textContent = text;
+      msgBox.className = 'msg visible ' + type;
+    }
+
+    function hideMsg() {
+      msgBox.className = 'msg';
+    }
+
+    function setProgress(pct, label) {
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = label || 'Convertendo...';
+      progressPct.textContent = pct < 100 ? pct + '%' : '✓';
+    }
+
+    // ── Drag & Drop ──────────────────────────────────────────────
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) showFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) showFile(fileInput.files[0]);
+    });
+
+    btnRemove.addEventListener('click', clearFile);
+
+    // ── Upload e conversão ────────────────────────────────────────
+    btnConvert.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      btnConvert.disabled = true;
+      hideMsg();
+      progressWrap.classList.add('visible');
+      setProgress(10, 'Enviando arquivo...');
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        // Simula progresso enquanto aguarda resposta
+        let fakeProgress = 10;
+        const interval = setInterval(() => {
+          if (fakeProgress < 80) {
+            fakeProgress += Math.random() * 8;
+            setProgress(Math.min(Math.round(fakeProgress), 80), 'Gerando pacote SCORM...');
+          }
+        }, 600);
+
+        const response = await fetch('/convert', {
+          method: 'POST',
+          body: formData,
+        });
+
+        clearInterval(interval);
+
+        if (!response.ok) {
+          let errMsg = 'Erro na conversão.';
+          try {
+            const json = await response.json();
+            errMsg = json.error || errMsg;
+          } catch {}
+          throw new Error(errMsg);
+        }
+
+        setProgress(100, 'Concluído!');
+
+        // Dispara o download
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safeName = selectedFile.name.replace(/\.[^/.]+$/, '');
+        a.href = url;
+        a.download = `${safeName}-scorm.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showMsg('✓ SCORM gerado com sucesso! O download iniciou automaticamente.', 'success');
+
+      } catch (err) {
+        setProgress(0, '');
+        progressWrap.classList.remove('visible');
+        showMsg('✗ ' + (err.message || 'Erro desconhecido. Tente novamente.'), 'error');
+        btnConvert.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
