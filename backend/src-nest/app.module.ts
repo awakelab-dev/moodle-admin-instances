@@ -9,6 +9,8 @@ import { SyncModule } from './sync/sync.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { UsersModule } from './users/users.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ScormModule } from './scorm/scorm.module';
+import { SecurityModule } from './security/security.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AppController } from './app.controller';
@@ -30,6 +32,8 @@ import { AppController } from './app.controller';
     DashboardModule,
     UsersModule,
     NotificationsModule,
+    ScormModule,
+    SecurityModule,
   ],
   controllers: [AppController],
   providers: [

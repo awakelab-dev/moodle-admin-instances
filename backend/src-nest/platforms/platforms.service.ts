@@ -153,6 +153,7 @@ export class PlatformsService {
       isActive: p.isActive,
       hasFinancialConfig: p.monthlyCharge !== null,
       hasNotificationsApiKey: !!p.notificationsApiKeyHash,
+      hasSecurityApiKey: !!p.securityApiKeyHash,
       lastSyncedAt: p.lastSyncedAt,
       coursesLastSyncedAt: p.coursesLastSyncedAt,
     }));

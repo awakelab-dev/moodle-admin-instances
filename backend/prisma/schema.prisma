@@ -69,6 +69,13 @@ model Platform {
   // is_course_enabled() en cada tarea) — por ahora solo se guarda aqui.
   notificationSettings Json @default("{}") @map("notification_settings")
 
+  // Credencial dedicada para el plugin report_accessaudit (detector de
+  // patrones sospechosos de acceso compartido), mismo formato e idea que
+  // notificationsApiKeyHash de arriba pero independiente — son 2 plugins
+  // distintos, cada uno con su propia key, para poder revocar uno sin
+  // afectar al otro.
+  securityApiKeyHash String? @map("security_api_key_hash")
+
   courses     Course[]
   users       MoodleUser[]
   snapshots   PlatformSnapshot[]
@@ -76,8 +83,37 @@ model Platform {
   userAccess  UserPlatformAccess[]
   notificationRules NotificationRule[]
   notificationDeliveryLogs NotificationDeliveryLog[]
+  securityPatterns SecuritySuspiciousPattern[]
 
   @@map("platforms")
+}
+
+// Patrón de acceso sospechoso (posible cuenta compartida) detectado por el
+// plugin report_accessaudit en una plataforma — centraliza lo que antes
+// solo se veía en el informe local de cada Moodle. El plugin corre su
+// análisis cada noche y REEMPLAZA su tabla local entera (no es
+// incremental), así que aquí se replica el mismo comportamiento: cada
+// reporte del plugin borra y vuelve a insertar las filas de esa
+// plataforma (ver SecurityService.replacePatternsForPlatform).
+model SecuritySuspiciousPattern {
+  id          String   @id @default(uuid())
+  platformId  String   @map("platform_id")
+  platform    Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  ip          String
+  courseId    Int      @map("course_id")
+  courseName  String   @map("course_name")
+  patternType String   @map("pattern_type") // sequential | simultaneous | both
+  userIds     Json     @map("user_ids") // int[] (ids de Moodle)
+  usernames   Json // { [userid]: "Nombre completo" }
+  detailJson  Json?    @map("detail_json")
+  riskLevel   String   @map("risk_level") // low | medium | high
+  detectedAt  DateTime @map("detected_at") // timecreated del plugin
+  reportedAt  DateTime @default(now()) @map("reported_at")
+
+  @@index([platformId])
+  @@index([riskLevel])
+  @@map("security_suspicious_patterns")
 }
 
 enum NotificationTrigger {
@@ -381,4 +417,22 @@ model UserPlatformAccess {
 
   @@unique([userId, platformId])
   @@map("user_platform_access")
+}
+
+// Paquete SCORM subido desde el visualizador (Moodle Insights → SCORM),
+// alojado en S3 bajo el prefijo scorm/{id}/ (lectura publica solo en ese
+// prefijo, ver la bucket policy en el README de infraestructura) — el
+// backend solo guarda metadatos, el contenido real vive en el bucket.
+model ScormPackage {
+  id                  String   @id @default(uuid())
+  name                String
+  originalFilename    String   @map("original_filename")
+  s3Prefix            String   @map("s3_prefix") // ej. "scorm/<uuid>/"
+  entryPoint          String   @map("entry_point") // ruta relativa dentro del prefijo (el SCO de imsmanifest.xml)
+  sizeBytes           BigInt   @default(0) @map("size_bytes")
+  uploadedByUserId    String?  @map("uploaded_by_user_id")
+  uploadedByUsername  String   @map("uploaded_by_username")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@map("scorm_packages")
 }

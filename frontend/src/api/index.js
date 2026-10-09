@@ -3,7 +3,7 @@
 // (401 dispara el evento `auth:expired` que App.jsx escucha para desloguear).
 // También expone helpers de sesión (localStorage) y todos los endpoints
 // de la API agrupados por área (auth, sync, dashboard, platforms).
-const BASE = `${import.meta.env.VITE_API_URL || ''}/api`;
+export const BASE = `${import.meta.env.VITE_API_URL || ''}/api`;
 const AUTH_STORAGE_KEY = 'moodle-admin-session';
 
 function buildPath(path, params = {}) {
@@ -229,3 +229,44 @@ export const getNotificationPlatformCategories = (platformId) =>
   request(`/notifications/platforms/${platformId}/categories`, { cache: 'no-store' });
 export const getNotificationTemplateHistory = (templateId) =>
   request(`/notifications/templates/${templateId}/history`, { cache: 'no-store' });
+
+/* ─── SCORM (visualizador, solo superadmin) ─── */
+export const getScormPackages = () => request('/scorm/packages', { cache: 'no-store' });
+export const deleteScormPackage = (id) => request(`/scorm/packages/${id}`, { method: 'DELETE' });
+
+// No usa `request()`: con FormData hay que dejar que el navegador ponga su
+// propio Content-Type (multipart/form-data; boundary=...) — si forzamos
+// 'application/json' como hace request() por defecto, el backend no puede
+// parsear el archivo.
+export async function uploadScormPackage(file, name, optimize) {
+  const session = getStoredAuthSession();
+  const formData = new FormData();
+  formData.append('file', file);
+  if (name) formData.append('name', name);
+  if (optimize) formData.append('optimize', 'true');
+
+  const res = await fetch(`${BASE}/scorm/packages`, {
+    method: 'POST',
+    headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const message = Array.isArray(body.message) ? body.message.join(' ') : body.message;
+    throw new Error(message || body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ─── Seguridad (detector de anomalías, solo superadmin) ─── */
+export const getSecurityPatterns = (params = {}) => request(buildPath('/security/patterns', params), { cache: 'no-store' });
+export const generateSecurityApiKey = (platformId) =>
+  request(`/security/platforms/${platformId}/api-key`, { method: 'POST' }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });
+export const revokeSecurityApiKey = (platformId) =>
+  request(`/security/platforms/${platformId}/api-key`, { method: 'DELETE' }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });

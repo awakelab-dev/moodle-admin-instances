@@ -46,3 +46,12 @@ $string['detail']               = 'Detectado en';
 // Tarea programada
 $string['task_analyze']         = 'Analizar patrones de acceso sospechosos';
 $string['no_patterns_yet']      = 'Aún no se ha ejecutado ningún análisis. El reporte corre automáticamente cada noche a las 03:00.';
+
+// Conexión con Moodle Insights (pestaña "Seguridad")
+$string['settings:pagename']            = 'Auditoría de Acceso: Moodle Insights';
+$string['settings:insights_heading']    = 'Conexión con Moodle Insights';
+$string['settings:insights_heading_desc'] = 'Opcional: si se configura, cada análisis nocturno envía también sus patrones sospechosos a Moodle Insights (pestaña "Seguridad"), para verlos centralizados junto a los de otras plataformas. El análisis local de esta Moodle sigue funcionando igual aunque esto no esté configurado.';
+$string['settings:insights_url']        = 'URL de Moodle Insights';
+$string['settings:insights_url_desc']   = 'Ej: https://insights.awakelab.dev (sin barra final).';
+$string['settings:insights_api_key']    = 'API key de seguridad';
+$string['settings:insights_api_key_desc'] = 'Se genera desde Moodle Insights → Configuración → Plataformas → Seguridad, con formato "idPlataforma.secreto".';

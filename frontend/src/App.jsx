@@ -3,7 +3,7 @@
 // vistas (sin react-router, solo estado local `view`) y el sidebar con sus
 // tres categorías colapsables.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users, Sun, Moon, Bell } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users, Sun, Moon, Bell, PlayCircle, ShieldAlert, Wrench } from 'lucide-react';
 import {
   clearAuthSession,
   getCurrentUser,
@@ -23,6 +23,8 @@ const GlobalPanel = lazy(() => import('./components/GlobalPanel'));
 const InsightsPage = lazy(() => import('./components/InsightsPage'));
 const CoursesStudentsPage = lazy(() => import('./components/CoursesStudentsPage'));
 const NotificationsPage = lazy(() => import('./components/NotificationsPage'));
+const ScormPage = lazy(() => import('./components/ScormPage'));
+const SecurityPage = lazy(() => import('./components/SecurityPage'));
 const ConfigPage = lazy(() => import('./components/ConfigPage'));
 const UsersPage = lazy(() => import('./components/UsersPage'));
 const ROLE_LABELS = {
@@ -38,14 +40,16 @@ export default function App() {
   const [view, setView] = useState('insights');
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  // El sidebar se organiza en tres categorías (Storage, Moodle Insights,
-  // Configuración), cada una con su propio ítem o grupo de ítems debajo.
-  // Cada categoría se puede colapsar/expandir de forma independiente, por
-  // eso hay un booleano de "expandido" separado por categoría en vez de un
-  // único estado compartido: así el usuario puede cerrar, por ejemplo,
-  // "Configuración" sin que eso afecte a "Storage" o "Moodle Insights".
+  // El sidebar se organiza en cuatro categorías (Storage, Moodle Insights,
+  // Tools, Configuración), cada una con su propio ítem o grupo de ítems
+  // debajo. Cada categoría se puede colapsar/expandir de forma
+  // independiente, por eso hay un booleano de "expandido" separado por
+  // categoría en vez de un único estado compartido: así el usuario puede
+  // cerrar, por ejemplo, "Configuración" sin que eso afecte a "Storage" o
+  // "Moodle Insights".
   const [storageNavExpanded, setStorageNavExpanded] = useState(true);
   const [insightsNavExpanded, setInsightsNavExpanded] = useState(true);
+  const [toolsNavExpanded, setToolsNavExpanded] = useState(true);
   const [configNavExpanded, setConfigNavExpanded] = useState(true);
   // Tema claro de toda la app (Dashboard, Cursos y Alumnos, Storage,
   // Configuración, Usuarios). Preferencia por navegador (no por
@@ -213,6 +217,8 @@ export default function App() {
     ),
     'courses-students': <CoursesStudentsPage />,
     notifications: <NotificationsPage />,
+    scorm: <ScormPage />,
+    security: <SecurityPage />,
     config: <ConfigPage />,
     users: <UsersPage />,
   };
@@ -325,6 +331,44 @@ export default function App() {
                 </button>
               )}
             </div>
+          )}
+
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                className="sidebar-nav-category"
+                onClick={() => setToolsNavExpanded((prev) => !prev)}
+                aria-expanded={toolsNavExpanded}
+              >
+                <span>Tools</span>
+                <ChevronDown
+                  size={16}
+                  className={`sidebar-nav-chevron ${toolsNavExpanded ? '' : 'is-collapsed'}`}
+                />
+              </button>
+
+              {toolsNavExpanded && (
+                <div className="sidebar-nav-group">
+                  <button
+                    type="button"
+                    className={`sidebar-nav-item ${resolvedView === 'scorm' ? 'active' : ''}`}
+                    onClick={() => setView('scorm')}
+                  >
+                    <PlayCircle size={16} />
+                    SCORM
+                  </button>
+                  <button
+                    type="button"
+                    className={`sidebar-nav-item ${resolvedView === 'security' ? 'active' : ''}`}
+                    onClick={() => setView('security')}
+                  >
+                    <ShieldAlert size={16} />
+                    Seguridad
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           {isAdmin && (

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reproductor SCORM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #011932; }
+  body { display: flex; flex-direction: column; font-family: 'Poppins', sans-serif; }
+
+  .player-bar {
+    flex-shrink: 0; height: 44px;
+    background: #01264C; border-bottom: 1px solid rgba(25,247,241,.15);
+    display: flex; align-items: center; gap: 14px; padding: 0 16px;
+  }
+  .player-logo { display: flex; align-items: center; gap: 7px; }
+  .player-logo-text { font-size: 13px; font-weight: 800; color: #D9FBFF; letter-spacing: -.02em; }
+  .divider { width: 1px; height: 20px; background: rgba(25,247,241,.15); flex-shrink: 0; }
+  .player-title { font-size: 12px; color: #72A3C4; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player-badge {
+    background: rgba(15,206,211,.12); border: 1px solid rgba(15,206,211,.3);
+    color: #0FCED3; border-radius: 20px; padding: 2px 12px;
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; flex-shrink: 0;
+  }
+  .scorm-frame { flex: 1; border: none; width: 100%; background: white; }
+  .status-bar {
+    flex-shrink: 0; height: 26px;
+    background: #011932; border-top: 1px solid rgba(25,247,241,.08);
+    display: flex; align-items: center; padding: 0 16px; gap: 16px;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #19F7A0; animation: pulse 2s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .status-text { font-size: 10px; color: #4E7EA5; font-weight: 500; flex: 1; }
+  .status-log { font-size: 10px; color: #72A3C4; font-family: 'Courier New', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
+  .error-box { margin: auto; color: #D9FBFF; font-size: 14px; text-align: center; padding: 2rem; }
+</style>
+</head>
+<body>
+  <div class="player-bar">
+    <span class="player-logo">
+      <svg width="22" height="22" viewBox="0 0 26 26" fill="none">
+        <path d="M13 2L25 23H1L13 2Z" fill="none" stroke="#0FCED3" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M7 17L13 7L19 17" fill="none" stroke="#19F7F1" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+      <span class="player-logo-text">awakelab</span>
+    </span>
+    <div class="divider"></div>
+    <span class="player-title" id="courseTitle">Curso SCORM</span>
+    <span class="player-badge">SCORM Player</span>
+  </div>
+
+  <div id="playerBody" style="flex:1; display:flex; min-height:0;">
+    <iframe
+      id="scormFrame"
+      class="scorm-frame"
+      allow="fullscreen"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-downloads"
+    ></iframe>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span class="status-text">LMS emulado · SCORM 1.2 + 2004 (sin guardado de progreso)</span>
+    <span class="status-log" id="statusLog">—</span>
+  </div>
+
+<script>
+/* ── SCORM 1.2 API ────────────────────────────────────────── */
+// Valores por defecto obligatorios — evita que el curso rechace al usuario
+// como "anónimo". Este reproductor no persiste cmi.* en ningún sitio: es
+// una vista previa/visualizador, no un LMS real con seguimiento de notas.
+const scormData = {
+  'cmi.core.student_id'      : 'preview_user',
+  'cmi.core.student_name'    : 'Usuario Preview',
+  'cmi.core.lesson_status'   : 'not attempted',
+  'cmi.core.credit'          : 'credit',
+  'cmi.core.entry'           : 'ab-initio',
+  'cmi.core.lesson_mode'     : 'normal',
+  'cmi.core.score.raw'       : '',
+  'cmi.core.score.min'       : '0',
+  'cmi.core.score.max'       : '100',
+  'cmi.core.total_time'      : '0000:00:00.00',
+  'cmi.core.session_time'    : '0000:00:00.00',
+  'cmi.suspend_data'         : '',
+  'cmi.launch_data'          : '',
+  'cmi.student_preference.language': '',
+  'cmi.student_preference.audio'   : '0',
+  'cmi.student_preference.speed'   : '0',
+  'cmi.student_preference.text'    : '0',
+};
+
+window.API = {
+  LMSInitialize: function () { log('LMSInitialize()'); return 'true'; },
+  LMSFinish: function () { log('LMSFinish()'); return 'true'; },
+  LMSGetValue: function (k) { const v = (k in scormData) ? scormData[k] : ''; log('LMSGetValue(' + k + ') → ' + v); return v; },
+  LMSSetValue: function (k, v) { scormData[k] = v; log('LMSSetValue(' + k + ', ' + v + ')'); return 'true'; },
+  LMSCommit: function () { log('LMSCommit()'); return 'true'; },
+  LMSGetLastError: function () { return '0'; },
+  LMSGetErrorString: function () { return ''; },
+  LMSGetDiagnostic: function () { return ''; },
+};
+
+/* ── SCORM 2004 API ───────────────────────────────────────── */
+const scormData2004 = {
+  'cmi.learner_id'          : 'preview_user',
+  'cmi.learner_name'        : 'Usuario Preview',
+  'cmi.completion_status'   : 'not attempted',
+  'cmi.success_status'      : 'unknown',
+  'cmi.credit'              : 'credit',
+  'cmi.entry'               : 'ab-initio',
+  'cmi.mode'                : 'normal',
+  'cmi.score.raw'           : '',
+  'cmi.score.min'           : '0',
+  'cmi.score.max'           : '100',
+  'cmi.total_time'          : 'PT0S',
+  'cmi.suspend_data'        : '',
+  'cmi.launch_data'         : '',
+};
+
+window.API_1484_11 = {
+  Initialize: function () { log('[2004] Initialize()'); return 'true'; },
+  Terminate: function () { log('[2004] Terminate()'); return 'true'; },
+  GetValue: function (k) { const v = (k in scormData2004) ? scormData2004[k] : ''; log('[2004] GetValue(' + k + ') → ' + v); return v; },
+  SetValue: function (k, v) { scormData2004[k] = v; log('[2004] SetValue(' + k + ', ' + v + ')'); return 'true'; },
+  Commit: function () { log('[2004] Commit()'); return 'true'; },
+  GetLastError: function () { return '0'; },
+  GetErrorString: function () { return ''; },
+  GetDiagnostic: function () { return ''; },
+};
+
+function log(msg) {
+  const el = document.getElementById('statusLog');
+  if (el) el.textContent = msg;
+}
+
+(function init() {
+  const params = new URLSearchParams(window.location.search);
+  const src = params.get('src');
+  const name = params.get('name');
+  if (name) document.getElementById('courseTitle').textContent = name;
+
+  if (!src) {
+    document.getElementById('playerBody').innerHTML = '<div class="error-box">Falta el parámetro "src" con la URL del paquete SCORM.</div>';
+    return;
+  }
+  document.getElementById('scormFrame').src = src;
+})();
+</script>
+</body>
+</html>

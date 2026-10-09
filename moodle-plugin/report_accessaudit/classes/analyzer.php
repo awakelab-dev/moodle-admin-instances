@@ -125,6 +125,19 @@ class analyzer {
             }
         }
 
+        // Reporta a Moodle Insights (si está conectado) el snapshot
+        // completo recién generado — fuera de la transacción de inserción
+        // de arriba a propósito: si la llamada HTTP falla (sin conexión,
+        // Insights caído), el análisis local ya quedó guardado igual, esto
+        // es solo un espejo opcional, nunca debe bloquear ni revertir el
+        // resultado local.
+        try {
+            $freshpatterns = $DB->get_records('report_accessaudit_patterns');
+            \report_accessaudit\insights_client::report_patterns($freshpatterns);
+        } catch (\Exception $e) {
+            mtrace('[report_accessaudit] No se pudo reportar a Moodle Insights: ' . $e->getMessage());
+        }
+
         return [
             'patterns_found' => $total_patterns,
             'courses_analyzed' => count($courses),
