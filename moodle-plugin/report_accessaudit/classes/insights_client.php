@@ -48,6 +48,12 @@ class insights_client {
             return;
         }
 
+        // $DB->get_records() indexa por id — sin este array_values(),
+        // array_map() conserva esas claves y json_encode() serializa el
+        // resultado como objeto ({"1":{...}}) en vez de array ([{...}]),
+        // lo que el backend rechaza con 400 (detectado en QA real).
+        $patterns = array_values($patterns);
+
         $payload = array_map(function($p) {
             return [
                 'ip'          => $p->ip,

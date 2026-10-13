@@ -33,9 +33,21 @@
   }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #19F7A0; animation: pulse 2s infinite; flex-shrink: 0; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-  .status-text { font-size: 10px; color: #4E7EA5; font-weight: 500; flex: 1; }
-  .status-log { font-size: 10px; color: #72A3C4; font-family: 'Courier New', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
+  .status-text { font-size: 10px; color: #72A3C4; font-weight: 500; flex: 1; }
   .error-box { margin: auto; color: #D9FBFF; font-size: 14px; text-align: center; padding: 2rem; }
+
+  /* Panel flotante con el historial de llamadas a la API SCORM — visto en
+     QA que el status-bar de una sola línea (solo la última llamada, sin
+     argumentos) era casi imposible de seguir durante la navegación. */
+  .api-log-panel {
+    position: absolute; bottom: 34px; right: 10px; z-index: 5;
+    width: 320px; max-height: 160px; overflow-y: auto;
+    background: rgba(1, 25, 50, 0.92); border: 1px solid rgba(25,247,241,.2);
+    border-radius: 8px; padding: 8px 10px;
+    font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.5;
+  }
+  .api-log-panel .ok { color: #19F7A0; }
+  .api-log-panel .err { color: #F75A50; }
 </style>
 </head>
 <body>
@@ -52,19 +64,19 @@
     <span class="player-badge">SCORM Player</span>
   </div>
 
-  <div id="playerBody" style="flex:1; display:flex; min-height:0;">
+  <div id="playerBody" style="flex:1; display:flex; min-height:0; position: relative;">
     <iframe
       id="scormFrame"
       class="scorm-frame"
       allow="fullscreen"
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-downloads"
     ></iframe>
+    <div class="api-log-panel" id="apiLogPanel"></div>
   </div>
 
   <div class="status-bar">
     <div class="status-dot"></div>
     <span class="status-text">LMS emulado · SCORM 1.2 + 2004 (sin guardado de progreso)</span>
-    <span class="status-log" id="statusLog">—</span>
   </div>
 
 <script>
@@ -92,13 +104,51 @@ const scormData = {
   'cmi.student_preference.text'    : '0',
 };
 
+// Estado real de inicialización — un SCO en SCORM 1.2 solo puede llamar
+// GetValue/SetValue/Commit entre un LMSInitialize() y el LMSFinish()
+// correspondiente; fuera de esa ventana, un LMS real devuelve "false" y un
+// código de error. Antes esto no se comprobaba y todo devolvía "true"
+// siempre, incluso después de Finish — visto en QA, podía esconder un bug
+// real que luego fallara en un Moodle de verdad.
+let scorm12Initialized = false;
+let lastError12 = '0';
+
 window.API = {
-  LMSInitialize: function () { log('LMSInitialize()'); return 'true'; },
-  LMSFinish: function () { log('LMSFinish()'); return 'true'; },
-  LMSGetValue: function (k) { const v = (k in scormData) ? scormData[k] : ''; log('LMSGetValue(' + k + ') → ' + v); return v; },
-  LMSSetValue: function (k, v) { scormData[k] = v; log('LMSSetValue(' + k + ', ' + v + ')'); return 'true'; },
-  LMSCommit: function () { log('LMSCommit()'); return 'true'; },
-  LMSGetLastError: function () { return '0'; },
+  LMSInitialize: function () {
+    if (scorm12Initialized) { lastError12 = '101'; logCall('LMSInitialize()', false, 'ya estaba inicializado'); return 'false'; }
+    scorm12Initialized = true;
+    lastError12 = '0';
+    logCall('LMSInitialize()', true);
+    return 'true';
+  },
+  LMSFinish: function () {
+    if (!scorm12Initialized) { lastError12 = '301'; logCall('LMSFinish()', false, 'no inicializado'); return 'false'; }
+    scorm12Initialized = false;
+    lastError12 = '0';
+    logCall('LMSFinish()', true);
+    return 'true';
+  },
+  LMSGetValue: function (k) {
+    if (!scorm12Initialized) { lastError12 = '301'; logCall('LMSGetValue(' + k + ')', false, 'no inicializado'); return ''; }
+    const v = (k in scormData) ? scormData[k] : '';
+    lastError12 = '0';
+    logCall('LMSGetValue(' + k + ') → ' + v, true);
+    return v;
+  },
+  LMSSetValue: function (k, v) {
+    if (!scorm12Initialized) { lastError12 = '301'; logCall('LMSSetValue(' + k + ', ' + v + ')', false, 'no inicializado'); return 'false'; }
+    scormData[k] = v;
+    lastError12 = '0';
+    logCall('LMSSetValue(' + k + ', ' + v + ')', true);
+    return 'true';
+  },
+  LMSCommit: function () {
+    if (!scorm12Initialized) { lastError12 = '301'; logCall('LMSCommit()', false, 'no inicializado'); return 'false'; }
+    lastError12 = '0';
+    logCall('LMSCommit()', true);
+    return 'true';
+  },
+  LMSGetLastError: function () { return lastError12; },
   LMSGetErrorString: function () { return ''; },
   LMSGetDiagnostic: function () { return ''; },
 };
@@ -120,20 +170,66 @@ const scormData2004 = {
   'cmi.launch_data'         : '',
 };
 
+let scorm2004Initialized = false;
+let lastError2004 = '0';
+
 window.API_1484_11 = {
-  Initialize: function () { log('[2004] Initialize()'); return 'true'; },
-  Terminate: function () { log('[2004] Terminate()'); return 'true'; },
-  GetValue: function (k) { const v = (k in scormData2004) ? scormData2004[k] : ''; log('[2004] GetValue(' + k + ') → ' + v); return v; },
-  SetValue: function (k, v) { scormData2004[k] = v; log('[2004] SetValue(' + k + ', ' + v + ')'); return 'true'; },
-  Commit: function () { log('[2004] Commit()'); return 'true'; },
-  GetLastError: function () { return '0'; },
+  Initialize: function () {
+    if (scorm2004Initialized) { lastError2004 = '103'; logCall('[2004] Initialize()', false, 'ya estaba inicializado'); return 'false'; }
+    scorm2004Initialized = true;
+    lastError2004 = '0';
+    logCall('[2004] Initialize()', true);
+    return 'true';
+  },
+  Terminate: function () {
+    if (!scorm2004Initialized) { lastError2004 = '112'; logCall('[2004] Terminate()', false, 'no inicializado'); return 'false'; }
+    scorm2004Initialized = false;
+    lastError2004 = '0';
+    logCall('[2004] Terminate()', true);
+    return 'true';
+  },
+  GetValue: function (k) {
+    if (!scorm2004Initialized) { lastError2004 = '122'; logCall('[2004] GetValue(' + k + ')', false, 'no inicializado'); return ''; }
+    const v = (k in scormData2004) ? scormData2004[k] : '';
+    lastError2004 = '0';
+    logCall('[2004] GetValue(' + k + ') → ' + v, true);
+    return v;
+  },
+  SetValue: function (k, v) {
+    if (!scorm2004Initialized) { lastError2004 = '132'; logCall('[2004] SetValue(' + k + ', ' + v + ')', false, 'no inicializado'); return 'false'; }
+    scormData2004[k] = v;
+    lastError2004 = '0';
+    logCall('[2004] SetValue(' + k + ', ' + v + ')', true);
+    return 'true';
+  },
+  Commit: function () {
+    if (!scorm2004Initialized) { lastError2004 = '142'; logCall('[2004] Commit()', false, 'no inicializado'); return 'false'; }
+    lastError2004 = '0';
+    logCall('[2004] Commit()', true);
+    return 'true';
+  },
+  GetLastError: function () { return lastError2004; },
   GetErrorString: function () { return ''; },
   GetDiagnostic: function () { return ''; },
 };
 
-function log(msg) {
-  const el = document.getElementById('statusLog');
-  if (el) el.textContent = msg;
+// Historial de las últimas llamadas a la API (1.2 o 2004), con argumentos
+// y si devolvió éxito o no — reemplaza el status-log de una sola línea que
+// en QA resultó casi ilegible y no dejaba ver nada salvo la última llamada.
+const API_LOG_MAX = 6;
+const apiLogEntries = [];
+function logCall(msg, ok, note) {
+  apiLogEntries.push({ msg, ok, note });
+  if (apiLogEntries.length > API_LOG_MAX) apiLogEntries.shift();
+  const el = document.getElementById('apiLogPanel');
+  if (!el) return;
+  el.innerHTML = apiLogEntries
+    .map((e) => `<div class="${e.ok ? 'ok' : 'err'}">${e.ok ? '✓' : '✗'} ${escapeHtml(e.msg)}${e.note ? ' — ' + escapeHtml(e.note) : ''}</div>`)
+    .join('');
+  el.scrollTop = el.scrollHeight;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
 (function init() {
