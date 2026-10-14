@@ -115,7 +115,7 @@ export default function ScormPage() {
         <form onSubmit={handleUpload} className="grid gap-3.5" noValidate>
           <div className="grid grid-cols-2 gap-3.5 max-[720px]:grid-cols-1">
             <div className="grid gap-1.5">
-              <Label>Archivo (.zip)</Label>
+              <Label>Archivo (.zip, máx. 300 MB)</Label>
               <Input
                 ref={fileInputRef}
                 type="file"

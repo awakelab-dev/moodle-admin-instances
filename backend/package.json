@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend for Moodle Admin Instances Dashboard",
   "main": "src-nest/main.ts",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "npx prisma migrate deploy && node dist/main.js",
     "dev": "ts-node -r tsconfig-paths/register src-nest/main.ts",
