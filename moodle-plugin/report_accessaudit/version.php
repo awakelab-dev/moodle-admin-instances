@@ -1,8 +1,8 @@
 <?php
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026101300;
+$plugin->version   = 2026101500;
 $plugin->requires  = 2022041900; // Moodle 4.0+
 $plugin->component = 'report_accessaudit';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.3.1';
+$plugin->release   = '2.3.2';

@@ -5,8 +5,15 @@ require_once($CFG->libdir . '/adminlib.php');
 admin_externalpage_setup('report_accessaudit');
 require_capability('report/accessaudit:view', context_system::instance());
 
-$tab    = optional_param('tab',    'locations',  PARAM_ALPHA);
-$filter = optional_param('filter', 'suspicious', PARAM_ALPHA);
+$tab = optional_param('tab', 'locations', PARAM_ALPHA);
+
+// El valor por defecto del filtro depende de la pestaña: en "locations" los
+// valores validos son suspicious/all, pero en "patterns" pattern_type nunca
+// vale "suspicious" (es sequential/simultaneous/both), asi que con ese
+// default la tabla salia siempre vacia ("No patterns match") hasta que el
+// admin pulsaba "All" a mano.
+$filterdefault = ($tab === 'patterns') ? 'all' : 'suspicious';
+$filter = optional_param('filter', $filterdefault, PARAM_ALPHA);
 
 $PAGE->set_title(get_string('pagetitle', 'report_accessaudit'));
 $PAGE->set_heading(get_string('pagetitle', 'report_accessaudit'));
