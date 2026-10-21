@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Post, Put, Query } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
@@ -96,6 +96,15 @@ export class NotificationsController {
   @Delete('platforms/:platformId/api-key')
   revokeApiKey(@Param('platformId') platformId: string) {
     return this.notifications.revokeApiKey(platformId);
+  }
+
+  // Vista previa renderizada de una de las 4 plantillas visuales fijas, con
+  // contenido de ejemplo — así el selector del dashboard puede mostrar el
+  // diseño real (en un iframe) en vez de una descripción de texto.
+  @Get('email-designs/:key/preview')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  previewEmailDesign(@Param('key') key: string) {
+    return this.notifications.previewEmailDesign(key);
   }
 
   @Get('custom-field-shortnames')

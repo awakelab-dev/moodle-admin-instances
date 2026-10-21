@@ -1,4 +1,5 @@
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString } from 'class-validator';
+import { EMAIL_DESIGNS } from '../email-designs';
 
 // Parámetros del plugin que son propios de la plataforma entera, no de un
 // disparador concreto (por eso no viven en NotificationRule.params): qué
@@ -27,4 +28,11 @@ export class UpdatePlatformSettingsDto {
   @IsArray()
   @IsInt({ each: true })
   enabledCategoryIds?: number[];
+
+  // Una de las 4 plantillas visuales fijas (ver backend/src-nest/notifications/
+  // email-designs) — el usuario solo elige entre estas, nunca edita el
+  // diseño en sí (eso solo lo toca el superadmin, por código).
+  @IsOptional()
+  @IsIn(Object.keys(EMAIL_DESIGNS))
+  emailDesignKey?: string;
 }

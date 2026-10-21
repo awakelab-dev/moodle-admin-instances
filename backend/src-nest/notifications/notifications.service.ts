@@ -10,6 +10,7 @@ import { UpsertTriggerVariantsDto } from './dto/upsert-trigger-variants.dto';
 import { ReportDeliveryDto } from './dto/report-delivery.dto';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
 import { NOTIFICATION_TRIGGERS } from './notification-triggers.constants';
+import { DEFAULT_EMAIL_DESIGN_KEY, renderEmailDesign } from './email-designs';
 import type { PublicUser } from '../auth/auth.service';
 
 // Defaults aplicados cuando una plataforma todavía no configuró nada en
@@ -28,6 +29,7 @@ const DEFAULT_PLATFORM_SETTINGS = {
   diplomaOnlyCourseIds: [] as number[],
   notificationsEnabled: false,
   enabledCategoryIds: [] as number[],
+  emailDesignKey: DEFAULT_EMAIL_DESIGN_KEY,
 };
 
 // Módulo "Gestión de Notificaciones": centraliza en Moodle Insights lo que
@@ -252,6 +254,21 @@ export class NotificationsService {
 
   // ─── Ajustes de plataforma (no ligados a un disparador concreto) ───
 
+  // Muestra de contenido fija para la vista previa del selector de diseño —
+  // no depende de ninguna plantilla real guardada, para que funcione igual
+  // antes de haber creado ninguna.
+  previewEmailDesign(designKey: string): string {
+    return renderEmailDesign(designKey, {
+      platformName: 'Academia de ejemplo',
+      subject: 'Vas por el 50% del curso — ¡sigue así!',
+      bodyHtml:
+        '<p>Hola <strong>{{nombre}}</strong>,</p>' +
+        '<p>Has completado el <strong>50%</strong> de <strong>Atención sociosanitaria</strong>. Buen ritmo — aquí tienes los próximos pasos.</p>' +
+        '<ul><li>Revisa el módulo 4, es el que más alumnos dejan a medias.</li><li>Tu próxima entrega vence el viernes.</li></ul>' +
+        '<p>Un saludo,<br><strong>Equipo docente</strong></p>',
+    });
+  }
+
   async getPlatformSettings(platformId: string) {
     const platform = await this.prisma.platform.findUnique({ where: { id: platformId } });
     if (!platform) throw new NotFoundException('Plataforma no encontrada.');
@@ -266,6 +283,7 @@ export class NotificationsService {
       ...(dto.diplomaOnlyCourseIds !== undefined ? { diplomaOnlyCourseIds: dto.diplomaOnlyCourseIds } : {}),
       ...(dto.notificationsEnabled !== undefined ? { notificationsEnabled: dto.notificationsEnabled } : {}),
       ...(dto.enabledCategoryIds !== undefined ? { enabledCategoryIds: dto.enabledCategoryIds } : {}),
+      ...(dto.emailDesignKey !== undefined ? { emailDesignKey: dto.emailDesignKey } : {}),
     };
     await this.prisma.platform.update({
       where: { id: platformId },
@@ -327,6 +345,11 @@ export class NotificationsService {
   // recibe las dos a la vez para un mismo disparador).
   async getConfigForPlatform(platformId: string) {
     const settings = await this.getPlatformSettings(platformId);
+    const platform = await this.prisma.platform.findUnique({
+      where: { id: platformId },
+      select: { name: true },
+    });
+    const platformName = platform?.name ?? 'Campus online';
 
     // Interruptor maestro: con esto en false, el plugin de esa plataforma
     // recibe cero disparadores aunque haya reglas/plantillas activas — así
@@ -362,10 +385,19 @@ export class NotificationsService {
     }
 
     const triggerKeys = new Set<string>([...defaultByTrigger.keys(), ...variantsByTrigger.keys()]);
+    // El HTML que escribió el usuario en el editor es solo el contenido —
+    // aquí se envuelve en una de las 4 plantillas visuales fijas antes de
+    // mandárselo al plugin. Los {{placeholder}} siguen sin resolver en este
+    // punto, eso lo hace el plugin (email_builder.php) sobre el HTML ya
+    // combinado, así que da igual que ahora el string sea más largo.
     const toTemplatePayload = (rule: (typeof rules)[number]) => ({
       language: rule.template.language,
       subject: rule.template.subject,
-      bodyHtml: rule.template.bodyHtml,
+      bodyHtml: renderEmailDesign(settings.emailDesignKey, {
+        platformName,
+        subject: rule.template.subject,
+        bodyHtml: rule.template.bodyHtml,
+      }),
     });
 
     return {

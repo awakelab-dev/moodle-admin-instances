@@ -230,6 +230,18 @@ export const getNotificationPlatformCategories = (platformId) =>
 export const getNotificationTemplateHistory = (templateId) =>
   request(`/notifications/templates/${templateId}/history`, { cache: 'no-store' });
 
+// Devuelve HTML crudo, no JSON — request() siempre hace res.json(), así que
+// esta va por su cuenta pero reutiliza el mismo header de autenticación
+// (la ruta exige admin igual que el resto de "Gestión de Notificaciones").
+export async function getNotificationEmailDesignPreview(designKey) {
+  const session = getStoredAuthSession();
+  const res = await fetch(`${BASE}/notifications/email-designs/${designKey}/preview`, {
+    headers: session?.token ? { Authorization: `Bearer ${session.token}` } : {},
+  });
+  if (!res.ok) throw new Error(`No se pudo cargar la vista previa (HTTP ${res.status}).`);
+  return res.text();
+}
+
 /* ─── SCORM (visualizador, solo superadmin) ─── */
 export const getScormPackages = () => request('/scorm/packages', { cache: 'no-store' });
 export const deleteScormPackage = (id) => request(`/scorm/packages/${id}`, { method: 'DELETE' });

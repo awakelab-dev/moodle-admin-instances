@@ -54,9 +54,16 @@ model Platform {
   // NotificationsService.getConfigForPlatform). Forma esperada (todo
   // opcional, con defaults en el servicio):
   // { courseCustomFieldShortname?: string, diplomaOnlyCourseIds?: number[],
-  //   notificationsEnabled?: boolean, enabledCategoryIds?: number[] }
+  //   notificationsEnabled?: boolean, enabledCategoryIds?: number[],
+  //   emailDesignKey?: string }
   // (dias de antelacion de Zoom/presencial y palabras clave de deteccion
   // presencial viven en NotificationRule.params, por disparador, no aqui)
+  //
+  // emailDesignKey: una de las claves de EMAIL_DESIGNS (backend/src-nest/
+  // notifications/email-designs) — que plantilla visual fija envuelve el
+  // bodyHtml de cada NotificationTemplate antes de mandarse al plugin.
+  // Elegible por cualquier admin de la plataforma; los diseños en si solo
+  // los edita el superadmin, por codigo (no hay editor visual de diseno).
   //
   // enabledCategoryIds: lista blanca de categorias de Moodle — vacia (el
   // default) significa "sin restriccion, cualquier categoria es valida"

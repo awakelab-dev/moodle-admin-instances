@@ -27,6 +27,7 @@ import {
   getNotificationPlatformCategories,
   getNotificationCustomFieldShortnames,
   getNotificationTemplateHistory,
+  getNotificationEmailDesignPreview,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -1288,6 +1289,17 @@ function ComboboxInput({ value, onChange, options }) {
 
 // ─── Ajustes por plataforma (campo personalizado + cursos "solo diploma") ───
 
+// Las 4 plantillas visuales fijas — solo el superadmin las cambia, por
+// código (backend/src-nest/notifications/email-designs). Aquí solo se
+// listan para el selector; el texto debe coincidir con lo aprobado por el
+// instructor.
+const EMAIL_DESIGN_OPTIONS = [
+  { key: 'A', name: 'Clásico corporativo', desc: 'Navy + cian, con tarjetas de borde y adjunto destacado.' },
+  { key: 'B', name: 'Oscuro moderno', desc: 'El mismo lenguaje visual del propio dashboard.' },
+  { key: 'D', name: 'Bloque de color', desc: 'El único claro por defecto — cabecera y pie en el color de marca.' },
+  { key: 'E', name: 'Editorial con franja', desc: 'Cabecera en degradado con el asunto como titular.' },
+];
+
 function PlatformSettingsTab({ flash }) {
   const [platforms, setPlatforms] = useState([]);
   const [platformId, setPlatformId] = useState('');
@@ -1299,6 +1311,19 @@ function PlatformSettingsTab({ flash }) {
   const [saving, setSaving] = useState(false);
   const [courseFilter, setCourseFilter] = useState('');
   const [customFieldOptions, setCustomFieldOptions] = useState([]);
+  const [designPreviews, setDesignPreviews] = useState({});
+
+  // Las 4 vistas previas no dependen de la plataforma (es contenido de
+  // ejemplo) — se cargan una sola vez, no en cada cambio de plataforma.
+  useEffect(() => {
+    Promise.all(
+      EMAIL_DESIGN_OPTIONS.map((d) =>
+        getNotificationEmailDesignPreview(d.key)
+          .then((html) => [d.key, html])
+          .catch(() => [d.key, null]),
+      ),
+    ).then((pairs) => setDesignPreviews(Object.fromEntries(pairs)));
+  }, []);
 
   useEffect(() => {
     getPlatforms()
@@ -1358,6 +1383,7 @@ function PlatformSettingsTab({ flash }) {
         courseCustomFieldShortname: settings.courseCustomFieldShortname,
         diplomaOnlyCourseIds: settings.diplomaOnlyCourseIds || [],
         enabledCategoryIds: settings.enabledCategoryIds || [],
+        emailDesignKey: settings.emailDesignKey,
       });
       setSettings(saved);
       flash('Ajustes guardados.');
@@ -1365,6 +1391,22 @@ function PlatformSettingsTab({ flash }) {
       flash(err.message, 'error');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Igual que el interruptor maestro: se guarda al instante, no hace falta
+  // pulsar "Guardar ajustes" para ver el cambio reflejado en el próximo
+  // email que se envíe.
+  async function handleSelectDesign(designKey) {
+    const previous = settings.emailDesignKey;
+    setSettings((prev) => ({ ...prev, emailDesignKey: designKey }));
+    try {
+      const saved = await updateNotificationPlatformSettings(platformId, { emailDesignKey: designKey });
+      setSettings(saved);
+      flash('Diseño de email actualizado.');
+    } catch (err) {
+      setSettings((prev) => ({ ...prev, emailDesignKey: previous }));
+      flash(err.message, 'error');
     }
   }
 
@@ -1461,6 +1503,79 @@ function PlatformSettingsTab({ flash }) {
                 </p>
               </div>
               <Switch checked={Boolean(settings.notificationsEnabled)} onCheckedChange={handleToggleNotifications} />
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <p className="eyebrow">Diseño de email</p>
+            <h3 className="card-title" style={{ marginBottom: '0.25rem' }}>
+              {EMAIL_DESIGN_OPTIONS.find((d) => d.key === settings.emailDesignKey)?.name || 'Clásico corporativo'}
+            </h3>
+            <p className="history-note" style={{ marginBottom: '1rem' }}>
+              Una de las 4 plantillas visuales fijas — envuelve el contenido que escribes en cada
+              plantilla de abajo. El diseño en sí no es editable; solo puedes elegir entre estas.
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '0.9rem',
+              }}
+            >
+              {EMAIL_DESIGN_OPTIONS.map((design) => {
+                const selected = (settings.emailDesignKey || 'A') === design.key;
+                return (
+                  <button
+                    key={design.key}
+                    type="button"
+                    onClick={() => handleSelectDesign(design.key)}
+                    style={{
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      border: selected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+                      borderRadius: '0.75rem',
+                      padding: '0.6rem',
+                      background: 'transparent',
+                      display: 'grid',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        borderRadius: '0.5rem',
+                        overflow: 'hidden',
+                        border: '1px solid var(--color-border)',
+                        height: 180,
+                        background: '#05070C',
+                      }}
+                    >
+                      {designPreviews[design.key] ? (
+                        <iframe
+                          title={`Vista previa ${design.name}`}
+                          srcDoc={designPreviews[design.key]}
+                          style={{
+                            width: '167%',
+                            height: '167%',
+                            border: 'none',
+                            transform: 'scale(0.6)',
+                            transformOrigin: 'top left',
+                            pointerEvents: 'none',
+                          }}
+                          scrolling="no"
+                        />
+                      ) : (
+                        <p className="empty" style={{ fontSize: '0.75rem', padding: '1rem' }}>
+                          Cargando…
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>{design.name}</p>
+                      <p className="history-note" style={{ margin: '0.15rem 0 0' }}>{design.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </Card>
 
