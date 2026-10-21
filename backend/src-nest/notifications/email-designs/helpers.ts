@@ -8,6 +8,46 @@ export function initialsFor(platformName: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+// Muchos clientes de correo (sobre todo Outlook/Exchange Online) eliminan
+// el bloque <style> del <head> por seguridad antes de mostrar el email —
+// solo sobreviven los estilos puestos directamente en cada etiqueta como
+// atributo style="". Por eso el contenido que escribe el usuario en el
+// editor (p/strong/em/ul/ol/li/a sin estilo propio) necesita que le
+// inyectemos el color de cada diseño aqui, en vez de confiar en un
+// selector CSS tipo ".content p" que puede desaparecer entero.
+export interface ContentPalette {
+  text: string;
+  strong: string;
+  link: string;
+}
+
+// Las clases op-content-text / op-content-strong / op-content-link van
+// emparejadas con reglas [data-ogsc]/[data-ogsb] en el <style> de cada
+// diseño (ver classic.ts) — el contenido del editor también puede quedar
+// recoloreado por el modo oscuro automático de Outlook.com, igual que la
+// cabecera y el pie.
+export function inlineContentStyles(html: string, palette: ContentPalette): string {
+  return html
+    .replace(
+      /<p(\s[^>]*)?>/gi,
+      `<p class="op-content-text" style="margin:0 0 18px;font-size:15px;line-height:1.7;color:${palette.text};">`,
+    )
+    .replace(
+      /<(strong|b)(\s[^>]*)?>/gi,
+      `<$1 class="op-content-strong" style="color:${palette.strong};">`,
+    )
+    .replace(/<ul(\s[^>]*)?>/gi, `<ul style="margin:0 0 18px;padding-left:20px;">`)
+    .replace(/<ol(\s[^>]*)?>/gi, `<ol style="margin:0 0 18px;padding-left:20px;">`)
+    .replace(
+      /<li(\s[^>]*)?>/gi,
+      `<li class="op-content-text" style="margin-bottom:8px;font-size:15px;line-height:1.6;color:${palette.text};">`,
+    )
+    .replace(
+      /<a\s+([^>]*)>/gi,
+      (_match, attrs) => `<a class="op-content-link" style="color:${palette.link};" ${attrs}>`,
+    );
+}
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')

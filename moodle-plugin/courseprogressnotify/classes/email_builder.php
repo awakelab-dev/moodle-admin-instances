@@ -70,16 +70,119 @@ class email_builder {
 
         $from = \core_user::get_support_user();
 
+        // Los diseños con imágenes incrustadas (cabecera/pie como PNG — ver
+        // Moodle Insights, email-designs/assets.ts) necesitan mandarse con
+        // addEmbeddedImage(), que email_to_user() no soporta (solo admite
+        // un único adjunto por ruta de archivo, no imágenes cid: con el
+        // cuerpo HTML). Si el diseño no lleva imágenes (plantilla sin
+        // envolver, o algún trigger legacy), se sigue usando el camino
+        // normal de Moodle sin tocar nada.
+        $images = $template['images'] ?? [];
         mtrace("    → Sending email (plantilla de Moodle Insights): {$subject}");
-        $sent = email_to_user($user, $from, $subject, $bodytext, $bodyhtml);
+        if (!empty($images)) {
+            $sent = self::send_html_with_embedded_images($user, $from, $subject, $bodytext, $bodyhtml, $images);
+        } else {
+            $sent = email_to_user($user, $from, $subject, $bodytext, $bodyhtml);
+        }
 
         if ($sent) {
             notification_log::log_sent($user->id, $course->id, $notificationtype, $entityid);
             mtrace("    ✓ Email sent successfully");
         } else {
-            mtrace("    ✗ email_to_user() returned false - check Moodle email configuration");
+            mtrace("    ✗ Envío fallido - revisa la configuración de correo de Moodle");
         }
         return $sent;
+    }
+
+    /**
+     * Igual que email_to_user() pero con imágenes cid: incrustadas en el
+     * HTML — replica a mano las protecciones de email_to_user() que
+     * importan en una instancia real (noemailever, divertallemailsto,
+     * validación del destinatario, Sender/bounce, codificación UTF-8 para
+     * HTML) porque get_mailer() por sí solo NO las aplica, solo monta el
+     * transporte SMTP. Ver investigación completa en el historial de este
+     * cambio — email_to_user() no expone ningún gancho para añadir
+     * adjuntos embebidos, así que no queda otra que reimplementar esta
+     * parte en vez de envolverla.
+     *
+     * @param \stdClass $user Recipient
+     * @param \stdClass $from Sender (support user)
+     * @param string $subject
+     * @param string $bodytext Plain-text fallback
+     * @param string $bodyhtml HTML body, referencing cid:<cid> for each image
+     * @param array $images [{cid, filename, base64}]
+     * @return bool
+     */
+    private static function send_html_with_embedded_images(\stdClass $user, \stdClass $from, string $subject,
+                                string $bodytext, string $bodyhtml, array $images): bool {
+        global $CFG;
+
+        if (!empty($CFG->noemailever)) {
+            debugging('No se envía el email por $CFG->noemailever', DEBUG_DEVELOPER);
+            return true;
+        }
+
+        if (email_should_be_diverted($user->email)) {
+            $subject = "[DIVERTED {$user->email}] {$subject}";
+            $user = clone($user);
+            $user->email = $CFG->divertallemailsto;
+        }
+
+        if (empty($user->email) || !validate_email($user->email)) {
+            mtrace("    ✗ Invalid or missing email address: {$user->email}");
+            return false;
+        }
+
+        $noreplyaddressdefault = 'noreply@' . get_host_from_url($CFG->wwwroot);
+        $noreplyaddress = empty($CFG->noreplyaddress) ? $noreplyaddressdefault : $CFG->noreplyaddress;
+        if (!validate_email($noreplyaddress)) {
+            $noreplyaddress = $noreplyaddressdefault;
+        }
+
+        $mail = get_mailer();
+        $mail->Sender = $noreplyaddress;
+        $mail->From = $noreplyaddress;
+        $mail->FromName = fullname($from);
+        $mail->Subject = substr($subject, 0, 900);
+        $mail->addAddress($user->email, fullname($user));
+        $mail->isHTML(true);
+        $mail->Encoding = 'quoted-printable';
+        $mail->CharSet = 'UTF-8';
+        $mail->Body = $bodyhtml;
+        $mail->AltBody = $bodytext;
+        if (empty($mail->MessageID)) {
+            $mail->MessageID = generate_email_messageid();
+        }
+
+        foreach ($images as $image) {
+            $cid = (string)($image['cid'] ?? '');
+            $filename = (string)($image['filename'] ?? ($cid . '.png'));
+            $base64 = (string)($image['base64'] ?? '');
+            if ($cid === '' || $base64 === '') {
+                continue;
+            }
+            $binary = base64_decode($base64, true);
+            if ($binary === false) {
+                continue;
+            }
+            $mail->addStringEmbeddedImage($binary, $cid, $filename, 'base64', 'image/png');
+        }
+
+        if ($mail->send()) {
+            return true;
+        }
+
+        mtrace('Error: ' . $mail->ErrorInfo);
+        \core\event\email_failed::create([
+            'userid' => $from->id,
+            'relateduserid' => $user->id,
+            'other' => [
+                'subject' => $subject,
+                'message' => $bodytext,
+                'errorinfo' => $mail->ErrorInfo,
+            ],
+        ])->trigger();
+        return false;
     }
 
     /**

@@ -1,10 +1,10 @@
-import type { EmailDesignRenderer, EmailDesignInput } from './types';
+import type { EmailDesignRenderer, EmailDesignInput, EmailDesignResult } from './types';
 import { classicDesign } from './classic';
 import { darkModernDesign } from './darkModern';
 import { colorBlockDesign } from './colorBlock';
 import { editorialDesign } from './editorial';
 
-export type { EmailDesignInput };
+export type { EmailDesignInput, EmailDesignResult, EmailDesignImage } from './types';
 
 // Las 4 plantillas aprobadas por el instructor (ver boceto compartido).
 // Solo se editan aquí, por código — no hay editor visual de diseño (ver
@@ -18,7 +18,7 @@ export const EMAIL_DESIGNS: Record<string, EmailDesignRenderer> = {
 
 export const DEFAULT_EMAIL_DESIGN_KEY = 'A';
 
-export function renderEmailDesign(designKey: string | undefined, input: EmailDesignInput): string {
+export function renderEmailDesign(designKey: string | undefined, input: EmailDesignInput): Promise<EmailDesignResult> {
   const renderer = (designKey && EMAIL_DESIGNS[designKey]) || EMAIL_DESIGNS[DEFAULT_EMAIL_DESIGN_KEY];
   return renderer(input);
 }

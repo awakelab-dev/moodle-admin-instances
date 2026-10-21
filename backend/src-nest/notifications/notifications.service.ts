@@ -257,8 +257,12 @@ export class NotificationsService {
   // Muestra de contenido fija para la vista previa del selector de diseño —
   // no depende de ninguna plantilla real guardada, para que funcione igual
   // antes de haber creado ninguna.
-  previewEmailDesign(designKey: string): string {
-    return renderEmailDesign(designKey, {
+  // El dashboard muestra esto en un <iframe>, no en un cliente de correo —
+  // ahí "cid:" no significa nada, así que cada referencia se cambia por su
+  // imagen en base64 directamente (data:), solo para esta vista previa. El
+  // email real que se manda sí usa cid: de verdad (ver email_builder.php).
+  async previewEmailDesign(designKey: string): Promise<string> {
+    const { html, images } = await renderEmailDesign(designKey, {
       platformName: 'Academia de ejemplo',
       subject: 'Vas por el 50% del curso — ¡sigue así!',
       bodyHtml:
@@ -267,6 +271,10 @@ export class NotificationsService {
         '<ul><li>Revisa el módulo 4, es el que más alumnos dejan a medias.</li><li>Tu próxima entrega vence el viernes.</li></ul>' +
         '<p>Un saludo,<br><strong>Equipo docente</strong></p>',
     });
+    return images.reduce(
+      (acc, img) => acc.replaceAll(`cid:${img.cid}`, `data:image/png;base64,${img.base64}`),
+      html,
+    );
   }
 
   async getPlatformSettings(platformId: string) {
@@ -390,38 +398,45 @@ export class NotificationsService {
     // mandárselo al plugin. Los {{placeholder}} siguen sin resolver en este
     // punto, eso lo hace el plugin (email_builder.php) sobre el HTML ya
     // combinado, así que da igual que ahora el string sea más largo.
-    const toTemplatePayload = (rule: (typeof rules)[number]) => ({
-      language: rule.template.language,
-      subject: rule.template.subject,
-      bodyHtml: renderEmailDesign(settings.emailDesignKey, {
+    const toTemplatePayload = async (rule: (typeof rules)[number]) => {
+      const { html, images } = await renderEmailDesign(settings.emailDesignKey, {
         platformName,
         subject: rule.template.subject,
         bodyHtml: rule.template.bodyHtml,
-      }),
-    });
+      });
+      return {
+        language: rule.template.language,
+        subject: rule.template.subject,
+        bodyHtml: html,
+        images,
+      };
+    };
 
-    return {
-      triggers: Array.from(triggerKeys).map((key) => {
+    const triggers = await Promise.all(
+      Array.from(triggerKeys).map(async (key) => {
         const defaultRule = defaultByTrigger.get(key);
         const variantRules = variantsByTrigger.get(key);
         const entry: Record<string, unknown> = {
           trigger: key,
           params: defaultRule?.params ?? {},
         };
-        if (defaultRule) entry.template = toTemplatePayload(defaultRule);
+        if (defaultRule) entry.template = await toTemplatePayload(defaultRule);
         if (variantRules?.size) {
           const anyVariantRule = variantRules.values().next().value as (typeof rules)[number];
           const variantParams = anyVariantRule.params as { variantParam?: string; threshold?: number };
           entry.variantParam = variantParams?.variantParam ?? null;
           entry.threshold = variantParams?.threshold ?? 50;
           entry.variants = Object.fromEntries(
-            Array.from(variantRules.entries()).map(([variant, rule]) => [variant, toTemplatePayload(rule)]),
+            await Promise.all(
+              Array.from(variantRules.entries()).map(async ([variant, rule]) => [variant, await toTemplatePayload(rule)]),
+            ),
           );
         }
         return entry;
       }),
-      settings,
-    };
+    );
+
+    return { triggers, settings };
   }
 
   async reportDelivery(platformId: string, dto: ReportDeliveryDto) {
