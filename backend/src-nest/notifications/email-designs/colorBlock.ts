@@ -6,7 +6,7 @@ import { buildDesignImages } from './assets';
 // que A/B (ver comentario completo en classic.ts).
 export const colorBlockDesign: EmailDesignRenderer = async ({ platformName, subject, bodyHtml }) => {
   const { headerCid, footerCid, images } = await buildDesignImages('D', platformName, subject);
-  const content = inlineContentStyles(bodyHtml, { text: '#4A5064', strong: '#1B2333', link: '#0B93AA' });
+  const content = inlineContentStyles(bodyHtml, { text: '#4A5064', strong: '#1B2333', link: '#0B93AA', border: '#E7E9F0' });
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>

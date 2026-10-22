@@ -6,7 +6,7 @@ import { buildDesignImages } from './assets';
 // completo en classic.ts): cabecera y pie como imagen vía cid:.
 export const darkModernDesign: EmailDesignRenderer = async ({ platformName, subject, bodyHtml }) => {
   const { headerCid, footerCid, images } = await buildDesignImages('B', platformName, subject);
-  const content = inlineContentStyles(bodyHtml, { text: '#B7C0DE', strong: '#ffffff', link: '#7FE3DA' });
+  const content = inlineContentStyles(bodyHtml, { text: '#B7C0DE', strong: '#ffffff', link: '#7FE3DA', border: '#243253' });
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>

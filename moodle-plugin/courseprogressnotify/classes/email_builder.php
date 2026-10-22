@@ -174,6 +174,7 @@ class email_builder {
 
         mtrace('Error: ' . $mail->ErrorInfo);
         \core\event\email_failed::create([
+            'context' => \context_system::instance(),
             'userid' => $from->id,
             'relateduserid' => $user->id,
             'other' => [

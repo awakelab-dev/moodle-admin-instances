@@ -8,7 +8,7 @@ import { buildDesignImages } from './assets';
 // al ser una imagen, el degradado sale perfecto en cualquier cliente.
 export const editorialDesign: EmailDesignRenderer = async ({ platformName, subject, bodyHtml }) => {
   const { headerCid, footerCid, images } = await buildDesignImages('E', platformName, subject);
-  const content = inlineContentStyles(bodyHtml, { text: '#AEB4C4', strong: '#ffffff', link: '#5FE6E0' });
+  const content = inlineContentStyles(bodyHtml, { text: '#AEB4C4', strong: '#ffffff', link: '#5FE6E0', border: '#1C2944' });
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
