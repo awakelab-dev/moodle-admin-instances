@@ -27,31 +27,26 @@ export interface ContentPalette {
   border: string;
 }
 
-// Las clases op-content-text / op-content-strong / op-content-link van
-// emparejadas con reglas [data-ogsc]/[data-ogsb] en el <style> de cada
-// diseño (ver classic.ts) — el contenido del editor también puede quedar
-// recoloreado por el modo oscuro automático de Outlook.com, igual que la
-// cabecera y el pie.
+// Nota: el color base también se pone explícito en el <td> contenedor de
+// cada diseño (ver classic.ts, etc.), así que cualquier HTML insertado
+// DESPUÉS de esta función (como {{progress_table}}, sustituido en el
+// plugin de Moodle, no aquí) lo hereda por CSS sin necesidad de que esta
+// función lo conozca. Esto sigue aplicando estilos explícitos además, por
+// higiene y por si algún cliente no respeta la herencia.
 export function inlineContentStyles(html: string, palette: ContentPalette): string {
   return html
     .replace(
       /<p(\s[^>]*)?>/gi,
-      `<p class="op-content-text" style="margin:0 0 18px;font-size:15px;line-height:1.7;color:${palette.text};">`,
+      `<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:${palette.text};">`,
     )
-    .replace(
-      /<(strong|b)(\s[^>]*)?>/gi,
-      `<$1 class="op-content-strong" style="color:${palette.strong};">`,
-    )
+    .replace(/<(strong|b)(\s[^>]*)?>/gi, `<$1 style="color:${palette.strong};">`)
     .replace(/<ul(\s[^>]*)?>/gi, `<ul style="margin:0 0 18px;padding-left:20px;">`)
     .replace(/<ol(\s[^>]*)?>/gi, `<ol style="margin:0 0 18px;padding-left:20px;">`)
     .replace(
       /<li(\s[^>]*)?>/gi,
-      `<li class="op-content-text" style="margin-bottom:8px;font-size:15px;line-height:1.6;color:${palette.text};">`,
+      `<li style="margin-bottom:8px;font-size:15px;line-height:1.6;color:${palette.text};">`,
     )
-    .replace(
-      /<a\s+([^>]*)>/gi,
-      (_match, attrs) => `<a class="op-content-link" style="color:${palette.link};" ${attrs}>`,
-    )
+    .replace(/<a\s+([^>]*)>/gi, (_match, attrs) => `<a style="color:${palette.link};" ${attrs}>`)
     .replace(
       /<table(\s[^>]*)?>/gi,
       `<table style="width:100%;border-collapse:collapse;margin:0 0 18px;font-size:14px;color:${palette.text};">`,

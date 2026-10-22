@@ -7,8 +7,14 @@ import { buildDesignImages } from './assets';
 // problema del degradado (Outlook no soporta linear-gradient en absoluto):
 // al ser una imagen, el degradado sale perfecto en cualquier cliente.
 export const editorialDesign: EmailDesignRenderer = async ({ platformName, subject, bodyHtml }) => {
-  const { headerCid, footerCid, images } = await buildDesignImages('E', platformName, subject);
+  const { headerCid, footerCid, images } = await buildDesignImages('E', platformName);
   const content = inlineContentStyles(bodyHtml, { text: '#AEB4C4', strong: '#ffffff', link: '#5FE6E0', border: '#1C2944' });
+  // El titular va como texto HTML normal, no dentro de la imagen de
+  // cabecera: el asunto puede traer {{placeholders}} todavía sin resolver
+  // en este punto (eso lo hace el plugin de Moodle después, sobre texto) —
+  // si fuera parte de la imagen ya rasterizada, un "{{coursename}}" sin
+  // resolver se quedaría ahí para siempre.
+  const headline = `<p style="margin:0 0 18px;font-size:21px;font-weight:800;line-height:1.3;color:#ffffff;">${escapeHtml(subject)}</p>`;
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -22,7 +28,7 @@ export const editorialDesign: EmailDesignRenderer = async ({ platformName, subje
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
   <tr><td><img src="cid:${headerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
   <tr>
-    <td bgcolor="#0F1A2E" style="background-color:#0F1A2E;color:#AEB4C4;padding:26px 28px 8px;font-family:Arial,sans-serif;">${content}</td>
+    <td bgcolor="#0F1A2E" style="background-color:#0F1A2E;color:#AEB4C4;padding:26px 28px 8px;font-family:Arial,sans-serif;">${headline}${content}</td>
   </tr>
   <tr><td><img src="cid:${footerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
 </table>

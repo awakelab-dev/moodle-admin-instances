@@ -10,7 +10,7 @@ import { buildDesignImages } from './assets';
 // del medio sigue siendo HTML normal porque su alto cambia según el
 // contenido — ahí no hay forma práctica de usar una imagen.
 export const classicDesign: EmailDesignRenderer = async ({ platformName, subject, bodyHtml }) => {
-  const { headerCid, footerCid, images } = await buildDesignImages('A', platformName, subject);
+  const { headerCid, footerCid, images } = await buildDesignImages('A', platformName);
   const content = inlineContentStyles(bodyHtml, { text: '#A9B2CC', strong: '#ffffff', link: '#5FE6E0', border: '#223252' });
   const html = `<!DOCTYPE html>
 <html lang="es">

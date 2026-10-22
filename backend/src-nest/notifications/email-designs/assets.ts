@@ -105,20 +105,17 @@ async function footerColorBlock(platformName: string): Promise<Buffer> {
   return svgToPng(svg, WIDTH, h);
 }
 
-// Parte en máximo 2 líneas por longitud de caracteres — suficiente para un
-// asunto de notificación real, no es un ajuste de texto general.
-function wrapTwoLines(text: string, maxPerLine = 34): [string, string?] {
-  if (text.length <= maxPerLine) return [text];
-  const breakAt = text.lastIndexOf(' ', maxPerLine);
-  const splitPoint = breakAt > 10 ? breakAt : maxPerLine;
-  return [text.slice(0, splitPoint).trim(), truncate(text.slice(splitPoint).trim(), maxPerLine)];
-}
-
-async function headerEditorial(platformName: string, subject: string): Promise<Buffer> {
+// El asunto NO se incrusta aquí a propósito (antes se rasterizaba dentro
+// de esta imagen): en el momento en que se genera esta imagen, el asunto
+// todavía puede contener {{placeholders}} sin resolver (eso lo hace el
+// plugin de Moodle después, con una sustitución de texto sobre el HTML
+// final) — una vez convertido en PNG, un "{{coursename}}" sin resolver se
+// queda ahí para siempre. El "asunto como titular" de este diseño se
+// muestra como texto HTML normal en editorial.ts, no aquí, para que el
+// plugin sí pueda sustituirlo con normalidad.
+async function headerEditorial(platformName: string): Promise<Buffer> {
   const tag = escapeHtml(truncate(platformName, 48));
-  const lines = wrapTwoLines(escapeHtml(subject), 38);
-  const h = lines.length > 1 ? 140 : 110;
-  const subjectY = lines.length > 1 ? 74 : 78;
+  const h = 70;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${h}">
     <defs>
       <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -127,9 +124,7 @@ async function headerEditorial(platformName: string, subject: string): Promise<B
       </linearGradient>
     </defs>
     <rect width="${WIDTH}" height="${h}" fill="url(#g)"/>
-    <text x="300" y="38" text-anchor="middle" font-family="${FONT}" font-size="11" font-weight="700" letter-spacing="1.5" fill="#BFEFF2">${tag.toUpperCase()}</text>
-    <text x="300" y="${subjectY}" text-anchor="middle" font-family="${FONT}" font-size="21" font-weight="800" fill="#ffffff">${lines[0]}</text>
-    ${lines[1] ? `<text x="300" y="${subjectY + 28}" text-anchor="middle" font-family="${FONT}" font-size="21" font-weight="800" fill="#ffffff">${lines[1]}</text>` : ''}
+    <text x="300" y="42" text-anchor="middle" font-family="${FONT}" font-size="12" font-weight="700" letter-spacing="1.5" fill="#ffffff">${tag.toUpperCase()}</text>
   </svg>`;
   return svgToPng(svg, WIDTH, h);
 }
@@ -143,7 +138,6 @@ async function footerEditorial(platformName: string): Promise<Buffer> {
 export async function buildDesignImages(
   designKey: string,
   platformName: string,
-  subject: string,
 ): Promise<{ headerCid: string; footerCid: string; images: EmailImage[] }> {
   const headerCid = `op_header_${designKey}`;
   const footerCid = `op_footer_${designKey}`;
@@ -160,7 +154,7 @@ export async function buildDesignImages(
       footer = await footerColorBlock(platformName);
       break;
     case 'E':
-      header = await headerEditorial(platformName, subject);
+      header = await headerEditorial(platformName);
       footer = await footerEditorial(platformName);
       break;
     case 'A':
