@@ -22,7 +22,7 @@ export const editorialDesign: EmailDesignRenderer = async ({ platformName, subje
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
   <tr><td><img src="cid:${headerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
   <tr>
-    <td bgcolor="#0F1A2E" style="background-color:#0F1A2E;padding:26px 28px 8px;font-family:Arial,sans-serif;">${content}</td>
+    <td bgcolor="#0F1A2E" style="background-color:#0F1A2E;color:#AEB4C4;padding:26px 28px 8px;font-family:Arial,sans-serif;">${content}</td>
   </tr>
   <tr><td><img src="cid:${footerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
 </table>
