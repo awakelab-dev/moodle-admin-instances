@@ -1290,14 +1290,20 @@ function ComboboxInput({ value, onChange, options }) {
 // ─── Ajustes por plataforma (campo personalizado + cursos "solo diploma") ───
 
 // Las 4 plantillas visuales fijas — solo el superadmin las cambia, por
-// código (backend/src-nest/notifications/email-designs). Aquí solo se
-// listan para el selector; el texto debe coincidir con lo aprobado por el
-// instructor.
+// código (backend/src-nest/notifications/email-designs) — y cada una con
+// variante clara y oscura, elegible por el admin de la plataforma. No es
+// una adaptación automática al cliente de correo del destinatario: eso se
+// investigó a fondo y Gmail/Outlook no lo permiten de forma fiable, así
+// que el tema se fuerza aquí, igual que el diseño en sí.
 const EMAIL_DESIGN_OPTIONS = [
-  { key: 'A', name: 'Clásico corporativo', desc: 'Navy + cian, con tarjetas de borde y adjunto destacado.' },
+  { key: 'A', name: 'Clásico corporativo (oscuro)', desc: 'Navy + cian, con tarjetas de borde y adjunto destacado.' },
+  { key: 'A-claro', name: 'Clásico corporativo (claro)', desc: 'La misma estructura, en versión clara.' },
   { key: 'B', name: 'Oscuro moderno', desc: 'El mismo lenguaje visual del propio dashboard.' },
-  { key: 'D', name: 'Bloque de color', desc: 'El único claro por defecto — cabecera y pie en el color de marca.' },
-  { key: 'E', name: 'Editorial con franja', desc: 'Cabecera en degradado con el asunto como titular.' },
+  { key: 'B-claro', name: 'Oscuro moderno (claro)', desc: 'La misma estructura, en versión clara.' },
+  { key: 'D', name: 'Bloque de color (claro)', desc: 'Cabecera y pie en el color de marca, cuerpo claro.' },
+  { key: 'D-oscuro', name: 'Bloque de color (oscuro)', desc: 'La misma cabecera de marca, cuerpo oscuro.' },
+  { key: 'E', name: 'Editorial con franja (oscuro)', desc: 'Cabecera en degradado con el asunto como titular.' },
+  { key: 'E-claro', name: 'Editorial con franja (claro)', desc: 'La misma estructura, en versión clara.' },
 ];
 
 function PlatformSettingsTab({ flash }) {
