@@ -1531,98 +1531,92 @@ function PlatformSettingsTab({ flash }) {
           <Card className="p-4">
             {(() => {
               const { base: selectedBase, theme: selectedTheme } = getBaseAndTheme(settings.emailDesignKey || 'A');
-              const isDark = selectedTheme === 'dark';
-              function selectBase(base) {
-                const def = EMAIL_DESIGN_BASES.find((d) => d.base === base);
-                handleSelectDesign(isDark ? def.dark : def.light);
-              }
-              function toggleTheme(nextIsDark) {
-                const def = EMAIL_DESIGN_BASES.find((d) => d.base === selectedBase);
-                handleSelectDesign(nextIsDark ? def.dark : def.light);
-              }
-              return (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.25rem' }}>
-                    <div>
-                      <p className="eyebrow">Diseño de email</p>
-                      <h3 className="card-title">
-                        {EMAIL_DESIGN_BASES.find((d) => d.base === selectedBase)?.name}
-                      </h3>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span className="history-note" style={{ fontWeight: isDark ? 400 : 600 }}>Claro</span>
-                      <Switch checked={isDark} onCheckedChange={toggleTheme} />
-                      <span className="history-note" style={{ fontWeight: isDark ? 600 : 400 }}>Oscuro</span>
-                    </div>
-                  </div>
-                  <p className="history-note" style={{ marginBottom: '1rem' }}>
-                    Una de las 4 plantillas visuales fijas — envuelve el contenido que escribes en cada
-                    plantilla de abajo. El diseño en sí no es editable; elige la plantilla y, con el
-                    interruptor, si va en tema claro u oscuro.
-                  </p>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                      gap: '0.9rem',
-                    }}
-                  >
-                    {EMAIL_DESIGN_BASES.map((design) => {
-                      const selected = selectedBase === design.base;
-                      const previewKey = isDark ? design.dark : design.light;
-                      return (
-                        <button
-                          key={design.base}
-                          type="button"
-                          onClick={() => selectBase(design.base)}
-                          style={{
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            border: selected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
-                            borderRadius: '0.75rem',
-                            padding: '0.6rem',
-                            background: 'transparent',
-                            display: 'grid',
-                            gap: '0.5rem',
-                          }}
-                        >
-                          <div
+
+              function renderGroup(theme, label) {
+                return (
+                  <div style={{ marginBottom: theme === 'light' ? '1.5rem' : 0 }}>
+                    <p className="eyebrow" style={{ marginBottom: '0.6rem' }}>{label}</p>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                        gap: '0.9rem',
+                      }}
+                    >
+                      {EMAIL_DESIGN_BASES.map((design) => {
+                        const key = theme === 'dark' ? design.dark : design.light;
+                        const selected = selectedBase === design.base && selectedTheme === theme;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => handleSelectDesign(key)}
                             style={{
-                              borderRadius: '0.5rem',
-                              overflow: 'hidden',
-                              border: '1px solid var(--color-border)',
-                              height: 180,
-                              background: '#05070C',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              border: selected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+                              borderRadius: '0.75rem',
+                              padding: '0.6rem',
+                              background: 'transparent',
+                              display: 'grid',
+                              gap: '0.5rem',
                             }}
                           >
-                            {designPreviews[previewKey] ? (
-                              <iframe
-                                title={`Vista previa ${design.name}`}
-                                srcDoc={designPreviews[previewKey]}
-                                style={{
-                                  width: '167%',
-                                  height: '167%',
-                                  border: 'none',
-                                  transform: 'scale(0.6)',
-                                  transformOrigin: 'top left',
-                                  pointerEvents: 'none',
-                                }}
-                                scrolling="no"
-                              />
-                            ) : (
-                              <p className="empty" style={{ fontSize: '0.75rem', padding: '1rem' }}>
-                                Cargando…
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>{design.name}</p>
-                            <p className="history-note" style={{ margin: '0.15rem 0 0' }}>{design.desc}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
+                            <div
+                              style={{
+                                borderRadius: '0.5rem',
+                                overflow: 'hidden',
+                                border: '1px solid var(--color-border)',
+                                height: 180,
+                                background: '#05070C',
+                              }}
+                            >
+                              {designPreviews[key] ? (
+                                <iframe
+                                  title={`Vista previa ${design.name} (${label})`}
+                                  srcDoc={designPreviews[key]}
+                                  style={{
+                                    width: '167%',
+                                    height: '167%',
+                                    border: 'none',
+                                    transform: 'scale(0.6)',
+                                    transformOrigin: 'top left',
+                                    pointerEvents: 'none',
+                                  }}
+                                  scrolling="no"
+                                />
+                              ) : (
+                                <p className="empty" style={{ fontSize: '0.75rem', padding: '1rem' }}>
+                                  Cargando…
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>{design.name}</p>
+                              <p className="history-note" style={{ margin: '0.15rem 0 0' }}>{design.desc}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                );
+              }
+
+              return (
+                <>
+                  <p className="eyebrow">Diseño de email</p>
+                  <h3 className="card-title" style={{ marginBottom: '0.25rem' }}>
+                    {EMAIL_DESIGN_BASES.find((d) => d.base === selectedBase)?.name}
+                    {selectedTheme === 'dark' ? ' (oscuro)' : ' (claro)'}
+                  </h3>
+                  <p className="history-note" style={{ marginBottom: '1.25rem' }}>
+                    Una de las 4 plantillas visuales fijas, cada una en su variante clara y oscura —
+                    envuelve el contenido que escribes en cada plantilla de abajo. El diseño en sí no
+                    es editable; solo puedes elegir entre estas 8.
+                  </p>
+                  {renderGroup('light', 'Plantillas claras')}
+                  {renderGroup('dark', 'Plantillas oscuras')}
                 </>
               );
             })()}
