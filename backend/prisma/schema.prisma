@@ -30,6 +30,13 @@ model Platform {
   token         String
   monthlyCharge Decimal? @map("monthly_charge") @db.Decimal(12, 2)
   currency      Currency @default(USD)
+  // Proveedor de hosting/administracion de la plataforma (ej. "DGF") —
+  // texto libre, no un catalogo cerrado: distintos clientes meten sus
+  // propios proveedores. Null = sin dato (la mayoria de plataformas
+  // historicas, dadas de alta antes de que existiera este campo).
+  // Pedido por el instructor para poder filtrar el listado por proveedor
+  // segun va creciendo el numero de plataformas conectadas.
+  provider      String?
   isActive      Boolean   @default(true) @map("is_active")
   lastSyncedAt  DateTime? @map("last_synced_at")
   // Sincronizacion dedicada de "Cursos y Alumnos" (matricula, accesos,

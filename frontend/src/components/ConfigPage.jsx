@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { formatCurrency } from '@/lib/formatters';
@@ -25,7 +26,13 @@ const EMPTY_FORM = {
   url: '',
   token: '',
   monthlyCharge: '',
+  provider: '',
 };
+
+// Valor especial del filtro de proveedor para "todas, incluidas las que no
+// tienen proveedor asignado" — distinto de un string vacío real, que
+// Radix Select no admite como value de un SelectItem.
+const ALL_PROVIDERS = '__all__';
 
 function getCheckPrefix(status) {
   if (status === 'ok') return '✓';
@@ -83,6 +90,7 @@ function formatElapsed(ms) {
 // sincronización en curso (propia o iniciada desde otra sesión/pestaña).
 export default function ConfigPage() {
   const [platforms, setPlatforms] = useState([]);
+  const [providerFilter, setProviderFilter] = useState(ALL_PROVIDERS);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null); // null = adding, number = editing
   const [showForm, setShowForm] = useState(false);
@@ -251,6 +259,7 @@ export default function ConfigPage() {
         p.monthlyCharge === null || p.monthlyCharge === undefined
           ? ''
           : String(p.monthlyCharge),
+      provider: p.provider || '',
     });
     setEditingId(p.id);
     setShowForm(true);
@@ -282,6 +291,7 @@ export default function ConfigPage() {
           name: form.name,
           url: form.url,
           monthlyCharge: normalizedMonthlyCharge,
+          provider: form.provider.trim(),
         };
 
         if (form.token) payload.token = form.token;
@@ -417,6 +427,10 @@ export default function ConfigPage() {
 
   if (loading) return <p className="empty">Cargando configuración…</p>;
 
+  const providers = Array.from(new Set(platforms.map((p) => p.provider).filter(Boolean))).sort();
+  const filteredPlatforms =
+    providerFilter === ALL_PROVIDERS ? platforms : platforms.filter((p) => p.provider === providerFilter);
+
   return (
     <div className="section-stack">
       <div className="config-header">
@@ -490,6 +504,16 @@ export default function ConfigPage() {
                 />
               </div>
               <div className="grid gap-1.5">
+                <Label>Proveedor <span className="form-hint">(opcional)</span></Label>
+                <Input
+                  type="text"
+                  placeholder="Ej: DGF"
+                  autoComplete="off"
+                  value={form.provider}
+                  onChange={(e) => setForm({ ...form, provider: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-1.5">
                 <Label>Monto mensual cobrado</Label>
                 <Input
                   type="number"
@@ -520,16 +544,44 @@ export default function ConfigPage() {
         </Card>
       )}
 
+      {platforms.length > 0 && providers.length > 0 && (
+        <div className="grid gap-1.5" style={{ maxWidth: 260 }}>
+          <Label>Filtrar por proveedor</Label>
+          <Select value={providerFilter} onValueChange={setProviderFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_PROVIDERS}>Todos los proveedores</SelectItem>
+              {providers.map((provider) => (
+                <SelectItem key={provider} value={provider}>
+                  {provider}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {platforms.length === 0 ? (
         <p className="empty">
           No hay plataformas configuradas. Agrega una para empezar.
         </p>
+      ) : filteredPlatforms.length === 0 ? (
+        <p className="empty">
+          Ninguna plataforma coincide con el proveedor "{providerFilter}".
+        </p>
       ) : (
         <div className="platform-list">
-          {platforms.map((p) => (
+          {filteredPlatforms.map((p) => (
             <Card key={p.id} className="platform-card p-4">
               <div className="platform-info">
-                <div className="platform-name">{formatPlatformDisplayName(p.name)}</div>
+                <div className="platform-name">
+                  {formatPlatformDisplayName(p.name)}
+                  {p.provider && (
+                    <span style={{ fontWeight: 400, opacity: 0.7, fontSize: '0.85em' }}> · {p.provider}</span>
+                  )}
+                </div>
                 <div className="platform-url">{p.url}</div>
                 <div className="platform-token">Token: {p.token}</div>
                 <div className="platform-toggle-row flex items-center gap-2.5">

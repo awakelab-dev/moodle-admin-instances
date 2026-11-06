@@ -150,6 +150,7 @@ export class PlatformsService {
       monthlyCharge: p.monthlyCharge === null ? null : Number(p.monthlyCharge),
       costPerGb: Number(process.env.GLOBAL_COST_PER_GB || 1),
       currency: p.currency,
+      provider: p.provider,
       isActive: p.isActive,
       hasFinancialConfig: p.monthlyCharge !== null,
       hasNotificationsApiKey: !!p.notificationsApiKeyHash,
@@ -187,6 +188,7 @@ export class PlatformsService {
         monthlyCharge,
         currency: 'USD',
         isActive: dto.isActive ?? true,
+        provider: dto.provider?.trim() || null,
       },
     });
     return { message: 'Plataforma agregada.', id: created.id };
@@ -230,6 +232,10 @@ export class PlatformsService {
 
     if (dto.isActive !== undefined) {
       data.isActive = dto.isActive;
+    }
+
+    if (dto.provider !== undefined) {
+      data.provider = dto.provider?.trim() || null;
     }
 
     await this.prisma.platform.update({ where: { id: platform.id }, data });

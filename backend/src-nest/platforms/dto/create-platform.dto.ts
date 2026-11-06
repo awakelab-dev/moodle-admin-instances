@@ -24,4 +24,10 @@ export class CreatePlatformDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  // Proveedor de hosting/administracion (ej. "DGF") — texto libre, para
+  // filtrar el listado de plataformas segun va creciendo.
+  @IsOptional()
+  @IsString()
+  provider?: string;
 }
