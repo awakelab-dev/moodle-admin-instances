@@ -173,6 +173,57 @@ async function footerEditorial(platformName: string, theme: EmailTheme): Promise
   return footerDarkModern(platformName, theme);
 }
 
+// ───────────────────────── Respaldo si Outlook bloquea la imagen ─────────────────────────
+//
+// Outlook bloquea por defecto las imágenes remotas (src="https://..."), pero
+// no las incrustadas por cid — van dentro del propio correo, no se
+// descargan aparte. Aun así, algunos filtros corporativos (Defender/ATP) o
+// un primer contacto con el remitente pueden bloquearlas igualmente. Para
+// que eso no deje un hueco en blanco, la celda que envuelve cada <img> lleva
+// el mismo color de fondo que la imagen y una altura fija — si la imagen no
+// carga, el alt se lee sobre el color de marca en vez de sobre un vacío.
+export interface HeaderFooterMeta {
+  headerHeight: number;
+  footerHeight: number;
+  headerBg: string;
+  footerBg: string;
+}
+
+export function headerFooterMeta(designKey: string, theme: EmailTheme): HeaderFooterMeta {
+  const isLight = theme === 'light';
+  switch (designKey) {
+    case 'B':
+      return {
+        headerHeight: 90,
+        footerHeight: 56,
+        headerBg: isLight ? '#FFFFFF' : '#0D1526',
+        footerBg: isLight ? '#FFFFFF' : '#0D1526',
+      };
+    case 'D':
+      return {
+        headerHeight: 150,
+        footerHeight: 56,
+        headerBg: '#0B93AA',
+        footerBg: isLight ? '#0B93AA' : '#072026',
+      };
+    case 'E':
+      return {
+        headerHeight: 70,
+        footerHeight: 56,
+        headerBg: '#0B2545',
+        footerBg: isLight ? '#FFFFFF' : '#0D1526',
+      };
+    case 'A':
+    default:
+      return {
+        headerHeight: 136,
+        footerHeight: 90,
+        headerBg: isLight ? '#EEF1F8' : '#0F1A2E',
+        footerBg: isLight ? '#EEF1F8' : '#0F1A2E',
+      };
+  }
+}
+
 // ───────────────────────── Registro por diseño+tema ─────────────────────────
 
 // Una entrada por diseño+tema: genera {header, footer} ya como PNG + los

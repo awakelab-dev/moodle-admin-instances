@@ -1,6 +1,6 @@
 import type { EmailDesignRenderer } from './types';
 import { escapeHtml, inlineContentStyles } from './helpers';
-import { buildDesignImages, EmailTheme } from './assets';
+import { buildDesignImages, headerFooterMeta, EmailTheme } from './assets';
 
 // Diseño E — "Editorial con franja". El degradado de marca se mantiene en
 // los dos temas; lo que cambia es el cuerpo alrededor. Mismo enfoque de
@@ -20,6 +20,7 @@ export function makeEditorialDesign(theme: EmailTheme): EmailDesignRenderer {
 
   return async ({ platformName, subject, bodyHtml }) => {
     const { headerCid, footerCid, images } = await buildDesignImages('E', theme, platformName);
+    const meta = headerFooterMeta('E', theme);
     const content = inlineContentStyles(bodyHtml, { text: contentText, strong: contentStrong, link: contentLink, border });
     // El titular va como texto HTML normal, no dentro de la imagen de
     // cabecera: el asunto puede traer {{placeholders}} todavía sin resolver
@@ -38,11 +39,11 @@ export function makeEditorialDesign(theme: EmailTheme): EmailDesignRenderer {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${pageBg}" style="background-color:${pageBg};">
 <tr><td align="center" style="padding:32px 16px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
-  <tr><td><img src="cid:${headerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
+  <tr><td bgcolor="${meta.headerBg}" style="background-color:${meta.headerBg};" height="${meta.headerHeight}"><img src="cid:${headerCid}" width="600" height="${meta.headerHeight}" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
   <tr>
     <td bgcolor="${cardBg}" style="background-color:${cardBg};color:${contentText};padding:26px 28px 8px;font-family:Arial,sans-serif;">${headline}${content}</td>
   </tr>
-  <tr><td><img src="cid:${footerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
+  <tr><td bgcolor="${meta.footerBg}" style="background-color:${meta.footerBg};" height="${meta.footerHeight}"><img src="cid:${footerCid}" width="600" height="${meta.footerHeight}" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
 </table>
 </td></tr>
 </table>

@@ -1,6 +1,6 @@
 import type { EmailDesignRenderer } from './types';
 import { escapeHtml, inlineContentStyles } from './helpers';
-import { buildDesignImages, EmailTheme } from './assets';
+import { buildDesignImages, headerFooterMeta, EmailTheme } from './assets';
 
 // Diseño A — "Clásico corporativo", con variante clara y oscura. Cabecera
 // y pie son imágenes PNG generadas al vuelo (ver assets.ts) e incrustadas
@@ -21,6 +21,7 @@ export function makeClassicDesign(theme: EmailTheme): EmailDesignRenderer {
 
   return async ({ platformName, subject, bodyHtml }) => {
     const { headerCid, footerCid, images } = await buildDesignImages('A', theme, platformName);
+    const meta = headerFooterMeta('A', theme);
     const content = inlineContentStyles(bodyHtml, { text: contentText, strong: contentStrong, link: contentLink, border });
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -33,11 +34,11 @@ export function makeClassicDesign(theme: EmailTheme): EmailDesignRenderer {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${pageBg}" style="background-color:${pageBg};">
 <tr><td align="center" style="padding:32px 16px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
-  <tr><td><img src="cid:${headerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
+  <tr><td bgcolor="${meta.headerBg}" style="background-color:${meta.headerBg};" height="${meta.headerHeight}"><img src="cid:${headerCid}" width="600" height="${meta.headerHeight}" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
   <tr>
     <td bgcolor="${cardBg}" style="background-color:${cardBg};color:${contentText};padding:28px 28px 8px;font-family:Arial,sans-serif;">${content}</td>
   </tr>
-  <tr><td><img src="cid:${footerCid}" width="600" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
+  <tr><td bgcolor="${meta.footerBg}" style="background-color:${meta.footerBg};" height="${meta.footerHeight}"><img src="cid:${footerCid}" width="600" height="${meta.footerHeight}" style="display:block;width:100%;max-width:600px;" alt="${escapeHtml(platformName)}"></td></tr>
 </table>
 </td></tr>
 </table>
