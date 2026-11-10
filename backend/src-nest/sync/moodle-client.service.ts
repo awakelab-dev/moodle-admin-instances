@@ -28,7 +28,7 @@ export class MoodleClient {
 
     const res = await axios.post(this.endpoint, data.toString(), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      timeout: 60000,
+      timeout: 120000,
     });
 
     if (res.data && res.data.exception) {
