@@ -425,6 +425,98 @@ export default function ConfigPage() {
     }
   }
 
+  function renderPlatformForm() {
+    return (
+      <Card className="p-4 pt-4">
+        <div className="panel-header panel-header-compact">
+          <div>
+            <p className="eyebrow">
+              {editingId !== null ? 'Edición' : 'Nueva conexión'}
+            </p>
+            <h3 className="card-title">
+              {editingId !== null ? 'Editar plataforma' : 'Nueva plataforma'}
+            </h3>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="grid gap-3.5" noValidate>
+          <div className="grid grid-cols-2 gap-3.5 max-[720px]:grid-cols-1">
+            <div className="grid gap-1.5">
+              <Label>Nombre</Label>
+              <Input
+                type="text"
+                placeholder="Ej: Moodle Producción"
+                autoComplete="off"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>URL</Label>
+              <Input
+                type="url"
+                placeholder="https://moodle.ejemplo.com"
+                autoComplete="off"
+                value={form.url}
+                onChange={(e) => setForm({ ...form, url: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5 col-span-2 max-[720px]:col-span-1">
+              <Label>
+                Token WS
+                {editingId !== null && (
+                  <span className="form-hint"> (dejar vacío para mantener el actual)</span>
+                )}
+              </Label>
+              <Input
+                type="password"
+                placeholder="abc123def456..."
+                autoComplete="new-password"
+                value={form.token}
+                onChange={(e) => setForm({ ...form, token: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Proveedor <span className="form-hint">(opcional)</span></Label>
+              <Input
+                type="text"
+                placeholder="Ej: DGF"
+                autoComplete="off"
+                value={form.provider}
+                onChange={(e) => setForm({ ...form, provider: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Monto mensual cobrado</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ej: 120"
+                autoComplete="off"
+                value={form.monthlyCharge}
+                onChange={(e) =>
+                  setForm({ ...form, monthlyCharge: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Costo global por GB</Label>
+              <Input type="text" value="USD 1.00" disabled />
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2.5">
+            <Button type="submit">
+              {editingId !== null ? 'Guardar cambios' : 'Agregar'}
+            </Button>
+            <Button type="button" variant="outline" onClick={closeForm}>
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </Card>
+    );
+  }
+
   if (loading) return <p className="empty">Cargando configuración…</p>;
 
   const providers = Array.from(new Set(platforms.map((p) => p.provider).filter(Boolean))).sort();
@@ -454,95 +546,7 @@ export default function ConfigPage() {
         </Alert>
       )}
 
-      {showForm && (
-        <Card className="p-4 pt-4">
-          <div className="panel-header panel-header-compact">
-            <div>
-              <p className="eyebrow">
-                {editingId !== null ? 'Edición' : 'Nueva conexión'}
-              </p>
-              <h3 className="card-title">
-                {editingId !== null ? 'Editar plataforma' : 'Nueva plataforma'}
-              </h3>
-            </div>
-          </div>
-          <form onSubmit={handleSubmit} className="grid gap-3.5" noValidate>
-            <div className="grid grid-cols-2 gap-3.5 max-[720px]:grid-cols-1">
-              <div className="grid gap-1.5">
-                <Label>Nombre</Label>
-                <Input
-                  type="text"
-                  placeholder="Ej: Moodle Producción"
-                  autoComplete="off"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>URL</Label>
-                <Input
-                  type="url"
-                  placeholder="https://moodle.ejemplo.com"
-                  autoComplete="off"
-                  value={form.url}
-                  onChange={(e) => setForm({ ...form, url: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5 col-span-2 max-[720px]:col-span-1">
-                <Label>
-                  Token WS
-                  {editingId !== null && (
-                    <span className="form-hint"> (dejar vacío para mantener el actual)</span>
-                  )}
-                </Label>
-                <Input
-                  type="password"
-                  placeholder="abc123def456..."
-                  autoComplete="new-password"
-                  value={form.token}
-                  onChange={(e) => setForm({ ...form, token: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Proveedor <span className="form-hint">(opcional)</span></Label>
-                <Input
-                  type="text"
-                  placeholder="Ej: DGF"
-                  autoComplete="off"
-                  value={form.provider}
-                  onChange={(e) => setForm({ ...form, provider: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Monto mensual cobrado</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Ej: 120"
-                  autoComplete="off"
-                  value={form.monthlyCharge}
-                  onChange={(e) =>
-                    setForm({ ...form, monthlyCharge: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Costo global por GB</Label>
-                <Input type="text" value="USD 1.00" disabled />
-              </div>
-            </div>
-            <div className="flex flex-wrap justify-end gap-2.5">
-              <Button type="submit">
-                {editingId !== null ? 'Guardar cambios' : 'Agregar'}
-              </Button>
-              <Button type="button" variant="outline" onClick={closeForm}>
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+      {showForm && editingId === null && renderPlatformForm()}
 
       {platforms.length > 0 && providers.length > 0 && (
         <div className="grid gap-1.5" style={{ maxWidth: 260 }}>
@@ -574,7 +578,8 @@ export default function ConfigPage() {
       ) : (
         <div className="platform-list">
           {filteredPlatforms.map((p) => (
-            <Card key={p.id} className="platform-card p-4">
+            <div key={p.id} className="grid gap-3.5">
+            <Card className="platform-card p-4">
               <div className="platform-info">
                 <div className="platform-name">
                   {formatPlatformDisplayName(p.name)}
@@ -704,6 +709,8 @@ export default function ConfigPage() {
                 </div>
               )}
             </Card>
+            {showForm && editingId === p.id && renderPlatformForm()}
+            </div>
           ))}
         </div>
       )}
