@@ -8,7 +8,7 @@ export class MoodleClient {
 
   constructor(url: string, token: string) {
     this.baseUrl = url.replace(/\/+$/, '');
-    this.token = token;
+    this.token = token.trim();
     this.endpoint = `${this.baseUrl}/webservice/rest/server.php`;
   }
 
