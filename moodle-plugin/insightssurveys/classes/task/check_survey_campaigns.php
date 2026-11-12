@@ -1,20 +1,29 @@
 <?php
-namespace local_courseprogressnotify\task;
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace local_insightssurveys\task;
 
 defined('MOODLE_INTERNAL') || die();
 
 use core\task\scheduled_task;
-use local_courseprogressnotify\survey_mailer;
-use local_courseprogressnotify\insights_client;
+use local_insightssurveys\survey_mailer;
+use local_insightssurveys\insights_client;
 
-/**
- * Manda las campañas de encuesta de calidad (Moodle Insights, sección
- * "Encuestas") cuyo envío toca hoy — correo real e inmediato vía
- * survey_mailer (email_to_user()), no mensajería de Moodle.
- */
 class check_survey_campaigns extends scheduled_task {
 
-    /** @var int|null Si se indica, limita el envío a este destinatario (lookup manual desde "Enviar ahora" por curso). */
     protected $targetcourseid = 0;
 
     public function set_target_course_id(int $id): void {
@@ -22,18 +31,16 @@ class check_survey_campaigns extends scheduled_task {
     }
 
     public function get_name() {
-        return get_string('task_check_survey_campaigns', 'local_courseprogressnotify');
+        return get_string('task_check_survey_campaigns', 'local_insightssurveys');
     }
 
     public function execute() {
         mtrace('Running task: survey campaigns');
-
         $campaigns = insights_client::get_due_survey_campaigns();
         if (empty($campaigns)) {
             mtrace('  No hay campañas de encuesta pendientes hoy.');
             return;
         }
-
         mtrace('  Campañas pendientes: ' . count($campaigns));
 
         $results = [];
@@ -69,7 +76,7 @@ class check_survey_campaigns extends scheduled_task {
                     'link' => '<a href="' . s($surveyurl) . '">' . s($surveyurl) . '</a>',
                 ]);
                 $bodyhtml = nl2br($body);
-                $subject = get_string('survey_email_subject', 'local_courseprogressnotify');
+                $subject = get_string('survey_email_subject', 'local_insightssurveys');
 
                 $sent = survey_mailer::send($user, $subject, $bodyhtml, $notificationtype, $courseidforlog);
 
@@ -90,11 +97,6 @@ class check_survey_campaigns extends scheduled_task {
         mtrace("Survey campaigns check complete. Total enviados: {$totalsent}");
     }
 
-    /**
-     * @param string $recipientsource
-     * @param array $campaign
-     * @return \stdClass[] Usuarios de Moodle (objetos con al menos id/email/firstname/lastname).
-     */
     protected function resolve_recipients(string $recipientsource, array $campaign): array {
         global $DB;
 
@@ -106,7 +108,6 @@ class check_survey_campaigns extends scheduled_task {
             return array_values($this->get_course_students($courseid));
         }
 
-        // manual: cada email se resuelve a una cuenta real de esta plataforma; los que no existan se omiten.
         $emails = is_array($campaign['manualRecipients'] ?? null) ? $campaign['manualRecipients'] : [];
         $users = [];
         foreach ($emails as $email) {
@@ -126,8 +127,7 @@ class check_survey_campaigns extends scheduled_task {
 
     protected function get_course_students(int $courseid): array {
         global $DB;
-        $sql = "SELECT DISTINCT u.*
-                  FROM {user} u
+        $sql = "SELECT DISTINCT u.* FROM {user} u
                   JOIN {user_enrolments} ue ON ue.userid = u.id AND ue.status = 0
                   JOIN {enrol} e ON e.id = ue.enrolid AND e.courseid = :courseid AND e.status = 0
                   JOIN {role_assignments} ra ON ra.userid = u.id

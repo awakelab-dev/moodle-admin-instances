@@ -127,50 +127,6 @@ class insights_client {
     }
 
     /**
-     * Campañas de encuesta de calidad con un envío pendiente HOY para esta
-     * plataforma (misma conexión URL+API key que get_config()/get_settings()
-     * — no hay un ajuste de conexión aparte para encuestas).
-     *
-     * @return array<int,array> cada una: ['campaignId'=>string,'dayIndex'=>int,
-     *   'recipientSource'=>'manual'|'course_enrollment','manualRecipients'=>string[],
-     *   'courseId'=>?int,'surveyUrl'=>string,'messageTemplate'=>string]
-     */
-    public static function get_due_survey_campaigns(): array {
-        [$url, $apikey] = self::get_connection();
-        if (!$url || !$apikey) {
-            mtrace('  ✗ Moodle Insights no está configurado (URL/API key vacíos) — no se enviará ninguna encuesta.');
-            return [];
-        }
-
-        $response = self::call('GET', $url . '/api/surveys/plugin/campaigns', $apikey);
-        if ($response === null) {
-            return [];
-        }
-        $data = json_decode($response, true);
-        return is_array($data) ? $data : [];
-    }
-
-    /**
-     * Reporta en un solo lote los envíos de encuesta intentados (éxito o
-     * fallo) en esta ejecución — igual que report_log() pero al endpoint de
-     * encuestas. La deduplicación real ya la garantiza la tabla local
-     * (notification_log), así que un fallo aquí solo deja el seguimiento
-     * centralizado incompleto para esa ejecución.
-     *
-     * @param array $results Cada elemento: ['campaignId'=>string,'dayIndex'=>int,'recipientEmail'=>string,'moodleUserId'=>?int,'success'=>bool,'errorMessage'=>?string]
-     */
-    public static function report_survey_log(array $results): void {
-        if (empty($results)) {
-            return;
-        }
-        [$url, $apikey] = self::get_connection();
-        if (!$url || !$apikey) {
-            return;
-        }
-        self::call('POST', $url . '/api/surveys/plugin/log', $apikey, ['results' => array_values($results)]);
-    }
-
-    /**
      * @return array{0:?string,1:?string} [url sin barra final, apikey] — ambos null si falta alguno.
      */
     private static function get_connection(): array {

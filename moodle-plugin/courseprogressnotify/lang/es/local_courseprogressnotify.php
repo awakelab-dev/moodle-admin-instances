@@ -35,7 +35,6 @@ $string['task_check_presential_sessions'] = 'Recordatorios de sesiones presencia
 $string['task_check_diploma_available'] = 'Aviso: diploma disponible (30 días)';
 $string['task_check_first_day_tasks'] = 'Primer día: tareas iniciales';
 $string['task_check_second_day_tasks'] = 'Segundo día: navegadores y ventanas emergentes';
-$string['task_check_survey_campaigns'] = 'Encuestas de calidad (Moodle Insights)';
 
 // Manual run page.
 $string['runpage:title'] = 'Verificación manual de notificaciones';
@@ -55,9 +54,7 @@ $string['runpage:type_firstday'] = 'Notificaciones de Primer Día (Tareas Inicia
 $string['runpage:confirm_firstday'] = 'Revisar cursos que inician hoy y enviar a estudiantes las instrucciones sobre firma de normativa, recibo de material y requisitos del curso.';
 $string['runpage:type_secondday'] = 'Notificaciones de Segundo Día (Navegadores)';
 $string['runpage:confirm_secondday'] = 'Revisar cursos en su segundo día y enviar a estudiantes información sobre navegadores compatibles y configuración de ventanas emergentes.';
-$string['runpage:type_survey'] = 'Encuestas de Calidad (Moodle Insights)';
-$string['runpage:confirm_survey'] = 'Revisar las campañas de encuesta activas en Moodle Insights y mandar, a quien le toque hoy, el correo con el enlace a la encuesta (si no se le ha mandado ya ese día concreto).';
-$string['runpage:confirm'] = 'Haz clic en el botón para iniciar la verificación. Se revisarán todos los estudiantes de los cursos con notificaciones habilitadas y se enviarán emails a quienes hayan alcanzado el 25% o 50% de progreso (si no han sido notificados previamente).';
+$string['runpage:confirm'] ='Haz clic en el botón para iniciar la verificación. Se revisarán todos los estudiantes de los cursos con notificaciones habilitadas y se enviarán emails a quienes hayan alcanzado el 25% o 50% de progreso (si no han sido notificados previamente).';
 $string['run_progress_button'] = 'Probar Emails de Progreso';
 $string['run_courseend_button'] = 'Probar Emails de Fin de Curso';
 $string['run_zoom_button'] = 'Probar Emails de Zoom';
@@ -65,7 +62,6 @@ $string['run_presential_button'] = 'Probar Emails de Sesiones Presenciales';
 $string['run_diploma_button'] = 'Probar Emails de Diploma';
 $string['run_firstday_button'] = 'Probar Emails de Primer Día';
 $string['run_secondday_button'] = 'Probar Emails de Segundo Día';
-$string['run_survey_button'] = 'Probar Encuestas Ahora';
 $string['run_clear_button'] = 'Limpiar Logs y Ejecutar';
 $string['run_ignore_restrictions_button'] = 'Enviar a todos (ignorar fechas)';
 $string['runpage:confirm_ignore_all_courses'] = 'No has elegido ningún curso concreto — esto va a procesar TODOS los cursos habilitados de la plataforma, sin ningún filtro de fecha, y puede enviar muchos correos de golpe a alumnos reales. ¿Seguro que quieres continuar?';
@@ -89,9 +85,6 @@ $string['progress:header:activity'] = 'Actividad';
 $string['progress:header:status'] = 'Estado';
 $string['progress:status:complete'] = 'Completado';
 $string['progress:status:incomplete'] = 'Pendiente';
-
-// Survey campaign email (Moodle Insights > Encuestas).
-$string['survey_email_subject'] = 'Encuesta de calidad del curso';
 
 // Privacy.
 $string['privacy:metadata'] = 'El plugin local_courseprogressnotify almacena registros de notificaciones enviadas a los usuarios.';

@@ -2,11 +2,12 @@
 // de encuesta de calidad de curso. El link de la encuesta en sí vive fuera
 // de la app (Typeform/Google Form) — aquí solo se programa cuándo y a quién
 // se le manda, el día de inicio del curso y los días siguientes. El envío
-// real lo hace el plugin local_courseprogressnotify ya instalado en cada
-// plataforma (mismo mecanismo que las notificaciones de progreso: email
-// real e inmediato, no mensajería de Moodle), en su tarea programada diaria
-// — por eso toda campaña necesita una plataforma con la API key de
-// notificaciones ya generada.
+// real lo hace local_insightssurveys, un plugin propio (separado del de
+// notificaciones de progreso, aunque con el mismo mecanismo: email real e
+// inmediato, no mensajería de Moodle) que hay que instalar en cada
+// plataforma que mande encuestas, en su tarea programada diaria — por eso
+// toda campaña necesita una plataforma con la API key de notificaciones ya
+// generada.
 import { Fragment, useEffect, useState } from 'react';
 import {
   getSurveyCampaigns,
@@ -150,7 +151,7 @@ export default function SurveysPage() {
       <h2 className="section-title">Encuestas de calidad</h2>
       <p className="panel-description">
         Programa el envío de una encuesta (link externo de Typeform/Google Form) a los alumnos de un curso, por email
-        real desde la propia plataforma Moodle (vía el plugin de notificaciones), el día de inicio y los días
+        real desde la propia plataforma Moodle (vía el plugin local_insightssurveys), el día de inicio y los días
         siguientes. La plataforma elegida debe tener ya generada su API key en Gestión de Notificaciones.
       </p>
 

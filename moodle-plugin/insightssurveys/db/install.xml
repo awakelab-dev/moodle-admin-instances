@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XMLDB PATH="local/insightssurveys/db" VERSION="2026111200" COMMENT="Install XML for local_insightssurveys" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://moodle.org/xmldb/xmldb.xsd">
+    <TABLES>
+        <!-- Survey send log: prevents duplicate sends and records attempts -->
+        <TABLE NAME="local_insightssurveys_log" COMMENT="Log of survey emails sent to users">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="notification_type" TYPE="char" LENGTH="64" NOTNULL="true"/>
+                <FIELD NAME="time_sent" TYPE="int" LENGTH="10" NOTNULL="true"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="log_user_type_course_uix" UNIQUE="true" FIELDS="userid, courseid, notification_type"/>
+            </INDEXES>
+        </TABLE>
+    </TABLES>
+</XMLDB>

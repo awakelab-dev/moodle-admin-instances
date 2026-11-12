@@ -14,25 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace local_courseprogressnotify;
+namespace local_insightssurveys;
 
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Envío de encuestas de calidad de curso (Moodle Insights, sección
- * "Encuestas") — correo real e inmediato vía email_to_user(), igual que
- * email_builder::send_from_template(), pero sin depender de un $course real
- * (una campaña con destinatarios manuales no tiene curso asociado) ni de
- * las imágenes incrustadas que sí usan las plantillas de notificaciones.
+ * Envío de encuestas de calidad de curso — correo real e inmediato vía
+ * email_to_user(), el mismo mecanismo que usa local_courseprogressnotify
+ * para sus notificaciones de progreso (probado fiable en esta plataforma).
  *
- * Se probó primero mandar esto como mensaje interno de Moodle
- * (core_message_send_instant_messages vía Web Service) y NO es fiable: Moodle
- * solo lo reenvía por email si el destinatario sigue sin leerlo pasado un
- * tiempo, y depende del cron + de las preferencias de mensajería de cada
- * usuario. email_to_user() en cambio es inmediato y no depende de nada de
- * eso — mismo mecanismo que ya usan las notificaciones de progreso.
+ * Se descartó mandar esto como mensaje interno de Moodle
+ * (core_message_send_instant_messages vía Web Service): Moodle solo lo
+ * reenvía por email si el destinatario sigue sin leerlo pasado un tiempo, y
+ * depende del cron + de las preferencias de mensajería de cada usuario.
+ * email_to_user() es inmediato y no depende de nada de eso, pero solo se
+ * puede llamar desde código que corre dentro del propio Moodle — de ahí
+ * este plugin.
  *
- * @package local_courseprogressnotify
+ * @package local_insightssurveys
  */
 class survey_mailer {
 
@@ -48,7 +47,7 @@ class survey_mailer {
         global $CFG;
         require_once($CFG->libdir . '/weblib.php');
 
-        if (notification_log::has_sent($user->id, $courseid, $notificationtype, null)) {
+        if (survey_log::has_sent($user->id, $courseid, $notificationtype)) {
             mtrace("    ✓ Ya enviado antes a {$user->email} (se omite)");
             return false;
         }
@@ -64,7 +63,7 @@ class survey_mailer {
         $sent = email_to_user($user, $from, $subject, $bodytext, $bodyhtml);
 
         if ($sent) {
-            notification_log::log_sent($user->id, $courseid, $notificationtype, null);
+            survey_log::log_sent($user->id, $courseid, $notificationtype);
             mtrace("    ✓ Encuesta enviada a {$user->email}");
         } else {
             mtrace("    ✗ Envío fallido a {$user->email} - revisa la configuración de correo de Moodle");

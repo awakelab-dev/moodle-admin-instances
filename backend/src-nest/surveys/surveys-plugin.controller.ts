@@ -5,11 +5,11 @@ import { PlatformApiKeyGuard } from '../notifications/guards/platform-api-key.gu
 import { CurrentPlatform } from '../notifications/current-platform.decorator';
 import { ReportSurveyLogDto } from './dto/report-survey-log.dto';
 
-// Rutas que llama el plugin local_courseprogressnotify (mismo plugin y
-// misma API key que "Gestión de Notificaciones" — no hace falta una
-// conexión aparte) desde cada plataforma Moodle, para su tarea programada
-// de encuestas de calidad. Ver notifications-plugin.controller.ts para el
-// mismo patrón.
+// Rutas que llama el plugin local_insightssurveys (plugin dedicado a esto,
+// separado de local_courseprogressnotify, pero con la MISMA API key que
+// "Gestión de Notificaciones" — no hace falta una conexión aparte) desde
+// cada plataforma Moodle, para su tarea programada de encuestas de calidad.
+// Ver notifications-plugin.controller.ts para el mismo patrón.
 @Controller('surveys/plugin')
 @Public()
 @UseGuards(PlatformApiKeyGuard)

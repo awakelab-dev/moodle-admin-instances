@@ -27,7 +27,6 @@ use local_courseprogressnotify\task\check_presential_sessions;
 use local_courseprogressnotify\task\check_diploma_available;
 use local_courseprogressnotify\task\check_first_day_tasks;
 use local_courseprogressnotify\task\check_second_day_tasks;
-use local_courseprogressnotify\task\check_survey_campaigns;
 
 require_login();
 $context = context_system::instance();
@@ -265,21 +264,8 @@ if ($confirm && !empty($type) && confirm_sesskey()) {
             $errors[] = 'Second day task: ' . $e->getMessage();
             $output[] = 'ERROR in Second day task: ' . $e->getMessage();
         }
-    } else if ($type === 'survey') {
-        try {
-            $output[] = '--- Executing Survey Campaigns Check' . $courselabel . ' ---';
-            $tsurvey = new check_survey_campaigns();
-            if ($courseid) {
-                $tsurvey->set_target_course_id($courseid);
-            }
-            $tsurvey->execute();
-            $output[] = ob_get_contents();
-        } catch (Throwable $e) {
-            $errors[] = 'Survey task: ' . $e->getMessage();
-            $output[] = 'ERROR in Survey task: ' . $e->getMessage();
-        }
     }
-    
+
     ob_end_clean();
     
     $output[] = '';
@@ -420,17 +406,6 @@ if (empty($customfield)) {
     echo ' ';
     $clearurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'secondday', 'clearlogs' => 1]);
     echo html_writer::link($clearurl, get_string('run_clear_button', 'local_courseprogressnotify'), ['class' => 'btn btn-warning cpn-run-btn', 'data-basehref' => $clearurl->out(false)]);
-    echo $OUTPUT->box_end();
-
-    // Survey campaigns (Moodle Insights > Encuestas) — no depende del campo
-    // personalizado de cursos ni de este selector, pero se deja aquí para no
-    // duplicar la página de administración manual.
-    echo $OUTPUT->box_start('generalbox mb-3');
-    echo html_writer::tag('h4', get_string('runpage:type_survey', 'local_courseprogressnotify'));
-    echo html_writer::tag('p', get_string('runpage:confirm_survey', 'local_courseprogressnotify'));
-
-    $formurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'survey']);
-    echo html_writer::link($formurl, get_string('run_survey_button', 'local_courseprogressnotify'), ['class' => 'btn btn-primary cpn-run-btn', 'data-basehref' => $formurl->out(false)]);
     echo $OUTPUT->box_end();
 
     // JS: update all button hrefs when the course selector changes.

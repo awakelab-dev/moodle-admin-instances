@@ -107,13 +107,4 @@ $tasks = [
         'month'     => '*',
         'dayofweek' => '*',
     ],
-    [
-        'classname' => '\\local_courseprogressnotify\\task\\check_survey_campaigns',
-        'blocking'  => 0,
-        'minute'    => '45',
-        'hour'      => '9',
-        'day'       => '*',
-        'month'     => '*',
-        'dayofweek' => '*',
-    ],
 ];

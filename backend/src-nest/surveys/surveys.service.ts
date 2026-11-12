@@ -8,10 +8,11 @@ import { CreateSurveyCampaignDto } from './dto/create-survey-campaign.dto';
 // usuario), el link de una encuesta externa (Typeform/Google Form) el día
 // de inicio del curso y los días siguientes configurados.
 //
-// El envío en sí NO lo dispara este backend: lo hace el plugin
-// local_courseprogressnotify ya instalado en cada plataforma (mismo
-// mecanismo probado que las notificaciones de progreso, que llama a
-// email_to_user() de Moodle directamente). Este servicio solo expone, vía
+// El envío en sí NO lo dispara este backend: lo hace local_insightssurveys,
+// un plugin propio y separado del de notificaciones de progreso (pero con el
+// mismo mecanismo probado: llama a email_to_user() de Moodle directamente),
+// que hay que instalar en cada plataforma que mande encuestas. Este servicio
+// solo expone, vía
 // SurveysPluginController, qué campañas tienen un envío pendiente HOY para
 // la plataforma que pregunta, y registra el resultado que el plugin reporta
 // después de intentarlo — igual que NotificationsService con
@@ -131,7 +132,7 @@ export class SurveysService {
   /**
    * Llamado por el plugin (POST /api/surveys/plugin/log) justo después de
    * intentar cada envío (éxito o fallo), en lote. La deduplicación real ya
-   * la garantiza la tabla local del plugin (local_courseprogressnotify_log)
+   * la garantiza la tabla local del plugin (local_insightssurveys_log)
    * — esto solo centraliza el seguimiento para verlo en Insights.
    */
   async reportPluginLog(
