@@ -282,3 +282,11 @@ export const revokeSecurityApiKey = (platformId) =>
     invalidateCache('platforms');
     return result;
   });
+
+/* ─── Encuestas de calidad (solo superadmin) ─── */
+export const getSurveyCampaigns = () => request('/surveys', { cache: 'no-store' });
+export const getSurveyCampaign = (id) => request(`/surveys/${id}`, { cache: 'no-store' });
+export const createSurveyCampaign = (data) => request('/surveys', { method: 'POST', body: JSON.stringify(data) });
+export const setSurveyCampaignActive = (id, isActive) =>
+  request(`/surveys/${id}/active`, { method: 'PUT', body: JSON.stringify({ isActive }) });
+export const deleteSurveyCampaign = (id) => request(`/surveys/${id}`, { method: 'DELETE' });

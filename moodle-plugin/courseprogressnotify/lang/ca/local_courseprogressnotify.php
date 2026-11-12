@@ -35,6 +35,7 @@ $string['task_check_presential_sessions'] = 'Recordatoris de sessions presencial
 $string['task_check_diploma_available'] = 'Avís: diploma disponible (30 dies)';
 $string['task_check_first_day_tasks'] = 'Primer dia: tasques inicials';
 $string['task_check_second_day_tasks'] = 'Segon dia: navegadors i finestres emergents';
+$string['task_check_survey_campaigns'] = 'Enquestes de qualitat (Moodle Insights)';
 
 // Manual run page.
 $string['runpage:title'] = 'Verificació manual de notificacions';
@@ -54,6 +55,8 @@ $string['runpage:type_firstday'] = 'Notificacions de Primer Dia (Tasques Inicial
 $string['runpage:confirm_firstday'] = 'Revisar cursos que inicien avui i enviar als estudiants les instruccions sobre signatura de normativa, rebut de material i requisits del curs.';
 $string['runpage:type_secondday'] = 'Notificacions de Segon Dia (Navegadors)';
 $string['runpage:confirm_secondday'] = 'Revisar cursos en el seu segon dia i enviar als estudiants informació sobre navegadors compatibles i configuració de finestres emergents.';
+$string['runpage:type_survey'] = 'Enquestes de Qualitat (Moodle Insights)';
+$string['runpage:confirm_survey'] = 'Revisar les campanyes d\'enquesta actives a Moodle Insights i enviar, a qui li toqui avui, el correu amb l\'enllaç a l\'enquesta (si no se li ha enviat ja aquell dia concret).';
 $string['runpage:confirm'] = 'Fes clic al botó per iniciar la verificació. Es revisaran tots els estudiants dels cursos amb notificacions habilitades i s\'enviaran correus als que hagin assolit el 25% o 50% de progrés (si no han estat notificats prèviament).';
 $string['run_progress_button'] = 'Provar Correus de Progrés';
 $string['run_courseend_button'] = 'Provar Correus de Fi de Curs';
@@ -62,6 +65,7 @@ $string['run_presential_button'] = 'Provar Correus de Sessions Presencials';
 $string['run_diploma_button'] = 'Provar Correus de Diploma';
 $string['run_firstday_button'] = 'Provar Correus de Primer Dia';
 $string['run_secondday_button'] = 'Provar Correus de Segon Dia';
+$string['run_survey_button'] = 'Provar Enquestes Ara';
 $string['run_clear_button'] = 'Netejar registres i executar';
 $string['run_ignore_restrictions_button'] = 'Enviar a tots (ignorar dates)';
 $string['runpage:confirm_ignore_all_courses'] = 'No has triat cap curs concret — això processarà TOTS els cursos habilitats de la plataforma, sense cap filtre de data, i pot enviar molts correus de cop a alumnes reals. Segur que vols continuar?';
@@ -85,6 +89,9 @@ $string['progress:header:activity'] = 'Activitat';
 $string['progress:header:status'] = 'Estat';
 $string['progress:status:complete'] = 'Completat';
 $string['progress:status:incomplete'] = 'Pendent';
+
+// Survey campaign email (Moodle Insights > Enquestes).
+$string['survey_email_subject'] = 'Enquesta de qualitat del curs';
 
 // Privacy.
 $string['privacy:metadata:local_courseprogressnotify_log'] = 'Registre de notificacions enviades';

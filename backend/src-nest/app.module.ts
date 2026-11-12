@@ -11,6 +11,7 @@ import { UsersModule } from './users/users.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ScormModule } from './scorm/scorm.module';
 import { SecurityModule } from './security/security.module';
+import { SurveysModule } from './surveys/surveys.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AppController } from './app.controller';
@@ -34,6 +35,7 @@ import { AppController } from './app.controller';
     NotificationsModule,
     ScormModule,
     SecurityModule,
+    SurveysModule,
   ],
   controllers: [AppController],
   providers: [
