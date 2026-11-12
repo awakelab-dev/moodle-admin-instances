@@ -833,7 +833,9 @@ function RulesTab({ flash }) {
                 {paramKeys.length > 0 && (
                   <div className="grid gap-2.5" style={{ marginTop: '0.75rem', width: '100%', maxWidth: 420 }}>
                     {paramKeys.map((paramKey) => {
-                      const isList = trigger.paramsSchema[paramKey] === 'string[]';
+                      const paramType = trigger.paramsSchema[paramKey];
+                      const isList = paramType === 'string[]';
+                      const isNumber = paramType === 'number';
                       return (
                         <div key={paramKey} className="grid gap-1.5">
                           <Label>{PARAM_LABELS[paramKey] || paramKey}</Label>
@@ -851,8 +853,8 @@ function RulesTab({ flash }) {
                             />
                           ) : (
                             <Input
-                              type="number"
-                              min="0"
+                              type={isNumber ? 'number' : 'text'}
+                              min={isNumber ? '0' : undefined}
                               value={paramsForm[trigger.key]?.[paramKey] ?? ''}
                               onChange={(e) =>
                                 setParamsForm((prev) => ({
