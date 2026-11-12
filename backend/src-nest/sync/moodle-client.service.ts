@@ -145,4 +145,33 @@ export class MoodleClient {
   getDiscussionPosts(discussionId: number) {
     return this.call('mod_forum_get_discussion_posts', { discussionid: discussionId });
   }
+
+  /** wsfunction: core_webservice_get_site_info. Entre otras cosas devuelve el userid dueño del token usado — hace falta para no mandarse un mensaje a sí mismo. */
+  getSiteInfo() {
+    return this.call('core_webservice_get_site_info');
+  }
+
+  /** wsfunction: core_user_get_users_by_field. Busca un usuario por email (o cualquier otro campo) — devuelve un array, vacío si no existe. */
+  getUsersByField(field: 'email' | 'id' | 'username', values: (string | number)[]) {
+    const params: Record<string, any> = { field };
+    values.forEach((v, i) => {
+      params[`values[${i}]`] = v;
+    });
+    return this.call('core_user_get_users_by_field', params);
+  }
+
+  /**
+   * wsfunction: core_message_send_instant_messages. Manda un mensaje interno de Moodle
+   * a un usuario — Moodle solo lo reenvía por email si el destinatario tiene esa
+   * preferencia y no lo ha leído tras un rato (depende del cron del sitio), así que
+   * NO es un email instantáneo garantizado, a diferencia de email_to_user() desde un
+   * plugin. Se usa aquí porque no requiere instalar nada en la plataforma.
+   */
+  sendInstantMessage(touserid: number, text: string, textformat: 0 | 1 = 1) {
+    return this.call('core_message_send_instant_messages', {
+      'messages[0][touserid]': touserid,
+      'messages[0][text]': text,
+      'messages[0][textformat]': textformat,
+    });
+  }
 }

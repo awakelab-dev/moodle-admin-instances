@@ -2,11 +2,13 @@
 // de encuesta de calidad de curso. El link de la encuesta en sí vive fuera
 // de la app (Typeform/Google Form) — aquí solo se programa cuándo y a quién
 // se le manda, el día de inicio del curso y los días siguientes. El envío
-// real lo hace el plugin local_courseprogressnotify ya instalado en cada
-// plataforma (mismo mecanismo que las notificaciones de progreso: email
-// real e inmediato, no mensajería de Moodle), en su tarea programada diaria
-// — por eso toda campaña necesita una plataforma con la API key de
-// notificaciones ya generada.
+// lo hace este backend directamente contra la Web Service de Moodle
+// (core_message_send_instant_messages, ya habilitada en cualquier
+// plataforma sincronizada — no requiere instalar ningún plugin), en el
+// cron diario o al pulsar "Enviar ahora". Moodle solo reenvía ese mensaje
+// por email si el sitio tiene forzado el canal de email para mensajes
+// personales (Administración del sitio > Mensajes > Configuración de
+// notificaciones).
 import { Fragment, useEffect, useState } from 'react';
 import {
   getSurveyCampaigns,
@@ -14,6 +16,7 @@ import {
   createSurveyCampaign,
   setSurveyCampaignActive,
   deleteSurveyCampaign,
+  sendSurveyCampaignNow,
   getPlatforms,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
@@ -56,6 +59,7 @@ export default function SurveysPage() {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedDetail, setExpandedDetail] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [sendingId, setSendingId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -143,15 +147,41 @@ export default function SurveysPage() {
     }
   }
 
+  async function handleSendNow(campaign) {
+    setSendingId(campaign.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await sendSurveyCampaignNow(campaign.id);
+      setNotice(`Día ${result.dayIndex}: ${result.sent} de ${result.total} mensaje(s) enviado(s).`);
+      if (expandedId === campaign.id) await toggleExpandReload(campaign.id);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSendingId(null);
+    }
+  }
+
+  async function toggleExpandReload(id) {
+    try {
+      const detail = await getSurveyCampaign(id);
+      setExpandedDetail(detail);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (loading) return <p className="empty">Cargando encuestas…</p>;
 
   return (
     <div className="section-stack">
       <h2 className="section-title">Encuestas de calidad</h2>
       <p className="panel-description">
-        Programa el envío de una encuesta (link externo de Typeform/Google Form) a los alumnos de un curso, por email
-        real desde la propia plataforma Moodle (vía el plugin de notificaciones), el día de inicio y los días
-        siguientes. La plataforma elegida debe tener ya generada su API key en Gestión de Notificaciones.
+        Programa el envío de una encuesta (link externo de Typeform/Google Form) a los alumnos de un curso, como
+        mensaje interno de Moodle, el día de inicio y los días siguientes — no requiere instalar nada en la
+        plataforma. Para que llegue también por email, el sitio Moodle debe tener forzado el canal de email para
+        mensajes personales (Administración del sitio &gt; Mensajes &gt; Configuración de notificaciones).
       </p>
 
       {error && (
@@ -193,7 +223,7 @@ export default function SurveysPage() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Plataforma (debe tener ya API key de notificaciones)</Label>
+              <Label>Plataforma (Moodle de origen del mensaje)</Label>
               <Select value={form.platformId} onValueChange={(v) => setForm({ ...form, platformId: v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una plataforma" />
@@ -305,6 +335,9 @@ export default function SurveysPage() {
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     <Switch checked={c.isActive} onCheckedChange={() => handleToggleActive(c)} />
+                    <Button type="button" size="sm" variant="outline" disabled={sendingId === c.id} onClick={() => handleSendNow(c)}>
+                      {sendingId === c.id ? 'Enviando…' : 'Enviar ahora'}
+                    </Button>
                     <Button type="button" size="sm" variant="destructive" onClick={() => setPendingDelete(c)}>
                       Eliminar
                     </Button>
