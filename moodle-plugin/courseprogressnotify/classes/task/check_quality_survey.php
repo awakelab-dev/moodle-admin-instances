@@ -13,8 +13,8 @@ use local_courseprogressnotify\insights_client;
  * el link de una encuesta externa (Typeform/Google Form, params.surveyUrl)
  * el día de inicio del curso y los (params.daysCount - 1) días siguientes.
  * A diferencia de first_day/second_day (un único disparo), esta tarea
- * reparte el envío en varios días — cada día se deduplica por separado con
- * su propia clave ("quality_survey_day{N}") en notification_log.
+ * reparte el envío en varios días consecutivos — cada día se deduplica por
+ * separado con su propia clave ("quality_survey_day{N}") en notification_log.
  */
 class check_quality_survey extends scheduled_task {
 
