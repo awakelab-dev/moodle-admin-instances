@@ -89,6 +89,20 @@ class check_quality_survey extends scheduled_task {
         }
         $courses = $enabled;
 
+        // Los cursos "solo diploma" solo deben recibir el email de diploma —
+        // mismo filtro que aplican el resto de disparadores recurrentes
+        // (first_day, second_day, progress_*).
+        $diplomaonlyids = notification_log::get_diploma_only_course_ids();
+        if (!empty($diplomaonlyids)) {
+            $courses = array_filter($courses, function ($c) use ($diplomaonlyids) {
+                if (in_array((int)$c->id, $diplomaonlyids, true)) {
+                    mtrace("  [DIPLOMA-ONLY] Skipping {$c->fullname} — configured to only receive diploma email.");
+                    return false;
+                }
+                return true;
+            });
+        }
+
         if ($this->targetcourseid > 0) {
             $courses = array_filter($courses, fn($c) => (int)$c->id === $this->targetcourseid);
         }
