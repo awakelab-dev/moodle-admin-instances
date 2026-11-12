@@ -1,18 +1,18 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { SurveysService } from './surveys.service';
 import { Public } from '../common/decorators/public.decorator';
-import { PlatformApiKeyGuard } from '../notifications/guards/platform-api-key.guard';
+import { SurveyApiKeyGuard } from './guards/survey-api-key.guard';
 import { CurrentPlatform } from '../notifications/current-platform.decorator';
 import { ReportSurveyLogDto } from './dto/report-survey-log.dto';
 
 // Rutas que llama el plugin local_insightssurveys (plugin dedicado a esto,
-// separado de local_courseprogressnotify, pero con la MISMA API key que
-// "Gestión de Notificaciones" — no hace falta una conexión aparte) desde
-// cada plataforma Moodle, para su tarea programada de encuestas de calidad.
-// Ver notifications-plugin.controller.ts para el mismo patrón.
+// separado de local_courseprogressnotify, con su PROPIA API key —
+// independiente de la de "Gestión de Notificaciones", generada desde esta
+// misma pantalla de Encuestas). Ver notifications-plugin.controller.ts para
+// el mismo patrón.
 @Controller('surveys/plugin')
 @Public()
-@UseGuards(PlatformApiKeyGuard)
+@UseGuards(SurveyApiKeyGuard)
 export class SurveysPluginController {
   constructor(private surveys: SurveysService) {}
 

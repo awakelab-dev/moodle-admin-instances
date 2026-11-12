@@ -5,9 +5,9 @@
 // real lo hace local_insightssurveys, un plugin propio (separado del de
 // notificaciones de progreso, aunque con el mismo mecanismo: email real e
 // inmediato, no mensajería de Moodle) que hay que instalar en cada
-// plataforma que mande encuestas, en su tarea programada diaria — por eso
-// toda campaña necesita una plataforma con la API key de notificaciones ya
-// generada.
+// plataforma que mande encuestas, en su tarea programada diaria — con su
+// propia API key (independiente de la de notificaciones), que se genera
+// aquí mismo.
 import { Fragment, useEffect, useState } from 'react';
 import {
   getSurveyCampaigns,
@@ -15,6 +15,8 @@ import {
   createSurveyCampaign,
   setSurveyCampaignActive,
   deleteSurveyCampaign,
+  generateSurveysApiKey,
+  revokeSurveysApiKey,
   getPlatforms,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
@@ -57,6 +59,9 @@ export default function SurveysPage() {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedDetail, setExpandedDetail] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [keyBusyId, setKeyBusyId] = useState(null);
+  const [revealedKey, setRevealedKey] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -144,6 +149,51 @@ export default function SurveysPage() {
     }
   }
 
+  async function handleGenerateKey(platform) {
+    setKeyBusyId(platform.id);
+    setRevealedKey(null);
+    try {
+      const { apiKey } = await generateSurveysApiKey(platform.id);
+      setRevealedKey({ platformId: platform.id, key: apiKey });
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setKeyBusyId(null);
+    }
+  }
+
+  async function handleRevokeKey(platform) {
+    setKeyBusyId(platform.id);
+    try {
+      await revokeSurveysApiKey(platform.id);
+      setNotice(`API key de encuestas revocada para "${formatPlatformDisplayName(platform.name)}".`);
+      if (revealedKey?.platformId === platform.id) setRevealedKey(null);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setKeyBusyId(null);
+    }
+  }
+
+  async function handleCopyKey(platformId, key) {
+    try {
+      await navigator.clipboard.writeText(key);
+    } catch {
+      const el = document.getElementById(`survey-key-${platformId}`);
+      if (el) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+    setCopiedId(platformId);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
   if (loading) return <p className="empty">Cargando encuestas…</p>;
 
   return (
@@ -152,7 +202,7 @@ export default function SurveysPage() {
       <p className="panel-description">
         Programa el envío de una encuesta (link externo de Typeform/Google Form) a los alumnos de un curso, por email
         real desde la propia plataforma Moodle (vía el plugin local_insightssurveys), el día de inicio y los días
-        siguientes. La plataforma elegida debe tener ya generada su API key en Gestión de Notificaciones.
+        siguientes. La plataforma elegida debe tener ya generada su propia API key de encuestas (ver abajo).
       </p>
 
       {error && (
@@ -165,6 +215,59 @@ export default function SurveysPage() {
           <AlertDescription>{notice}</AlertDescription>
         </Alert>
       )}
+
+      <Card className="p-4 pt-4">
+        <div className="panel-header panel-header-compact">
+          <div>
+            <p className="eyebrow">Conexión</p>
+            <h3 className="card-title">API key del plugin local_insightssurveys</h3>
+          </div>
+        </div>
+        <p className="panel-description">
+          Cada plataforma necesita su propia API key, independiente de la de Notificaciones, para que el plugin{' '}
+          <span className="mono">local_insightssurveys</span> instalado ahí pueda conectarse. La key solo se muestra
+          una vez al generarla — pégala en la configuración del plugin en esa plataforma antes de cerrar esta ventana.
+        </p>
+        <div className="platform-list">
+          {platforms.map((platform) => (
+            <Card key={platform.id} className="platform-card p-3">
+              <div className="platform-info">
+                <div className="platform-name">{formatPlatformDisplayName(platform.name)}</div>
+                <div className="platform-url">
+                  <Badge variant={platform.hasSurveysApiKey ? 'secondary' : 'outline'}>
+                    {platform.hasSurveysApiKey ? 'Conectada' : 'Sin conectar'}
+                  </Badge>
+                </div>
+                {revealedKey?.platformId === platform.id && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <p id={`survey-key-${platform.id}`} className="history-note mono" style={{ wordBreak: 'break-all', margin: 0 }}>
+                        {revealedKey.key}
+                      </p>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleCopyKey(platform.id, revealedKey.key)}>
+                        {copiedId === platform.id ? 'Copiada ✓' : 'Copiar'}
+                      </Button>
+                    </div>
+                    <p className="history-note" style={{ color: 'var(--color-danger)' }}>
+                      Cópiala ahora — no se volverá a mostrar.
+                    </p>
+                  </>
+                )}
+              </div>
+              <div className="platform-actions">
+                <Button type="button" variant="outline" size="sm" disabled={keyBusyId === platform.id} onClick={() => handleGenerateKey(platform)}>
+                  {platform.hasSurveysApiKey ? 'Regenerar key' : 'Generar key'}
+                </Button>
+                {platform.hasSurveysApiKey && (
+                  <Button type="button" variant="destructive" size="sm" disabled={keyBusyId === platform.id} onClick={() => handleRevokeKey(platform)}>
+                    Revocar
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </Card>
 
       <Card className="p-4 pt-4">
         <div className="panel-header panel-header-compact">

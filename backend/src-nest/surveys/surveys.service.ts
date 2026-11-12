@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSurveyCampaignDto } from './dto/create-survey-campaign.dto';
 
@@ -17,8 +19,9 @@ import { CreateSurveyCampaignDto } from './dto/create-survey-campaign.dto';
 // la plataforma que pregunta, y registra el resultado que el plugin reporta
 // después de intentarlo — igual que NotificationsService con
 // getConfigForPlatform/reportDelivery. Por eso toda campaña necesita una
-// plataforma con la API key de notificaciones ya generada (Configuración >
-// Plataformas > Gestión de Notificaciones > Conexión).
+// plataforma con su propia API key de encuestas ya generada (independiente
+// de la de notificaciones — mismo patrón que SecurityApiKeyGuard: cada
+// plugin con su propia credencial, revocable sin afectar a los demás).
 @Injectable()
 export class SurveysService {
   constructor(private prisma: PrismaService) {}
@@ -54,9 +57,9 @@ export class SurveysService {
       throw new BadRequestException('platformId es obligatorio: es la plataforma Moodle desde la que se manda el correo');
     }
     const platform = await this.prisma.platform.findUnique({ where: { id: dto.platformId } });
-    if (!platform?.notificationsApiKeyHash) {
+    if (!platform?.surveysApiKeyHash) {
       throw new BadRequestException(
-        'Esa plataforma todavía no tiene generada la API key de notificaciones (Configuración > Plataformas > Gestión de Notificaciones > Conexión) — el plugin la necesita para poder recoger y mandar la encuesta.',
+        'Esa plataforma todavía no tiene generada su API key de encuestas (botón "Generar key" más abajo) — el plugin local_insightssurveys la necesita para poder recoger y mandar la encuesta.',
       );
     }
 
@@ -90,6 +93,24 @@ export class SurveysService {
     const campaign = await this.prisma.surveyCampaign.findUnique({ where: { id } });
     if (!campaign) throw new NotFoundException('Campaña no encontrada');
     return campaign;
+  }
+
+  /** Genera (o regenera) la API key del plugin local_insightssurveys para una plataforma. Mismo patrón que NotificationsService.generateApiKey(). */
+  async generateApiKey(platformId: string) {
+    const platform = await this.prisma.platform.findUnique({ where: { id: platformId } });
+    if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+
+    const plainKey = `${platformId}.${randomBytes(32).toString('hex')}`;
+    const hash = await bcrypt.hash(plainKey, 10);
+    await this.prisma.platform.update({ where: { id: platformId }, data: { surveysApiKeyHash: hash } });
+    return { apiKey: plainKey };
+  }
+
+  async revokeApiKey(platformId: string) {
+    const platform = await this.prisma.platform.findUnique({ where: { id: platformId } });
+    if (!platform) throw new NotFoundException('Plataforma no encontrada.');
+    await this.prisma.platform.update({ where: { id: platformId }, data: { surveysApiKeyHash: null } });
+    return { message: 'API key de encuestas revocada.' };
   }
 
   /**

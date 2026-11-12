@@ -290,3 +290,13 @@ export const createSurveyCampaign = (data) => request('/surveys', { method: 'POS
 export const setSurveyCampaignActive = (id, isActive) =>
   request(`/surveys/${id}/active`, { method: 'PUT', body: JSON.stringify({ isActive }) });
 export const deleteSurveyCampaign = (id) => request(`/surveys/${id}`, { method: 'DELETE' });
+export const generateSurveysApiKey = (platformId) =>
+  request(`/surveys/platforms/${platformId}/api-key`, { method: 'POST' }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });
+export const revokeSurveysApiKey = (platformId) =>
+  request(`/surveys/platforms/${platformId}/api-key`, { method: 'DELETE' }).then((result) => {
+    invalidateCache('platforms');
+    return result;
+  });

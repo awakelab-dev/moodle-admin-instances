@@ -33,4 +33,14 @@ export class SurveysController {
   remove(@Param('id') id: string) {
     return this.surveys.remove(id);
   }
+
+  @Post('platforms/:platformId/api-key')
+  generateApiKey(@Param('platformId') platformId: string) {
+    return this.surveys.generateApiKey(platformId);
+  }
+
+  @Delete('platforms/:platformId/api-key')
+  revokeApiKey(@Param('platformId') platformId: string) {
+    return this.surveys.revokeApiKey(platformId);
+  }
 }

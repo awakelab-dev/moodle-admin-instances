@@ -90,6 +90,11 @@ model Platform {
   // afectar al otro.
   securityApiKeyHash String? @map("security_api_key_hash")
 
+  // Credencial dedicada para el plugin local_insightssurveys (encuestas de
+  // calidad), mismo formato e idea que notificationsApiKeyHash/
+  // securityApiKeyHash pero independiente — plugin propio, su propia key.
+  surveysApiKeyHash String? @map("surveys_api_key_hash")
+
   courses     Course[]
   users       MoodleUser[]
   snapshots   PlatformSnapshot[]
