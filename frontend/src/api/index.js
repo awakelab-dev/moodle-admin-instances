@@ -290,4 +290,3 @@ export const createSurveyCampaign = (data) => request('/surveys', { method: 'POS
 export const setSurveyCampaignActive = (id, isActive) =>
   request(`/surveys/${id}/active`, { method: 'PUT', body: JSON.stringify({ isActive }) });
 export const deleteSurveyCampaign = (id) => request(`/surveys/${id}`, { method: 'DELETE' });
-export const sendSurveyCampaignNow = (id) => request(`/surveys/${id}/send-now`, { method: 'POST' });

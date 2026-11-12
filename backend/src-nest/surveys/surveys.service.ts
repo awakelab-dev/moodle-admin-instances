@@ -1,27 +1,25 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { MoodleClient } from '../sync/moodle-client.service';
 import { CreateSurveyCampaignDto } from './dto/create-survey-campaign.dto';
-import { SurveyRecipientSource } from '@prisma/client';
 
-// Encuestas de calidad de curso: cada campaña manda, vía mensajería interna
-// de Moodle (core_message_send_instant_messages, Web Service ya habilitado
-// en cualquier plataforma sincronizada — no requiere instalar ningún
-// plugin), el link de una encuesta externa (Typeform/Google Form) el día de
-// inicio del curso y los días siguientes configurados.
+// Encuestas de calidad de curso: cada campaña manda, por EMAIL REAL
+// inmediato (no mensajería interna de Moodle — se probó que eso no
+// garantiza entrega instantánea, depende del cron y de preferencias por
+// usuario), el link de una encuesta externa (Typeform/Google Form) el día
+// de inicio del curso y los días siguientes configurados.
 //
-// Importante: Moodle solo reenvía un mensaje interno por EMAIL si el
-// destinatario tiene esa preferencia activada (o el admin del sitio fuerza
-// el canal "Email" para mensajes personales en Administración del sitio >
-// Mensajes > Configuración de notificaciones) y, según el sitio, puede
-// depender también de que el cron de Moodle esté corriendo. No es tan
-// inmediato/fiable como un plugin que llame a email_to_user(), pero no
-// necesita instalar nada en la plataforma — esa es la decisión tomada aquí.
+// El envío en sí NO lo dispara este backend: lo hace el plugin
+// local_courseprogressnotify ya instalado en cada plataforma (mismo
+// mecanismo probado que las notificaciones de progreso, que llama a
+// email_to_user() de Moodle directamente). Este servicio solo expone, vía
+// SurveysPluginController, qué campañas tienen un envío pendiente HOY para
+// la plataforma que pregunta, y registra el resultado que el plugin reporta
+// después de intentarlo — igual que NotificationsService con
+// getConfigForPlatform/reportDelivery. Por eso toda campaña necesita una
+// plataforma con la API key de notificaciones ya generada (Configuración >
+// Plataformas > Gestión de Notificaciones > Conexión).
 @Injectable()
 export class SurveysService {
-  private readonly logger = new Logger(SurveysService.name);
-
   constructor(private prisma: PrismaService) {}
 
   list() {
@@ -48,15 +46,17 @@ export class SurveysService {
     if (dto.recipientSource === 'manual' && !dto.manualRecipients?.length) {
       throw new BadRequestException('manualRecipients es obligatorio cuando recipientSource = manual');
     }
-    if (dto.recipientSource === 'course_enrollment' && dto.courseId == null) {
-      throw new BadRequestException('courseId es obligatorio cuando recipientSource = course_enrollment');
+    if (dto.recipientSource === 'course_enrollment' && (!dto.platformId || dto.courseId == null)) {
+      throw new BadRequestException('platformId y courseId son obligatorios cuando recipientSource = course_enrollment');
     }
     if (!dto.platformId) {
-      throw new BadRequestException('platformId es obligatorio: es la plataforma Moodle desde la que se manda el mensaje');
+      throw new BadRequestException('platformId es obligatorio: es la plataforma Moodle desde la que se manda el correo');
     }
     const platform = await this.prisma.platform.findUnique({ where: { id: dto.platformId } });
-    if (!platform?.url || !platform?.token) {
-      throw new BadRequestException('Esa plataforma todavía no tiene URL/token de Web Service configurados.');
+    if (!platform?.notificationsApiKeyHash) {
+      throw new BadRequestException(
+        'Esa plataforma todavía no tiene generada la API key de notificaciones (Configuración > Plataformas > Gestión de Notificaciones > Conexión) — el plugin la necesita para poder recoger y mandar la encuesta.',
+      );
     }
 
     return this.prisma.surveyCampaign.create({
@@ -91,29 +91,28 @@ export class SurveysService {
     return campaign;
   }
 
-  /** Fuerza el envío del día que toque HOY para una campaña concreta (botón "Enviar ahora"). */
-  async sendNow(id: string) {
-    const campaign = await this.ensureExists(id);
-    const dayIndex = this.dayIndexForToday(campaign.startDate, campaign.daysCount);
-    if (dayIndex === null) {
-      throw new BadRequestException('Hoy está fuera del rango de fechas de esta campaña (día de inicio + días configurados).');
-    }
-    return this.sendCampaignDay(campaign, dayIndex);
-  }
-
-  /** Cron diario: revisa TODAS las campañas activas y manda, a quien le toque hoy, el que no se le haya mandado ya ese día. */
-  @Cron('0 45 9 * * *', { timeZone: 'Europe/Madrid', name: 'daily-survey-campaigns-check' })
-  async checkDueCampaigns() {
-    const campaigns = await this.prisma.surveyCampaign.findMany({ where: { isActive: true } });
-    for (const campaign of campaigns) {
-      const dayIndex = this.dayIndexForToday(campaign.startDate, campaign.daysCount);
-      if (dayIndex === null) continue;
-      try {
-        await this.sendCampaignDay(campaign, dayIndex);
-      } catch (err: any) {
-        this.logger.error(`Campaña ${campaign.id} día ${dayIndex}: ${err?.message || err}`);
-      }
-    }
+  /**
+   * Llamado por el plugin (GET /api/surveys/plugin/campaigns) al principio
+   * de su tarea programada: devuelve, para esta plataforma, las campañas
+   * activas cuyo día de envío es HOY, con todo lo que el plugin necesita
+   * para resolver destinatarios y mandar el correo sin más vueltas.
+   */
+  async getDueCampaignsForPlatform(platformId: string) {
+    const campaigns = await this.prisma.surveyCampaign.findMany({
+      where: { platformId, isActive: true },
+    });
+    return campaigns
+      .map((c) => ({ campaign: c, dayIndex: this.dayIndexForToday(c.startDate, c.daysCount) }))
+      .filter((c) => c.dayIndex !== null)
+      .map(({ campaign, dayIndex }) => ({
+        campaignId: campaign.id,
+        dayIndex,
+        recipientSource: campaign.recipientSource,
+        manualRecipients: campaign.manualRecipients,
+        courseId: campaign.courseId,
+        surveyUrl: campaign.surveyUrl,
+        messageTemplate: campaign.messageTemplate,
+      }));
   }
 
   /** null si hoy está fuera del rango [startDate, startDate + daysCount - 1] de la campaña. */
@@ -129,100 +128,34 @@ export class SurveysService {
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   }
 
-  private async sendCampaignDay(
-    campaign: { id: string; platformId: string | null; recipientSource: SurveyRecipientSource; manualRecipients: string[]; courseId: number | null; surveyUrl: string; messageTemplate: string },
-    dayIndex: number,
+  /**
+   * Llamado por el plugin (POST /api/surveys/plugin/log) justo después de
+   * intentar cada envío (éxito o fallo), en lote. La deduplicación real ya
+   * la garantiza la tabla local del plugin (local_courseprogressnotify_log)
+   * — esto solo centraliza el seguimiento para verlo en Insights.
+   */
+  async reportPluginLog(
+    platformId: string,
+    results: { campaignId: string; dayIndex: number; recipientEmail: string; moodleUserId?: number; success: boolean; errorMessage?: string }[],
   ) {
-    if (!campaign.platformId) throw new BadRequestException('La campaña no tiene plataforma asociada.');
-    const platform = await this.prisma.platform.findUnique({ where: { id: campaign.platformId } });
-    if (!platform?.url || !platform?.token) throw new BadRequestException('La plataforma no tiene URL/token configurados.');
-
-    const client = new MoodleClient(platform.url, platform.token);
-    const siteInfo = await client.getSiteInfo();
-    const ownUserId = Number(siteInfo?.userid ?? 0);
-
-    const recipients = await this.resolveRecipients(client, campaign);
-    const results: { recipientEmail: string; moodleUserId: number | null; success: boolean; errorMessage?: string }[] = [];
-
-    for (const recipient of recipients) {
-      const alreadySent = await this.prisma.surveyCampaignSend.findUnique({
-        where: { campaignId_dayIndex_recipientEmail: { campaignId: campaign.id, dayIndex, recipientEmail: recipient.email } },
-      });
-      if (alreadySent) continue;
-
-      if (!recipient.id) {
-        results.push({ recipientEmail: recipient.email, moodleUserId: null, success: false, errorMessage: 'No existe ningún usuario con ese email en esta plataforma.' });
-        continue;
-      }
-      if (recipient.id === ownUserId) {
-        results.push({ recipientEmail: recipient.email, moodleUserId: recipient.id, success: false, errorMessage: 'El destinatario es el mismo usuario dueño del token — Moodle no notifica auto-mensajes.' });
-        continue;
-      }
-
-      const body = this.replacePlaceholders(campaign.messageTemplate, {
-        nombre: recipient.name || recipient.email,
-        link: `<a href="${this.escapeHtml(campaign.surveyUrl)}">${this.escapeHtml(campaign.surveyUrl)}</a>`,
-      });
-
-      try {
-        await client.sendInstantMessage(recipient.id, body, 1);
-        results.push({ recipientEmail: recipient.email, moodleUserId: recipient.id, success: true });
-      } catch (err: any) {
-        results.push({ recipientEmail: recipient.email, moodleUserId: recipient.id, success: false, errorMessage: err?.message || String(err) });
-      }
-    }
-
     for (const r of results) {
+      const campaign = await this.prisma.surveyCampaign.findUnique({ where: { id: r.campaignId } });
+      if (!campaign || campaign.platformId !== platformId) continue; // una plataforma no puede reportar logs de la campaña de otra
       try {
         await this.prisma.surveyCampaignSend.create({
           data: {
-            campaignId: campaign.id,
-            dayIndex,
+            campaignId: r.campaignId,
+            dayIndex: r.dayIndex,
             recipientEmail: r.recipientEmail,
-            moodleUserId: r.moodleUserId,
+            moodleUserId: r.moodleUserId ?? null,
             success: r.success,
             errorMessage: r.errorMessage ?? null,
           },
         });
       } catch {
-        // Carrera entre dos ejecuciones (cron + "enviar ahora" casi a la vez) — el índice único ya evita el duplicado.
+        // Ya existe un registro para esta campaña+día+destinatario — se ignora (el plugin reintentó o corrió dos veces).
       }
     }
-
-    return { dayIndex, sent: results.filter((r) => r.success).length, total: results.length, results };
-  }
-
-  private async resolveRecipients(
-    client: MoodleClient,
-    campaign: { recipientSource: SurveyRecipientSource; manualRecipients: string[]; courseId: number | null },
-  ): Promise<{ email: string; id: number | null; name: string }[]> {
-    if (campaign.recipientSource === 'course_enrollment') {
-      if (campaign.courseId == null) return [];
-      const enrolled: any[] = await client.getEnrolledUsers(campaign.courseId);
-      return (enrolled || [])
-        .filter((u) => (u.roles || []).some((r: any) => r.shortname === 'student'))
-        .map((u) => ({ email: u.email, id: u.id, name: u.fullname }));
-    }
-
-    const emails = campaign.manualRecipients || [];
-    if (!emails.length) return [];
-    const found: any[] = await client.getUsersByField('email', emails);
-    const byEmail = new Map((found || []).map((u) => [String(u.email).toLowerCase(), u]));
-    return emails.map((email) => {
-      const u = byEmail.get(email.toLowerCase());
-      return { email, id: u ? u.id : null, name: u ? u.fullname : email };
-    });
-  }
-
-  private replacePlaceholders(template: string, values: Record<string, string>): string {
-    let result = template;
-    for (const [key, value] of Object.entries(values)) {
-      result = result.split(`{{${key}}}`).join(value);
-    }
-    return result;
-  }
-
-  private escapeHtml(s: string): string {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return { ok: true };
   }
 }

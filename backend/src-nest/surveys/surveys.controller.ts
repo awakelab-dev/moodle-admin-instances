@@ -29,11 +29,6 @@ export class SurveysController {
     return this.surveys.setActive(id, isActive);
   }
 
-  @Post(':id/send-now')
-  sendNow(@Param('id') id: string) {
-    return this.surveys.sendNow(id);
-  }
-
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.surveys.remove(id);
