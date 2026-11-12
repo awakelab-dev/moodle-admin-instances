@@ -90,11 +90,6 @@ model Platform {
   // afectar al otro.
   securityApiKeyHash String? @map("security_api_key_hash")
 
-  // Credencial dedicada para el plugin local_insightssurveys (encuestas de
-  // calidad), mismo formato e idea que notificationsApiKeyHash/
-  // securityApiKeyHash pero independiente — plugin propio, su propia key.
-  surveysApiKeyHash String? @map("surveys_api_key_hash")
-
   courses     Course[]
   users       MoodleUser[]
   snapshots   PlatformSnapshot[]
@@ -103,7 +98,6 @@ model Platform {
   notificationRules NotificationRule[]
   notificationDeliveryLogs NotificationDeliveryLog[]
   securityPatterns SecuritySuspiciousPattern[]
-  surveyCampaigns SurveyCampaign[]
 
   @@map("platforms")
 }
@@ -148,6 +142,7 @@ enum NotificationTrigger {
   diploma_available
   first_day
   second_day
+  quality_survey
 
   @@map("notification_trigger")
 }
@@ -437,64 +432,6 @@ model UserPlatformAccess {
 
   @@unique([userId, platformId])
   @@map("user_platform_access")
-}
-
-enum SurveyRecipientSource {
-  manual
-  course_enrollment
-
-  @@map("survey_recipient_source")
-}
-
-// Campaña de encuesta de calidad: manda un mensaje de Moodle con el link de
-// la encuesta (Typeform/Google Form, gestionada fuera de la app) el día de
-// inicio del curso y los N días siguientes. recipientSource = manual usa la
-// lista fija de manualRecipients (pensado para el piloto de prueba);
-// course_enrollment la calcula cada día a partir de CourseEnrollment (email
-// sincronizado) del platformId/courseId indicados — pensado para producción,
-// una vez el piloto confirme que el token de la plataforma puede mandar
-// mensajes (core_message_send_instant_messages).
-model SurveyCampaign {
-  id              String                @id @default(uuid())
-  name            String
-  surveyUrl       String                @map("survey_url")
-  messageTemplate String                @default("Hola {{nombre}}, nos gustaría conocer tu opinión sobre el curso. Por favor completa esta breve encuesta: {{link}}") @map("message_template")
-
-  recipientSource SurveyRecipientSource @default(manual) @map("recipient_source")
-  manualRecipients String[]             @default([]) @map("manual_recipients") // emails, solo si recipientSource = manual
-  platformId      String?               @map("platform_id")
-  platform        Platform?             @relation(fields: [platformId], references: [id], onDelete: SetNull)
-  courseId        Int?                  @map("course_id") // id de curso de Moodle (no FK: puede no tener fila sincronizada en Course todavía)
-
-  startDate       DateTime              @map("start_date") @db.Date // día 0 del envío, en fecha (sin hora)
-  daysCount       Int                   @default(5) @map("days_count") // total de días con envío: día de inicio + (daysCount - 1) siguientes
-  isActive        Boolean               @default(true) @map("is_active")
-
-  createdAt       DateTime              @default(now()) @map("created_at")
-  updatedAt       DateTime              @updatedAt @map("updated_at")
-
-  sends           SurveyCampaignSend[]
-
-  @@map("survey_campaigns")
-}
-
-// Un registro por cada intento de envío (campaña, destinatario, día N del
-// rango) — evita que el cron diario duplique un envío si corre más de una
-// vez el mismo día, y deja ver qué se mandó y qué falló.
-model SurveyCampaignSend {
-  id          String         @id @default(uuid())
-  campaignId  String         @map("campaign_id")
-  campaign    SurveyCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
-  dayIndex    Int            @map("day_index") // 0 = día de inicio, 1..daysCount-1 = siguientes
-  recipientEmail String      @map("recipient_email")
-  moodleUserId   Int?        @map("moodle_user_id")
-  success     Boolean
-  errorMessage String?       @map("error_message")
-  sentAt      DateTime       @default(now()) @map("sent_at")
-
-  @@unique([campaignId, dayIndex, recipientEmail])
-  @@map("survey_campaign_sends")
 }
 
 // Paquete SCORM subido desde el visualizador (Moodle Insights → SCORM),

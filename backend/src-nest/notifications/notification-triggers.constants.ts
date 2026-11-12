@@ -84,6 +84,14 @@ export const NOTIFICATION_TRIGGERS = [
     label: 'Tareas de segundo día',
     paramsSchema: {},
   },
+  {
+    key: 'quality_survey',
+    label: 'Encuesta de calidad de curso',
+    // surveyUrl: link externo (Typeform/Google Form, gestionado fuera de la
+    // app). daysCount: cuántos días seguidos se manda, empezando el día de
+    // inicio del curso (día 0) — p. ej. 5 = día 0 + 4 siguientes.
+    paramsSchema: { surveyUrl: 'string', daysCount: 'number' },
+  },
 ] as const;
 
 export type NotificationTriggerKey = (typeof NOTIFICATION_TRIGGERS)[number]['key'];

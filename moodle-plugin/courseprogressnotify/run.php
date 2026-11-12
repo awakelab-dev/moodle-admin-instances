@@ -27,6 +27,7 @@ use local_courseprogressnotify\task\check_presential_sessions;
 use local_courseprogressnotify\task\check_diploma_available;
 use local_courseprogressnotify\task\check_first_day_tasks;
 use local_courseprogressnotify\task\check_second_day_tasks;
+use local_courseprogressnotify\task\check_quality_survey;
 
 require_login();
 $context = context_system::instance();
@@ -89,6 +90,24 @@ if ($confirm && !empty($type) && confirm_sesskey()) {
             case 'secondday':
                 $notificationtypes = ['second_day_tasks'];
                 break;
+        }
+
+        // quality_survey tiene una clave por día ("quality_survey_day0",
+        // "quality_survey_day1"...), no una fija como el resto — se borra
+        // aparte con LIKE en vez de con el bucle de abajo.
+        if ($type === 'qualitysurvey') {
+            $select = "notification_type LIKE 'quality_survey_day%'";
+            $params = [];
+            if ($courseid) {
+                $select .= ' AND courseid = :courseid';
+                $params['courseid'] = $courseid;
+            }
+            $count = $DB->count_records_select('local_courseprogressnotify_log', $select, $params);
+            if ($count > 0) {
+                $DB->delete_records_select('local_courseprogressnotify_log', $select, $params);
+                $output[] = "✓ Cleared {$count} log entries for notification type: quality_survey_day*"
+                    . ($courseid ? " (course {$courseid} only)" : ' (ALL courses)');
+            }
         }
         
         // Si hay un curso concreto elegido en el desplegable, el borrado se
@@ -264,6 +283,19 @@ if ($confirm && !empty($type) && confirm_sesskey()) {
             $errors[] = 'Second day task: ' . $e->getMessage();
             $output[] = 'ERROR in Second day task: ' . $e->getMessage();
         }
+    } else if ($type === 'qualitysurvey') {
+        try {
+            $output[] = '--- Executing Quality Survey Check' . $courselabel . ' ---';
+            $tsurvey = new check_quality_survey();
+            if ($courseid) {
+                $tsurvey->set_target_course_id($courseid);
+            }
+            $tsurvey->execute();
+            $output[] = ob_get_contents();
+        } catch (Throwable $e) {
+            $errors[] = 'Quality survey task: ' . $e->getMessage();
+            $output[] = 'ERROR in Quality survey task: ' . $e->getMessage();
+        }
     }
 
     ob_end_clean();
@@ -405,6 +437,18 @@ if (empty($customfield)) {
     echo html_writer::link($formurl, get_string('run_secondday_button', 'local_courseprogressnotify'), ['class' => 'btn btn-primary cpn-run-btn', 'data-basehref' => $formurl->out(false)]);
     echo ' ';
     $clearurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'secondday', 'clearlogs' => 1]);
+    echo html_writer::link($clearurl, get_string('run_clear_button', 'local_courseprogressnotify'), ['class' => 'btn btn-warning cpn-run-btn', 'data-basehref' => $clearurl->out(false)]);
+    echo $OUTPUT->box_end();
+
+    // Quality survey (día de inicio del curso + N días siguientes).
+    echo $OUTPUT->box_start('generalbox mb-3');
+    echo html_writer::tag('h4', get_string('runpage:type_qualitysurvey', 'local_courseprogressnotify'));
+    echo html_writer::tag('p', get_string('runpage:confirm_qualitysurvey', 'local_courseprogressnotify'));
+
+    $formurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'qualitysurvey']);
+    echo html_writer::link($formurl, get_string('run_qualitysurvey_button', 'local_courseprogressnotify'), ['class' => 'btn btn-primary cpn-run-btn', 'data-basehref' => $formurl->out(false)]);
+    echo ' ';
+    $clearurl = new moodle_url('/local/courseprogressnotify/run.php', $baseparams + ['type' => 'qualitysurvey', 'clearlogs' => 1]);
     echo html_writer::link($clearurl, get_string('run_clear_button', 'local_courseprogressnotify'), ['class' => 'btn btn-warning cpn-run-btn', 'data-basehref' => $clearurl->out(false)]);
     echo $OUTPUT->box_end();
 

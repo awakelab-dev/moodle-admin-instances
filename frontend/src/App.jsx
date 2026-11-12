@@ -3,7 +3,7 @@
 // vistas (sin react-router, solo estado local `view`) y el sidebar con sus
 // tres categorías colapsables.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users, Sun, Moon, Bell, PlayCircle, ShieldAlert, Wrench, ClipboardList } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, HardDrive, Settings, GraduationCap, Users, Sun, Moon, Bell, PlayCircle, ShieldAlert, Wrench } from 'lucide-react';
 import {
   clearAuthSession,
   getCurrentUser,
@@ -27,7 +27,6 @@ const ScormPage = lazy(() => import('./components/ScormPage'));
 const SecurityPage = lazy(() => import('./components/SecurityPage'));
 const ConfigPage = lazy(() => import('./components/ConfigPage'));
 const UsersPage = lazy(() => import('./components/UsersPage'));
-const SurveysPage = lazy(() => import('./components/SurveysPage'));
 const ROLE_LABELS = {
   admin: 'Acceso total',
   limited: 'Sin sincronización',
@@ -164,7 +163,7 @@ export default function App() {
   // usuario "limited" tuviera alguna de estas vistas en su estado (p. ej.
   // quedó guardada de una sesión anterior con otro rol), se le manda al
   // Dashboard en vez de dejarle ver una pantalla a la que no debería llegar.
-  const ADMIN_ONLY_VIEWS = new Set(['global', 'detail', 'config', 'users', 'notifications', 'surveys']);
+  const ADMIN_ONLY_VIEWS = new Set(['global', 'detail', 'config', 'users', 'notifications']);
   const resolvedView = !isAdmin && ADMIN_ONLY_VIEWS.has(view)
     ? 'insights'
     : view === 'detail' && !selectedPlatform ? 'global' : view;
@@ -222,7 +221,6 @@ export default function App() {
     security: <SecurityPage />,
     config: <ConfigPage />,
     users: <UsersPage />,
-    surveys: <SurveysPage />,
   };
 
   if (authLoading) {
@@ -330,16 +328,6 @@ export default function App() {
                 >
                   <Bell size={16} />
                   Gestión de Notificaciones
-                </button>
-              )}
-              {isAdmin && (
-                <button
-                  type="button"
-                  className={`sidebar-nav-item ${resolvedView === 'surveys' ? 'active' : ''}`}
-                  onClick={() => setView('surveys')}
-                >
-                  <ClipboardList size={16} />
-                  Encuestas
                 </button>
               )}
             </div>

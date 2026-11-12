@@ -35,6 +35,7 @@ $string['task_check_presential_sessions'] = 'Recordatoris de sessions presencial
 $string['task_check_diploma_available'] = 'Avís: diploma disponible (30 dies)';
 $string['task_check_first_day_tasks'] = 'Primer dia: tasques inicials';
 $string['task_check_second_day_tasks'] = 'Segon dia: navegadors i finestres emergents';
+$string['task_check_quality_survey'] = 'Enquesta de qualitat del curs';
 
 // Manual run page.
 $string['runpage:title'] = 'Verificació manual de notificacions';
@@ -54,6 +55,8 @@ $string['runpage:type_firstday'] = 'Notificacions de Primer Dia (Tasques Inicial
 $string['runpage:confirm_firstday'] = 'Revisar cursos que inicien avui i enviar als estudiants les instruccions sobre signatura de normativa, rebut de material i requisits del curs.';
 $string['runpage:type_secondday'] = 'Notificacions de Segon Dia (Navegadors)';
 $string['runpage:confirm_secondday'] = 'Revisar cursos en el seu segon dia i enviar als estudiants informació sobre navegadors compatibles i configuració de finestres emergents.';
+$string['runpage:type_qualitysurvey'] = 'Enquesta de Qualitat del Curs';
+$string['runpage:confirm_qualitysurvey'] = 'Revisar cursos dins de la seva finestra d\'enquesta (dia d\'inici + N dies següents, configurat a Moodle Insights) i enviar l\'enllaç de l\'enquesta als estudiants matriculats (si no se\'ls ha enviat ja aquell dia concret).';
 $string['runpage:confirm'] ='Fes clic al botó per iniciar la verificació. Es revisaran tots els estudiants dels cursos amb notificacions habilitades i s\'enviaran correus als que hagin assolit el 25% o 50% de progrés (si no han estat notificats prèviament).';
 $string['run_progress_button'] = 'Provar Correus de Progrés';
 $string['run_courseend_button'] = 'Provar Correus de Fi de Curs';
@@ -62,6 +65,7 @@ $string['run_presential_button'] = 'Provar Correus de Sessions Presencials';
 $string['run_diploma_button'] = 'Provar Correus de Diploma';
 $string['run_firstday_button'] = 'Provar Correus de Primer Dia';
 $string['run_secondday_button'] = 'Provar Correus de Segon Dia';
+$string['run_qualitysurvey_button'] = 'Provar Enquesta de Qualitat';
 $string['run_clear_button'] = 'Netejar registres i executar';
 $string['run_ignore_restrictions_button'] = 'Enviar a tots (ignorar dates)';
 $string['runpage:confirm_ignore_all_courses'] = 'No has triat cap curs concret — això processarà TOTS els cursos habilitats de la plataforma, sense cap filtre de data, i pot enviar molts correus de cop a alumnes reals. Segur que vols continuar?';

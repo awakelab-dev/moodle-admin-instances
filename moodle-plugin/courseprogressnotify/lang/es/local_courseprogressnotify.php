@@ -35,6 +35,7 @@ $string['task_check_presential_sessions'] = 'Recordatorios de sesiones presencia
 $string['task_check_diploma_available'] = 'Aviso: diploma disponible (30 días)';
 $string['task_check_first_day_tasks'] = 'Primer día: tareas iniciales';
 $string['task_check_second_day_tasks'] = 'Segundo día: navegadores y ventanas emergentes';
+$string['task_check_quality_survey'] = 'Encuesta de calidad de curso';
 
 // Manual run page.
 $string['runpage:title'] = 'Verificación manual de notificaciones';
@@ -54,6 +55,8 @@ $string['runpage:type_firstday'] = 'Notificaciones de Primer Día (Tareas Inicia
 $string['runpage:confirm_firstday'] = 'Revisar cursos que inician hoy y enviar a estudiantes las instrucciones sobre firma de normativa, recibo de material y requisitos del curso.';
 $string['runpage:type_secondday'] = 'Notificaciones de Segundo Día (Navegadores)';
 $string['runpage:confirm_secondday'] = 'Revisar cursos en su segundo día y enviar a estudiantes información sobre navegadores compatibles y configuración de ventanas emergentes.';
+$string['runpage:type_qualitysurvey'] = 'Encuesta de Calidad de Curso';
+$string['runpage:confirm_qualitysurvey'] = 'Revisar cursos dentro de su ventana de encuesta (día de inicio + N días siguientes, configurado en Moodle Insights) y mandar el link de la encuesta a los estudiantes matriculados (si no se les ha mandado ya ese día concreto).';
 $string['runpage:confirm'] ='Haz clic en el botón para iniciar la verificación. Se revisarán todos los estudiantes de los cursos con notificaciones habilitadas y se enviarán emails a quienes hayan alcanzado el 25% o 50% de progreso (si no han sido notificados previamente).';
 $string['run_progress_button'] = 'Probar Emails de Progreso';
 $string['run_courseend_button'] = 'Probar Emails de Fin de Curso';
@@ -62,6 +65,7 @@ $string['run_presential_button'] = 'Probar Emails de Sesiones Presenciales';
 $string['run_diploma_button'] = 'Probar Emails de Diploma';
 $string['run_firstday_button'] = 'Probar Emails de Primer Día';
 $string['run_secondday_button'] = 'Probar Emails de Segundo Día';
+$string['run_qualitysurvey_button'] = 'Probar Encuesta de Calidad';
 $string['run_clear_button'] = 'Limpiar Logs y Ejecutar';
 $string['run_ignore_restrictions_button'] = 'Enviar a todos (ignorar fechas)';
 $string['runpage:confirm_ignore_all_courses'] = 'No has elegido ningún curso concreto — esto va a procesar TODOS los cursos habilitados de la plataforma, sin ningún filtro de fecha, y puede enviar muchos correos de golpe a alumnos reales. ¿Seguro que quieres continuar?';

@@ -35,6 +35,7 @@ $string['task_check_presential_sessions'] = 'On-site session reminders';
 $string['task_check_diploma_available'] = 'Reminder: diploma available (30 days)';
 $string['task_check_first_day_tasks'] = 'First day tasks reminder';
 $string['task_check_second_day_tasks'] = 'Second day tasks reminder';
+$string['task_check_quality_survey'] = 'Course quality survey';
 
 // Manual run page.
 $string['runpage:title'] = 'Manual notifications verification';
@@ -54,6 +55,8 @@ $string['runpage:type_firstday'] = 'First Day Tasks Notifications';
 $string['runpage:confirm_firstday'] = 'Check courses starting today and send first day tasks reminders to enrolled students.';
 $string['runpage:type_secondday'] = 'Second Day Tasks Notifications';
 $string['runpage:confirm_secondday'] = 'Check courses that started yesterday and send second day tasks reminders to enrolled students.';
+$string['runpage:type_qualitysurvey'] = 'Course Quality Survey';
+$string['runpage:confirm_qualitysurvey'] = 'Check courses within their survey window (start day + N following days, configured in Moodle Insights) and send the survey link to enrolled students (unless already sent for that specific day).';
 $string['runpage:confirm'] ='Click the button below to start the verification. This will check all students in courses with notifications enabled and send emails to those who have reached 25% or 50% progress (if they haven\'t been notified yet).';
 $string['run_progress_button'] = 'Test Progress Emails';
 $string['run_courseend_button'] = 'Test Course End Emails';
@@ -62,6 +65,7 @@ $string['run_presential_button'] = 'Test On-site Session Emails';
 $string['run_diploma_button'] = 'Test Diploma Emails';
 $string['run_firstday_button'] = 'Test First Day Emails';
 $string['run_secondday_button'] = 'Test Second Day Emails';
+$string['run_qualitysurvey_button'] = 'Test Quality Survey';
 $string['run_clear_button'] = 'Clear Logs & Run';
 $string['run_ignore_restrictions_button'] = 'Send to All (Ignore Date Restrictions)';
 $string['runpage:confirm_ignore_all_courses'] = 'You haven\'t selected a specific course — this will process ALL enabled courses on this platform, with no date filter at all, and could send a lot of emails to real students at once. Are you sure you want to continue?';

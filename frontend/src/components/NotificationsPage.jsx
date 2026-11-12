@@ -122,6 +122,10 @@ const PLACEHOLDER_GROUPS = [
     label: 'Diploma disponible',
     items: [{ key: 'campus_url', desc: 'Enlace al curso en el campus' }],
   },
+  {
+    label: 'Encuesta de calidad de curso',
+    items: [{ key: 'survey_link', desc: 'Enlace a la encuesta (Typeform/Google Form)' }],
+  },
 ];
 
 // Inserta {{key}} en la última posición de cursor conocida de un
@@ -636,6 +640,8 @@ const PARAM_LABELS = {
   daysBefore: 'Días de antelación',
   examKeywords: 'Palabras clave para detectar exámenes (una por línea)',
   tutoringKeywords: 'Palabras clave para detectar tutorías (una por línea)',
+  surveyUrl: 'URL de la encuesta (Typeform/Google Form)',
+  daysCount: 'Días de envío (día de inicio del curso + los siguientes)',
 };
 
 // Espejo de VARIANT_PARAM_DEFS en el backend (notification-triggers.constants.ts)
