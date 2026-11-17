@@ -33,6 +33,18 @@ export interface ContentPalette {
 // plugin de Moodle, no aquí) lo hereda por CSS sin necesidad de que esta
 // función lo conozca. Esto sigue aplicando estilos explícitos además, por
 // higiene y por si algún cliente no respeta la herencia.
+// Elige texto oscuro o blanco según la luminosidad del fondo del botón —
+// los colores de acento cian de la marca varían entre diseños (teal oscuro
+// #0B93AA, cian claro #5FE6E0/#7FE3DA...) y necesitan contraste distinto.
+function readableTextOn(hexColor: string): string {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#011932' : '#ffffff';
+}
+
 export function inlineContentStyles(html: string, palette: ContentPalette): string {
   return html
     .replace(
@@ -46,7 +58,19 @@ export function inlineContentStyles(html: string, palette: ContentPalette): stri
       /<li(\s[^>]*)?>/gi,
       `<li style="margin-bottom:8px;font-size:15px;line-height:1.6;color:${palette.text};">`,
     )
-    .replace(/<a\s+([^>]*)>/gi, (_match, attrs) => `<a style="color:${palette.link};" ${attrs}>`)
+    .replace(/<a\s+([^>]*)>/gi, (_match, attrs) => {
+      // El editor de plantillas no admite estilos en línea, así que un botón
+      // se marca a mano con class="button" (ver NotificationsPage) — aquí es
+      // donde de verdad se convierte en botón: con color de texto normal se
+      // vería como un enlace subrayado más, porque el <style> del <head> no
+      // sobrevive en la mayoría de clientes de correo (ver comentario de
+      // arriba sobre por qué todo este fichero inyecta estilos en línea).
+      const isButton = /class\s*=\s*["'][^"']*\bbutton\b[^"']*["']/i.test(attrs);
+      if (isButton) {
+        return `<a style="display:inline-block;background-color:${palette.link};color:${readableTextOn(palette.link)};padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;" ${attrs}>`;
+      }
+      return `<a style="color:${palette.link};" ${attrs}>`;
+    })
     .replace(
       /<table(\s[^>]*)?>/gi,
       `<table style="width:100%;border-collapse:collapse;margin:0 0 18px;font-size:14px;color:${palette.text};">`,
