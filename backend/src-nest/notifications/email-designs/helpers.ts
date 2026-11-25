@@ -47,10 +47,17 @@ function readableTextOn(hexColor: string): string {
 
 export function inlineContentStyles(html: string, palette: ContentPalette): string {
   return html
-    .replace(
-      /<p(\s[^>]*)?>/gi,
-      `<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:${palette.text};">`,
-    )
+    .replace(/<p(\s[^>]*)?>/gi, (_match, attrs = '') => {
+      // El editor (RichTextEditor → TipTap TextAlign) marca un párrafo
+      // centrado con style="text-align: center" — sin esto, el reemplazo de
+      // abajo lo sobreescribía entero y el botón de "Centrar" no tenía
+      // ningún efecto en el email real (solo en la vista previa del editor,
+      // que no pasa por aquí).
+      const styleMatch = /style\s*=\s*["']([^"']*)["']/i.exec(attrs || '');
+      const textAlignMatch = styleMatch ? /text-align\s*:\s*(center|right|left|justify)/i.exec(styleMatch[1]) : null;
+      const textAlign = textAlignMatch ? `text-align:${textAlignMatch[1]};` : '';
+      return `<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:${palette.text};${textAlign}">`;
+    })
     .replace(/<(strong|b)(\s[^>]*)?>/gi, `<$1 style="color:${palette.strong};">`)
     .replace(/<ul(\s[^>]*)?>/gi, `<ul style="margin:0 0 18px;padding-left:20px;">`)
     .replace(/<ol(\s[^>]*)?>/gi, `<ol style="margin:0 0 18px;padding-left:20px;">`)

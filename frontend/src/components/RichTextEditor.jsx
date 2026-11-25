@@ -5,7 +5,28 @@
 import { forwardRef, useEffect, useImperativeHandle } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import TextAlign from '@tiptap/extension-text-align';
 import { Button } from '@/components/ui/button';
+
+// Extiende el Link estándar con un atributo `class` propio del enlace (no
+// global) — así un enlace concreto puede marcarse como "botón" (class=
+// "button", el que detecta inlineContentStyles en el backend para pintarlo
+// con fondo) sin afectar al resto de enlaces del cuerpo. Se desactiva el
+// Link que trae StarterKit por defecto (`link: false`) para no duplicar la
+// extensión "link" (visto en QA antes: "Duplicate extension names found").
+const ButtonLink = Link.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      class: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('class'),
+        renderHTML: (attributes) => (attributes.class ? { class: attributes.class } : {}),
+      },
+    };
+  },
+});
 
 function ToolbarButton({ active, onClick, children, title }) {
   return (
@@ -25,11 +46,14 @@ function ToolbarButton({ active, onClick, children, title }) {
 
 const RichTextEditor = forwardRef(function RichTextEditor({ value, onChange, placeholder }, ref) {
   const editor = useEditor({
-    // StarterKit (v3) ya incluye su propia extensión Link internamente —
-    // añadir @tiptap/extension-link aparte duplicaba el nombre 'link' y
-    // disparaba el warning "Duplicate extension names found" en consola
-    // (visto en QA). Se configura aquí, no como extensión separada.
-    extensions: [StarterKit.configure({ link: { openOnClick: false, autolink: true } })],
+    // El Link de StarterKit se desactiva aquí (link: false) porque se
+    // sustituye por ButtonLink (ver arriba, con el atributo `class` propio
+    // del enlace) — mantenerlos los dos duplicaría el nombre 'link'.
+    extensions: [
+      StarterKit.configure({ link: false }),
+      ButtonLink.configure({ openOnClick: false, autolink: true }),
+      TextAlign.configure({ types: ['paragraph'] }),
+    ],
     content: value || '',
     editorProps: {
       attributes: {
@@ -113,6 +137,32 @@ const RichTextEditor = forwardRef(function RichTextEditor({ value, onChange, pla
           }}
         >
           Enlace
+        </ToolbarButton>
+        <ToolbarButton
+          active={editor.isActive('link', { class: 'button' })}
+          title="Marca el enlace seleccionado como botón (fondo de color) en el email"
+          onClick={() => {
+            if (!editor.isActive('link')) {
+              window.alert('Selecciona primero un enlace (o créalo con "Enlace") para convertirlo en botón.');
+              return;
+            }
+            const isButton = editor.isActive('link', { class: 'button' });
+            editor
+              .chain()
+              .focus()
+              .extendMarkRange('link')
+              .updateAttributes('link', { class: isButton ? null : 'button' })
+              .run();
+          }}
+        >
+          Botón
+        </ToolbarButton>
+        <ToolbarButton
+          active={editor.isActive({ textAlign: 'center' })}
+          title="Centrar párrafo"
+          onClick={() => editor.chain().focus().toggleTextAlign('center').run()}
+        >
+          Centrar
         </ToolbarButton>
         <ToolbarButton title="Quitar formato" onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}>
           Limpiar formato

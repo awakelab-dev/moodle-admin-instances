@@ -132,7 +132,17 @@ class check_quality_survey extends scheduled_task {
 
             $notificationtype = "quality_survey_day{$dayindex}";
             $placeholders = [
+                // Mantenido por compatibilidad con plantillas ya guardadas
+                // que usan {{survey_link}} directamente (genera el enlace
+                // completo, sin estilo de botón porque se inserta ya como
+                // HTML final, después de que el editor del dashboard haya
+                // aplicado sus propios estilos).
                 'survey_link' => '<a href="' . s($surveyurl) . '">' . s($surveyurl) . '</a>',
+                // URL en crudo — para que la plantilla pueda crear su propio
+                // enlace en el editor (con texto "Completar encuesta",
+                // marcado como botón y centrado) en vez de depender del HTML
+                // fijo de arriba.
+                'survey_link_url' => s($surveyurl),
             ];
 
             $notified = 0;

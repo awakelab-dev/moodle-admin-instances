@@ -17,6 +17,7 @@
     "@radix-ui/react-toggle": "^1.1.15",
     "@radix-ui/react-toggle-group": "^1.1.16",
     "@tiptap/extension-link": "^3.31.4",
+    "@tiptap/extension-text-align": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
     "chart.js": "^4.4.0",

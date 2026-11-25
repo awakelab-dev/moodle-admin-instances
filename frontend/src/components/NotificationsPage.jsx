@@ -125,7 +125,13 @@ const PLACEHOLDER_GROUPS = [
   },
   {
     label: 'Encuesta de calidad de curso',
-    items: [{ key: 'survey_link', desc: 'Enlace a la encuesta (Typeform/Google Form)' }],
+    items: [
+      { key: 'survey_link', desc: 'Enlace a la encuesta ya listo como texto subrayado (sin botón)' },
+      {
+        key: 'survey_link_url',
+        desc: 'Solo la URL — úsalo como destino de tu propio enlace para poder marcarlo como botón y centrarlo',
+      },
+    ],
   },
 ];
 
