@@ -30,6 +30,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 ChartJS.register(
   CategoryScale,
@@ -771,21 +772,9 @@ export default function GlobalPanel({
     [marginChartPlatforms]
   );
 
-  // Etiqueta de dos líneas para el eje Y: nombre de la plataforma y, debajo,
-  // CIF/cliente si están cargados — pedido explícitamente dentro de ESTE
-  // gráfico (no en una tabla aparte). Chart.js admite un array de strings
-  // como label para partirlo en varias líneas.
-  function platformAxisLabel(platform) {
-    const name = formatPlatformDisplayName(platform.name);
-    const parts = [];
-    if (platform.cif) parts.push(`CIF: ${platform.cif}`);
-    if (platform.clientName) parts.push(platform.clientName);
-    return parts.length ? [name, parts.join(' · ')] : name;
-  }
-
   const currentComparisonData = useMemo(
     () => ({
-      labels: storageChartPlatforms.map(platformAxisLabel),
+      labels: storageChartPlatforms.map((platform) => formatPlatformDisplayName(platform.name)),
       datasets: [
         {
           label: 'Contenido total actual',
@@ -1063,7 +1052,7 @@ export default function GlobalPanel({
 
         <div
           className="chart-container chart-container-global"
-          style={{ minHeight: Math.max(360, storageChartPlatforms.length * 42) }}
+          style={{ minHeight: Math.max(360, storageChartPlatforms.length * 34) }}
         >
           <Bar
             data={currentComparisonData}
@@ -1100,26 +1089,17 @@ export default function GlobalPanel({
                 },
                 // Pedido explícitamente: el valor ocupado debe verse a
                 // simple vista en la barra, sin tener que pasar el ratón
-                // por encima (antes solo se veía en el tooltip de arriba) —
-                // y, junto a él, lo que gasta de verdad según el plan
-                // contratado y el uso actual (se recalcula solo si cambia el
-                // almacenamiento, ver computeSpend más arriba).
+                // por encima. El resto del detalle (CIF, cliente, plan,
+                // gasto sin/con IPC) se ve en el tooltip y en la tabla de
+                // debajo — meterlo también aquí hacía que se cortaran las
+                // etiquetas con muchas plataformas a la vez.
                 datalabels: {
                   display: true,
                   color: chartTextColor,
                   anchor: 'end',
                   align: 'end',
-                  font: { size: 10, family: CHART_FONT_FAMILY, weight: '600' },
-                  formatter: (value, context) => {
-                    const platform = storageChartPlatforms[context.dataIndex];
-                    const spend = platform ? computeSpend(platform, hostingPlans, extraGbRate) : null;
-                    const gb = formatGigabytes(Number(value));
-                    if (!spend) return gb;
-                    return [
-                      `${gb}${spend.overGb > 0 ? ' ⚠' : ''}`,
-                      `sin IPC ${formatCurrency(spend.withoutIpc, 'EUR')} · con IPC ${formatCurrency(spend.withIpc, 'EUR')}`,
-                    ];
-                  },
+                  font: { size: 11, family: CHART_FONT_FAMILY, weight: '600' },
+                  formatter: (value) => formatGigabytes(Number(value)),
                 },
               },
               scales: {
@@ -1128,9 +1108,7 @@ export default function GlobalPanel({
                   // Margen extra para que la etiqueta del valor (fuera de la
                   // barra, ver datalabels arriba) no se corte en las barras
                   // más largas.
-                  // Más margen que antes: el valor sobre la barra ahora
-                  // ocupa dos líneas (GB y precio sin/con IPC).
-                  grace: '30%',
+                  grace: '12%',
                   ticks: {
                     color: chartTextColor,
                     font: { size: 11, family: CHART_FONT_FAMILY },
@@ -1163,6 +1141,43 @@ export default function GlobalPanel({
         <p className="chart-click-hint">
           Haz clic en una barra o en el nombre de la empresa para abrir su detalle.
         </p>
+
+        <div style={{ overflowX: 'auto', marginTop: '1.25rem' }}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>CIF</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Plataforma</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>GB ocupados</TableHead>
+                <TableHead>Gasto sin IPC</TableHead>
+                <TableHead>Gasto con IPC</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentPlatforms.map((p) => {
+                const spend = computeSpend(p, hostingPlans, extraGbRate);
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.cif || '—'}</TableCell>
+                    <TableCell>{p.clientName || '—'}</TableCell>
+                    <TableCell>{formatPlatformDisplayName(p.name)}</TableCell>
+                    <TableCell>{spend ? `${spend.plan.name} (${spend.plan.diskGb} GB)` : '—'}</TableCell>
+                    <TableCell>
+                      {formatGigabytes(p.currentStorageGb)}
+                      {spend?.overGb > 0 && (
+                        <span style={{ color: 'var(--color-danger)' }}> (+{formatGigabytes(spend.overGb)})</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{spend ? formatCurrency(spend.withoutIpc, 'EUR') : '—'}</TableCell>
+                    <TableCell>{spend ? formatCurrency(spend.withIpc, 'EUR') : '—'}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <div className="card">
