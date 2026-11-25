@@ -29,7 +29,6 @@ import { downloadXlsx } from '@/lib/excel';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 ChartJS.register(
   CategoryScale,
@@ -370,92 +369,37 @@ function isHorizontalChartLabelArea(position, chart) {
   return withinHorizontalBounds && withinVerticalBounds;
 }
 
-// Tabla de Administración (CIF/Cliente/Plataforma/Plan/Precio/Ocupado) —
-// pedida para centralizar en un único sitio lo que antes solo vivía
-// disperso entre el menú de Plataformas y la cabeza de cada admin. Mismos
-// datos que las tarjetas de Configuración → Plataformas (p.cif, p.clientName,
-// p.hostingPlanKey ya vienen en el resumen de /dashboard/platforms/summary),
-// pero en formato tabla para poder escanear muchas plataformas de un vistazo
-// y exportarlas a Excel.
-function AdminClientsTable({ currentPlatforms, hostingPlans }) {
+// Exporta a Excel los mismos datos que ahora se ven directamente en el
+// Gráfico 1 (CIF/cliente/plan/precio por plataforma, ver etiquetas del eje Y
+// y del valor sobre cada barra) — sin tabla aparte, pedido explícitamente:
+// los campos nuevos van DENTRO de este gráfico, no en una sección nueva.
+async function exportStorageChartToExcel(currentPlatforms, hostingPlans) {
   const planByKey = new Map(hostingPlans.map((p) => [p.key, p]));
-
-  async function handleExport() {
-    await downloadXlsx({
-      filename: `administracion-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      sheetName: 'Administración',
-      columns: [
-        { header: 'CIF', key: 'cif', width: 16 },
-        { header: 'Cliente', key: 'clientName', width: 36 },
-        { header: 'Plataforma', key: 'name', width: 28 },
-        { header: 'Plan', key: 'plan', width: 16 },
-        { header: 'GB ocupados', key: 'usedGb', width: 14 },
-        { header: 'Precio sin IPC', key: 'priceWithoutIpc', width: 16 },
-        { header: 'Precio con IPC', key: 'priceWithIpc', width: 16 },
-      ],
-      rows: currentPlatforms.map((p) => {
-        const plan = planByKey.get(p.hostingPlanKey);
-        return {
-          cif: p.cif || '',
-          clientName: p.clientName || '',
-          name: formatPlatformDisplayName(p.name),
-          plan: plan?.name || '',
-          usedGb: Math.round(p.currentStorageGb * 100) / 100,
-          priceWithoutIpc: plan?.priceWithoutIpc ?? '',
-          priceWithIpc: plan?.priceWithIpc ?? '',
-        };
-      }),
-    });
-  }
-
-  return (
-    <div className="card">
-      <div className="panel-header panel-header-compact panel-header-split">
-        <div>
-          <p className="eyebrow">Administración</p>
-          <h3 className="card-title">CIF, cliente y plan por plataforma</h3>
-          <p className="panel-description">
-            Resumen exportable con el CIF/cliente de cada contrato, el plan de hosting
-            contratado y el precio del año en curso (con y sin IPC).
-          </p>
-        </div>
-        <Button variant="outline" onClick={handleExport}>
-          Exportar a Excel
-        </Button>
-      </div>
-      <div style={{ overflowX: 'auto' }}>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>CIF</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Plataforma</TableHead>
-              <TableHead>Plan</TableHead>
-              <TableHead>GB ocupados</TableHead>
-              <TableHead>Precio sin IPC</TableHead>
-              <TableHead>Precio con IPC</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {currentPlatforms.map((p) => {
-              const plan = planByKey.get(p.hostingPlanKey);
-              return (
-                <TableRow key={p.id}>
-                  <TableCell>{p.cif || '—'}</TableCell>
-                  <TableCell>{p.clientName || '—'}</TableCell>
-                  <TableCell>{formatPlatformDisplayName(p.name)}</TableCell>
-                  <TableCell>{plan ? `${plan.name} (${plan.diskGb} GB)` : '—'}</TableCell>
-                  <TableCell>{formatGigabytes(p.currentStorageGb)}</TableCell>
-                  <TableCell>{plan ? formatCurrency(plan.priceWithoutIpc, 'EUR') : '—'}</TableCell>
-                  <TableCell>{plan ? formatCurrency(plan.priceWithIpc, 'EUR') : '—'}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
+  await downloadXlsx({
+    filename: `administracion-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    sheetName: 'Administración',
+    columns: [
+      { header: 'CIF', key: 'cif', width: 16 },
+      { header: 'Cliente', key: 'clientName', width: 36 },
+      { header: 'Plataforma', key: 'name', width: 28 },
+      { header: 'Plan', key: 'plan', width: 16 },
+      { header: 'GB ocupados', key: 'usedGb', width: 14 },
+      { header: 'Precio sin IPC', key: 'priceWithoutIpc', width: 16 },
+      { header: 'Precio con IPC', key: 'priceWithIpc', width: 16 },
+    ],
+    rows: currentPlatforms.map((p) => {
+      const plan = planByKey.get(p.hostingPlanKey);
+      return {
+        cif: p.cif || '',
+        clientName: p.clientName || '',
+        name: formatPlatformDisplayName(p.name),
+        plan: plan?.name || '',
+        usedGb: Math.round(p.currentStorageGb * 100) / 100,
+        priceWithoutIpc: plan?.priceWithoutIpc ?? '',
+        priceWithIpc: plan?.priceWithIpc ?? '',
+      };
+    }),
+  });
 }
 
 function getPlatformColor(index) {
@@ -790,9 +734,21 @@ export default function GlobalPanel({
     [marginChartPlatforms]
   );
 
+  // Etiqueta de dos líneas para el eje Y: nombre de la plataforma y, debajo,
+  // CIF/cliente si están cargados — pedido explícitamente dentro de ESTE
+  // gráfico (no en una tabla aparte). Chart.js admite un array de strings
+  // como label para partirlo en varias líneas.
+  function platformAxisLabel(platform) {
+    const name = formatPlatformDisplayName(platform.name);
+    const parts = [];
+    if (platform.cif) parts.push(`CIF: ${platform.cif}`);
+    if (platform.clientName) parts.push(platform.clientName);
+    return parts.length ? [name, parts.join(' · ')] : name;
+  }
+
   const currentComparisonData = useMemo(
     () => ({
-      labels: storageChartPlatforms.map((platform) => formatPlatformDisplayName(platform.name)),
+      labels: storageChartPlatforms.map(platformAxisLabel),
       datasets: [
         {
           label: 'Contenido total actual',
@@ -1037,15 +993,24 @@ export default function GlobalPanel({
               </ToggleGroup>
             </div>
           </div>
-          <div className="global-panel-badge">
-            <span className="global-panel-badge-label">Plataformas</span>
-            <strong className="global-panel-badge-value">{storageChartPlatforms.length}</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="global-panel-badge">
+              <span className="global-panel-badge-label">Plataformas</span>
+              <strong className="global-panel-badge-value">{storageChartPlatforms.length}</strong>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportStorageChartToExcel(currentPlatforms, hostingPlans)}
+            >
+              Exportar a Excel
+            </Button>
           </div>
         </div>
 
         <div
           className="chart-container chart-container-global"
-          style={{ minHeight: Math.max(360, storageChartPlatforms.length * 34) }}
+          style={{ minHeight: Math.max(360, storageChartPlatforms.length * 42) }}
         >
           <Bar
             data={currentComparisonData}
@@ -1064,19 +1029,37 @@ export default function GlobalPanel({
                   bodyColor: chartTooltipText,
                   padding: 12,
                   callbacks: {
-                    label: (context) => formatGigabytes(context.raw),
+                    label: (context) => {
+                      const platform = storageChartPlatforms[context.dataIndex];
+                      const plan = hostingPlans.find((hp) => hp.key === platform?.hostingPlanKey);
+                      const lines = [formatGigabytes(context.raw)];
+                      if (platform?.cif) lines.push(`CIF: ${platform.cif}`);
+                      if (platform?.clientName) lines.push(`Cliente: ${platform.clientName}`);
+                      if (plan) {
+                        lines.push(`Plan: ${plan.name} (${plan.diskGb} GB)`);
+                        lines.push(`Precio sin IPC: ${formatCurrency(plan.priceWithoutIpc, 'EUR')}`);
+                        lines.push(`Precio con IPC: ${formatCurrency(plan.priceWithIpc, 'EUR')}`);
+                      }
+                      return lines;
+                    },
                   },
                 },
                 // Pedido explícitamente: el valor ocupado debe verse a
                 // simple vista en la barra, sin tener que pasar el ratón
-                // por encima (antes solo se veía en el tooltip de arriba).
+                // por encima (antes solo se veía en el tooltip de arriba) —
+                // y, junto a él, el plan de hosting contratado.
                 datalabels: {
                   display: true,
                   color: chartTextColor,
                   anchor: 'end',
                   align: 'end',
                   font: { size: 11, family: CHART_FONT_FAMILY, weight: '600' },
-                  formatter: (value) => formatGigabytes(Number(value)),
+                  formatter: (value, context) => {
+                    const platform = storageChartPlatforms[context.dataIndex];
+                    const plan = hostingPlans.find((hp) => hp.key === platform?.hostingPlanKey);
+                    const gb = formatGigabytes(Number(value));
+                    return plan ? `${gb} · ${plan.name}` : gb;
+                  },
                 },
               },
               scales: {
@@ -1119,8 +1102,6 @@ export default function GlobalPanel({
           Haz clic en una barra o en el nombre de la empresa para abrir su detalle.
         </p>
       </div>
-
-      <AdminClientsTable currentPlatforms={currentPlatforms} hostingPlans={hostingPlans} />
 
       <div className="card">
         <div className="panel-header panel-header-compact panel-header-split">
