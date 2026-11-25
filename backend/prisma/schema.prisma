@@ -157,6 +157,19 @@ model HostingIpcRate {
   @@map("hosting_ipc_rates")
 }
 
+// Precio por GB que se cobra por el uso que supera el límite del plan
+// contratado (fila "PAGO POR USO EXTRA" de la tabla de precios que mandó el
+// cliente) — una sola fila de referencia (ano base + precio base), se
+// encadena con HostingIpcRate igual que un HostingPlan. No tiene "key"
+// porque es un valor unico, no un catalogo de varias opciones.
+model HostingExtraGbRate {
+  id           String  @id @default(uuid())
+  basePriceEur Decimal @map("base_price_eur") @db.Decimal(12, 4)
+  baseYear     Int     @map("base_year")
+
+  @@map("hosting_extra_gb_rate")
+}
+
 // Patrón de acceso sospechoso (posible cuenta compartida) detectado por el
 // plugin report_accessaudit en una plataforma — centraliza lo que antes
 // solo se veía en el informe local de cada Moodle. El plugin corre su

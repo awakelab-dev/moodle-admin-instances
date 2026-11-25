@@ -18,4 +18,9 @@ export class HostingPlansController {
   listIpcRates() {
     return this.hostingPlans.listIpcRates();
   }
+
+  @Get('extra-gb-rate')
+  extraGbRate(@Query('year') year?: string) {
+    return this.hostingPlans.getExtraGbRate(year ? Number(year) : undefined);
+  }
 }

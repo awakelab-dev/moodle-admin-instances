@@ -13,7 +13,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Bar, Line } from 'react-chartjs-2';
 import { Settings } from 'lucide-react';
-import { getGlobalStorageHistory, getPlatformStorageSummary, getHostingPlans } from '../api';
+import { getGlobalStorageHistory, getPlatformStorageSummary, getHostingPlans, getHostingExtraGbRate } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import {
   formatGigabytes,
@@ -369,26 +369,32 @@ function isHorizontalChartLabelArea(position, chart) {
   return withinHorizontalBounds && withinVerticalBounds;
 }
 
-// El plan que se muestra en el Gráfico 1 no es el contratado a mano (ese
-// vive en Configuración → Plataformas) sino el que corresponde según los GB
-// que la plataforma está usando AHORA MISMO — pedido explícitamente: "que se
-// vaya modificando solo" según el uso real, sin tener que reasignar el plan
-// a mano cada vez que crece el almacenamiento. Se elige el plan más pequeño
-// cuyo límite de GB alcance el uso actual; si supera el plan más grande
-// (EXPERT), se usa ese con overLimit:true para poder avisar.
-function planForUsage(currentGb, hostingPlans) {
-  if (!hostingPlans.length) return null;
-  const sorted = [...hostingPlans].sort((a, b) => a.diskGb - b.diskGb);
-  const fit = sorted.find((plan) => currentGb <= plan.diskGb);
-  if (fit) return fit;
-  return { ...sorted[sorted.length - 1], overLimit: true };
+// El plan que se muestra es el CONTRATADO (platform.hostingPlanKey, el que
+// se asigna a mano en Configuración → Plataformas) — lo que cambia solo
+// según el uso real es lo que GASTA: precio base del plan + GB que superan
+// el límite del plan × precio de "pago por uso extra" de ese año. Así, p.
+// ej. Ibecon (plan PROFESSIONAL, 50GB) usando solo 30GB gasta el precio
+// base del plan (no se le cambia de plan), pero si llegase a usar 60GB
+// pagaría el base + 10GB extra al precio de la tabla de uso extra.
+function computeSpend(platform, hostingPlans, extraGbRate) {
+  const plan = hostingPlans.find((hp) => hp.key === platform.hostingPlanKey);
+  if (!plan) return null;
+  const overGb = Math.max(0, (platform.currentStorageGb || 0) - plan.diskGb);
+  const extraWithIpc = extraGbRate ? overGb * extraGbRate.priceWithIpc : 0;
+  const extraWithoutIpc = extraGbRate ? overGb * extraGbRate.priceWithoutIpc : 0;
+  return {
+    plan,
+    overGb,
+    withIpc: Math.round((plan.priceWithIpc + extraWithIpc) * 100) / 100,
+    withoutIpc: Math.round((plan.priceWithoutIpc + extraWithoutIpc) * 100) / 100,
+  };
 }
 
 // Exporta a Excel los mismos datos que ahora se ven directamente en el
 // Gráfico 1 (CIF/cliente/plan/precio por plataforma, ver etiquetas del eje Y
 // y del valor sobre cada barra) — sin tabla aparte, pedido explícitamente:
 // los campos nuevos van DENTRO de este gráfico, no en una sección nueva.
-async function exportStorageChartToExcel(currentPlatforms, hostingPlans) {
+async function exportStorageChartToExcel(currentPlatforms, hostingPlans, extraGbRate) {
   await downloadXlsx({
     filename: `administracion-${new Date().toISOString().slice(0, 10)}.xlsx`,
     sheetName: 'Administración',
@@ -396,21 +402,23 @@ async function exportStorageChartToExcel(currentPlatforms, hostingPlans) {
       { header: 'CIF', key: 'cif', width: 16 },
       { header: 'Cliente', key: 'clientName', width: 36 },
       { header: 'Plataforma', key: 'name', width: 28 },
-      { header: 'Plan según uso', key: 'plan', width: 18 },
+      { header: 'Plan contratado', key: 'plan', width: 18 },
       { header: 'GB ocupados', key: 'usedGb', width: 14 },
-      { header: 'Precio sin IPC', key: 'priceWithoutIpc', width: 16 },
-      { header: 'Precio con IPC', key: 'priceWithIpc', width: 16 },
+      { header: 'GB sobre el límite', key: 'overGb', width: 16 },
+      { header: 'Gasto sin IPC', key: 'withoutIpc', width: 16 },
+      { header: 'Gasto con IPC', key: 'withIpc', width: 16 },
     ],
     rows: currentPlatforms.map((p) => {
-      const plan = planForUsage(p.currentStorageGb, hostingPlans);
+      const spend = computeSpend(p, hostingPlans, extraGbRate);
       return {
         cif: p.cif || '',
         clientName: p.clientName || '',
         name: formatPlatformDisplayName(p.name),
-        plan: plan ? `${plan.name}${plan.overLimit ? ' (supera el límite)' : ''}` : '',
-        usedGb: Math.round(p.currentStorageGb * 100) / 100,
-        priceWithoutIpc: plan?.priceWithoutIpc ?? '',
-        priceWithIpc: plan?.priceWithIpc ?? '',
+        plan: spend?.plan.name || '',
+        usedGb: Math.round((p.currentStorageGb || 0) * 100) / 100,
+        overGb: spend ? Math.round(spend.overGb * 100) / 100 : '',
+        withoutIpc: spend?.withoutIpc ?? '',
+        withIpc: spend?.withIpc ?? '',
       };
     }),
   });
@@ -436,11 +444,15 @@ export default function GlobalPanel({
 }) {
   const isConfigViewer = userRole === 'config_viewer';
   const [hostingPlans, setHostingPlans] = useState([]);
+  const [extraGbRate, setExtraGbRate] = useState(null);
 
   useEffect(() => {
     getHostingPlans()
       .then(setHostingPlans)
       .catch(() => setHostingPlans([]));
+    getHostingExtraGbRate()
+      .then(setExtraGbRate)
+      .catch(() => setExtraGbRate(null));
   }, []);
   // Mismo motivo que en InsightsTab.jsx: Chart.js no lee variables CSS, así
   // que hace falta este set aparte para que los 3 gráficos sigan siendo
@@ -1015,7 +1027,7 @@ export default function GlobalPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportStorageChartToExcel(currentPlatforms, hostingPlans)}
+              onClick={() => exportStorageChartToExcel(currentPlatforms, hostingPlans, extraGbRate)}
             >
               Exportar a Excel
             </Button>
@@ -1045,14 +1057,15 @@ export default function GlobalPanel({
                   callbacks: {
                     label: (context) => {
                       const platform = storageChartPlatforms[context.dataIndex];
-                      const plan = planForUsage(context.raw, hostingPlans);
+                      const spend = platform ? computeSpend(platform, hostingPlans, extraGbRate) : null;
                       const lines = [formatGigabytes(context.raw)];
                       if (platform?.cif) lines.push(`CIF: ${platform.cif}`);
                       if (platform?.clientName) lines.push(`Cliente: ${platform.clientName}`);
-                      if (plan) {
-                        lines.push(`Plan según uso: ${plan.name} (${plan.diskGb} GB)${plan.overLimit ? ' — supera el límite' : ''}`);
-                        lines.push(`Precio sin IPC: ${formatCurrency(plan.priceWithoutIpc, 'EUR')}`);
-                        lines.push(`Precio con IPC: ${formatCurrency(plan.priceWithIpc, 'EUR')}`);
+                      if (spend) {
+                        lines.push(`Plan contratado: ${spend.plan.name} (${spend.plan.diskGb} GB)`);
+                        if (spend.overGb > 0) lines.push(`Supera el plan en ${formatGigabytes(spend.overGb)}`);
+                        lines.push(`Gasto sin IPC: ${formatCurrency(spend.withoutIpc, 'EUR')}`);
+                        lines.push(`Gasto con IPC: ${formatCurrency(spend.withIpc, 'EUR')}`);
                       }
                       return lines;
                     },
@@ -1061,18 +1074,21 @@ export default function GlobalPanel({
                 // Pedido explícitamente: el valor ocupado debe verse a
                 // simple vista en la barra, sin tener que pasar el ratón
                 // por encima (antes solo se veía en el tooltip de arriba) —
-                // y, junto a él, el plan que corresponde según el uso actual
-                // (se recalcula solo, ver planForUsage más arriba).
+                // y, junto a él, lo que gasta de verdad según el plan
+                // contratado y el uso actual (se recalcula solo si cambia el
+                // almacenamiento, ver computeSpend más arriba).
                 datalabels: {
                   display: true,
                   color: chartTextColor,
                   anchor: 'end',
                   align: 'end',
                   font: { size: 11, family: CHART_FONT_FAMILY, weight: '600' },
-                  formatter: (value) => {
-                    const plan = planForUsage(Number(value), hostingPlans);
+                  formatter: (value, context) => {
+                    const platform = storageChartPlatforms[context.dataIndex];
+                    const spend = platform ? computeSpend(platform, hostingPlans, extraGbRate) : null;
                     const gb = formatGigabytes(Number(value));
-                    return plan ? `${gb} · ${plan.name}${plan.overLimit ? ' ⚠' : ''}` : gb;
+                    if (!spend) return gb;
+                    return `${gb} · ${formatCurrency(spend.withIpc, 'EUR')}${spend.overGb > 0 ? ' ⚠' : ''}`;
                   },
                 },
               },

@@ -17,30 +17,40 @@ export interface HostingPlanWithPricing {
   priceWithoutIpc: number;
 }
 
+export interface HostingExtraGbRateWithPricing {
+  baseYear: number;
+  basePriceEur: number;
+  currentYear: number;
+  priceWithIpc: number;
+  priceWithoutIpc: number;
+}
+
+// Encadena las tasas de HostingIpcRate desde `baseYear` hasta `targetYear`
+// (inclusive) — si falta la tasa de algún año intermedio, se reutiliza la
+// última conocida (igual que describe la nota del cliente: "el resto de
+// años se irá actualizando conforme salgan los datos"). Standalone (no
+// método de instancia) para poder reutilizarla tanto con un HostingPlan
+// como con el HostingExtraGbRate, que no comparten tabla.
+function computePriceWithIpc(
+  basePriceEur: number,
+  baseYear: number,
+  targetYear: number,
+  ratesByYear: Map<number, number>,
+): number {
+  if (targetYear <= baseYear) return basePriceEur;
+  let price = basePriceEur;
+  let lastKnownRate = ratesByYear.get(baseYear) ?? 0;
+  for (let year = baseYear + 1; year <= targetYear; year++) {
+    const rate = ratesByYear.get(year);
+    if (rate !== undefined) lastKnownRate = rate;
+    price = price * (1 + lastKnownRate / 100);
+  }
+  return price;
+}
+
 @Injectable()
 export class HostingPlansService {
   constructor(private prisma: PrismaService) {}
-
-  // Encadena las tasas de HostingIpcRate desde el año base del plan hasta
-  // `targetYear` (inclusive) — si falta la tasa de algún año intermedio, se
-  // reutiliza la última conocida (igual que describe la nota del cliente:
-  // "el resto de años se irá actualizando conforme salgan los datos").
-  private async computePriceWithIpc(
-    basePriceEur: number,
-    baseYear: number,
-    targetYear: number,
-    ratesByYear: Map<number, number>,
-  ): Promise<number> {
-    if (targetYear <= baseYear) return basePriceEur;
-    let price = basePriceEur;
-    let lastKnownRate = ratesByYear.get(baseYear) ?? 0;
-    for (let year = baseYear + 1; year <= targetYear; year++) {
-      const rate = ratesByYear.get(year);
-      if (rate !== undefined) lastKnownRate = rate;
-      price = price * (1 + lastKnownRate / 100);
-    }
-    return price;
-  }
 
   async listPlans(year?: number): Promise<HostingPlanWithPricing[]> {
     const targetYear = year || new Date().getFullYear();
@@ -50,28 +60,45 @@ export class HostingPlansService {
     ]);
     const ratesByYear = new Map(rates.map((r) => [r.year, Number(r.ratePercent)]));
 
-    return Promise.all(
-      plans.map(async (plan) => {
-        const basePriceEur = Number(plan.basePriceEur);
-        const priceWithIpc = await this.computePriceWithIpc(basePriceEur, plan.baseYear, targetYear, ratesByYear);
-        const priceWithoutIpc = await this.computePriceWithIpc(
-          basePriceEur,
-          plan.baseYear,
-          targetYear - 1,
-          ratesByYear,
-        );
-        return {
-          key: plan.key,
-          name: plan.name,
-          diskGb: plan.diskGb,
-          baseYear: plan.baseYear,
-          basePriceEur,
-          currentYear: targetYear,
-          priceWithIpc: Math.round(priceWithIpc * 100) / 100,
-          priceWithoutIpc: Math.round(priceWithoutIpc * 100) / 100,
-        };
-      }),
-    );
+    return plans.map((plan) => {
+      const basePriceEur = Number(plan.basePriceEur);
+      const priceWithIpc = computePriceWithIpc(basePriceEur, plan.baseYear, targetYear, ratesByYear);
+      const priceWithoutIpc = computePriceWithIpc(basePriceEur, plan.baseYear, targetYear - 1, ratesByYear);
+      return {
+        key: plan.key,
+        name: plan.name,
+        diskGb: plan.diskGb,
+        baseYear: plan.baseYear,
+        basePriceEur,
+        currentYear: targetYear,
+        priceWithIpc: Math.round(priceWithIpc * 100) / 100,
+        priceWithoutIpc: Math.round(priceWithoutIpc * 100) / 100,
+      };
+    });
+  }
+
+  // Precio por GB de exceso sobre el límite del plan contratado ("PAGO POR
+  // USO EXTRA" en la tabla enviada) — se usa junto con listPlans() para
+  // calcular cuánto gasta de verdad una plataforma que supera su plan: base
+  // del plan + (GB usados - GB del plan) × este precio, si es positivo.
+  async getExtraGbRate(year?: number): Promise<HostingExtraGbRateWithPricing | null> {
+    const targetYear = year || new Date().getFullYear();
+    const [rate, rates] = await Promise.all([
+      this.prisma.hostingExtraGbRate.findFirst(),
+      this.prisma.hostingIpcRate.findMany(),
+    ]);
+    if (!rate) return null;
+    const ratesByYear = new Map(rates.map((r) => [r.year, Number(r.ratePercent)]));
+    const basePriceEur = Number(rate.basePriceEur);
+    const priceWithIpc = computePriceWithIpc(basePriceEur, rate.baseYear, targetYear, ratesByYear);
+    const priceWithoutIpc = computePriceWithIpc(basePriceEur, rate.baseYear, targetYear - 1, ratesByYear);
+    return {
+      baseYear: rate.baseYear,
+      basePriceEur,
+      currentYear: targetYear,
+      priceWithIpc: Math.round(priceWithIpc * 10000) / 10000,
+      priceWithoutIpc: Math.round(priceWithoutIpc * 10000) / 10000,
+    };
   }
 
   async listIpcRates() {

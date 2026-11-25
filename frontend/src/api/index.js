@@ -185,6 +185,8 @@ export const testPlatform = (id) =>
 
 /* ─── Planes de hosting (BASIC/PROFESSIONAL/EXPERT, con IPC) ─── */
 export const getHostingPlans = () => cachedRequest('hosting-plans', () => request('/hosting-plans', { cache: 'no-store' }));
+export const getHostingExtraGbRate = () =>
+  cachedRequest('hosting-extra-gb-rate', () => request('/hosting-plans/extra-gb-rate', { cache: 'no-store' }));
 
 /* ─── Users (gestión, solo superadmin) ─── */
 export const getUsers = () => request('/users', { cache: 'no-store' });
