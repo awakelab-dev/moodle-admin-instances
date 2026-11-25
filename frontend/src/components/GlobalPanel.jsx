@@ -369,12 +369,26 @@ function isHorizontalChartLabelArea(position, chart) {
   return withinHorizontalBounds && withinVerticalBounds;
 }
 
+// El plan que se muestra en el Gráfico 1 no es el contratado a mano (ese
+// vive en Configuración → Plataformas) sino el que corresponde según los GB
+// que la plataforma está usando AHORA MISMO — pedido explícitamente: "que se
+// vaya modificando solo" según el uso real, sin tener que reasignar el plan
+// a mano cada vez que crece el almacenamiento. Se elige el plan más pequeño
+// cuyo límite de GB alcance el uso actual; si supera el plan más grande
+// (EXPERT), se usa ese con overLimit:true para poder avisar.
+function planForUsage(currentGb, hostingPlans) {
+  if (!hostingPlans.length) return null;
+  const sorted = [...hostingPlans].sort((a, b) => a.diskGb - b.diskGb);
+  const fit = sorted.find((plan) => currentGb <= plan.diskGb);
+  if (fit) return fit;
+  return { ...sorted[sorted.length - 1], overLimit: true };
+}
+
 // Exporta a Excel los mismos datos que ahora se ven directamente en el
 // Gráfico 1 (CIF/cliente/plan/precio por plataforma, ver etiquetas del eje Y
 // y del valor sobre cada barra) — sin tabla aparte, pedido explícitamente:
 // los campos nuevos van DENTRO de este gráfico, no en una sección nueva.
 async function exportStorageChartToExcel(currentPlatforms, hostingPlans) {
-  const planByKey = new Map(hostingPlans.map((p) => [p.key, p]));
   await downloadXlsx({
     filename: `administracion-${new Date().toISOString().slice(0, 10)}.xlsx`,
     sheetName: 'Administración',
@@ -382,18 +396,18 @@ async function exportStorageChartToExcel(currentPlatforms, hostingPlans) {
       { header: 'CIF', key: 'cif', width: 16 },
       { header: 'Cliente', key: 'clientName', width: 36 },
       { header: 'Plataforma', key: 'name', width: 28 },
-      { header: 'Plan', key: 'plan', width: 16 },
+      { header: 'Plan según uso', key: 'plan', width: 18 },
       { header: 'GB ocupados', key: 'usedGb', width: 14 },
       { header: 'Precio sin IPC', key: 'priceWithoutIpc', width: 16 },
       { header: 'Precio con IPC', key: 'priceWithIpc', width: 16 },
     ],
     rows: currentPlatforms.map((p) => {
-      const plan = planByKey.get(p.hostingPlanKey);
+      const plan = planForUsage(p.currentStorageGb, hostingPlans);
       return {
         cif: p.cif || '',
         clientName: p.clientName || '',
         name: formatPlatformDisplayName(p.name),
-        plan: plan?.name || '',
+        plan: plan ? `${plan.name}${plan.overLimit ? ' (supera el límite)' : ''}` : '',
         usedGb: Math.round(p.currentStorageGb * 100) / 100,
         priceWithoutIpc: plan?.priceWithoutIpc ?? '',
         priceWithIpc: plan?.priceWithIpc ?? '',
@@ -1031,12 +1045,12 @@ export default function GlobalPanel({
                   callbacks: {
                     label: (context) => {
                       const platform = storageChartPlatforms[context.dataIndex];
-                      const plan = hostingPlans.find((hp) => hp.key === platform?.hostingPlanKey);
+                      const plan = planForUsage(context.raw, hostingPlans);
                       const lines = [formatGigabytes(context.raw)];
                       if (platform?.cif) lines.push(`CIF: ${platform.cif}`);
                       if (platform?.clientName) lines.push(`Cliente: ${platform.clientName}`);
                       if (plan) {
-                        lines.push(`Plan: ${plan.name} (${plan.diskGb} GB)`);
+                        lines.push(`Plan según uso: ${plan.name} (${plan.diskGb} GB)${plan.overLimit ? ' — supera el límite' : ''}`);
                         lines.push(`Precio sin IPC: ${formatCurrency(plan.priceWithoutIpc, 'EUR')}`);
                         lines.push(`Precio con IPC: ${formatCurrency(plan.priceWithIpc, 'EUR')}`);
                       }
@@ -1047,18 +1061,18 @@ export default function GlobalPanel({
                 // Pedido explícitamente: el valor ocupado debe verse a
                 // simple vista en la barra, sin tener que pasar el ratón
                 // por encima (antes solo se veía en el tooltip de arriba) —
-                // y, junto a él, el plan de hosting contratado.
+                // y, junto a él, el plan que corresponde según el uso actual
+                // (se recalcula solo, ver planForUsage más arriba).
                 datalabels: {
                   display: true,
                   color: chartTextColor,
                   anchor: 'end',
                   align: 'end',
                   font: { size: 11, family: CHART_FONT_FAMILY, weight: '600' },
-                  formatter: (value, context) => {
-                    const platform = storageChartPlatforms[context.dataIndex];
-                    const plan = hostingPlans.find((hp) => hp.key === platform?.hostingPlanKey);
+                  formatter: (value) => {
+                    const plan = planForUsage(Number(value), hostingPlans);
                     const gb = formatGigabytes(Number(value));
-                    return plan ? `${gb} · ${plan.name}` : gb;
+                    return plan ? `${gb} · ${plan.name}${plan.overLimit ? ' ⚠' : ''}` : gb;
                   },
                 },
               },
