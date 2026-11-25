@@ -29,6 +29,7 @@ import { downloadXlsx } from '@/lib/excel';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 ChartJS.register(
   CategoryScale,
@@ -54,6 +55,11 @@ ChartJS.defaults.set('plugins.datalabels', { display: false });
 // fechas). Es la pantalla principal a la que se llega desde el sidebar; desde aquí se
 // navega al detalle de una plataforma (Insights/Histórico/Top Users) o a Configuración.
 const CHART_FONT_FAMILY = "'Poppins', sans-serif";
+// Años con IPC conocido/estimado en la tabla que mandó el cliente (2025 es
+// el real, el resto provisional con el mismo 2,90% hasta tener el dato
+// real de cada año) — el selector de "Precios del año" solo ofrece elegir
+// entre estos, para no previsualizar un año sin ningún dato de IPC cargado.
+const PRICING_YEAR_OPTIONS = [2025, 2026, 2027, 2028];
 const PLATFORM_COLORS = [
   '#19F7F1',
   '#0FCED3',
@@ -443,17 +449,22 @@ export default function GlobalPanel({
   userRole,
 }) {
   const isConfigViewer = userRole === 'config_viewer';
+  const CURRENT_YEAR = new Date().getFullYear();
+  // Previsualizador de año: por defecto el año real, pero se puede adelantar
+  // a 2027/2028 (sin esperar a que llegue la fecha) para ver cómo quedaría
+  // el gasto con el IPC acumulado de esos años.
+  const [pricingYear, setPricingYear] = useState(CURRENT_YEAR);
   const [hostingPlans, setHostingPlans] = useState([]);
   const [extraGbRate, setExtraGbRate] = useState(null);
 
   useEffect(() => {
-    getHostingPlans()
+    getHostingPlans(pricingYear)
       .then(setHostingPlans)
       .catch(() => setHostingPlans([]));
-    getHostingExtraGbRate()
+    getHostingExtraGbRate(pricingYear)
       .then(setExtraGbRate)
       .catch(() => setExtraGbRate(null));
-  }, []);
+  }, [pricingYear]);
   // Mismo motivo que en InsightsTab.jsx: Chart.js no lee variables CSS, así
   // que hace falta este set aparte para que los 3 gráficos sigan siendo
   // legibles con el tema claro. Los colores POR PLATAFORMA (PLATFORM_COLORS,
@@ -1020,6 +1031,22 @@ export default function GlobalPanel({
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="grid gap-1.5">
+              <Label style={{ fontSize: '0.7rem' }}>Precios del año</Label>
+              <Select value={String(pricingYear)} onValueChange={(value) => setPricingYear(Number(value))}>
+                <SelectTrigger style={{ width: 'auto', minWidth: '7rem' }}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRICING_YEAR_OPTIONS.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                      {year === CURRENT_YEAR ? ' (actual)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="global-panel-badge">
               <span className="global-panel-badge-label">Plataformas</span>
               <strong className="global-panel-badge-value">{storageChartPlatforms.length}</strong>
@@ -1082,13 +1109,16 @@ export default function GlobalPanel({
                   color: chartTextColor,
                   anchor: 'end',
                   align: 'end',
-                  font: { size: 11, family: CHART_FONT_FAMILY, weight: '600' },
+                  font: { size: 10, family: CHART_FONT_FAMILY, weight: '600' },
                   formatter: (value, context) => {
                     const platform = storageChartPlatforms[context.dataIndex];
                     const spend = platform ? computeSpend(platform, hostingPlans, extraGbRate) : null;
                     const gb = formatGigabytes(Number(value));
                     if (!spend) return gb;
-                    return `${gb} · ${formatCurrency(spend.withIpc, 'EUR')}${spend.overGb > 0 ? ' ⚠' : ''}`;
+                    return [
+                      `${gb}${spend.overGb > 0 ? ' ⚠' : ''}`,
+                      `sin IPC ${formatCurrency(spend.withoutIpc, 'EUR')} · con IPC ${formatCurrency(spend.withIpc, 'EUR')}`,
+                    ];
                   },
                 },
               },
@@ -1098,7 +1128,9 @@ export default function GlobalPanel({
                   // Margen extra para que la etiqueta del valor (fuera de la
                   // barra, ver datalabels arriba) no se corte en las barras
                   // más largas.
-                  grace: '12%',
+                  // Más margen que antes: el valor sobre la barra ahora
+                  // ocupa dos líneas (GB y precio sin/con IPC).
+                  grace: '30%',
                   ticks: {
                     color: chartTextColor,
                     font: { size: 11, family: CHART_FONT_FAMILY },

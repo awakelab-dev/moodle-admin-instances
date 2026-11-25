@@ -184,9 +184,14 @@ export const testPlatform = (id) =>
   request(`/platforms/${id}/test`, { method: 'POST' });
 
 /* ─── Planes de hosting (BASIC/PROFESSIONAL/EXPERT, con IPC) ─── */
-export const getHostingPlans = () => cachedRequest('hosting-plans', () => request('/hosting-plans', { cache: 'no-store' }));
-export const getHostingExtraGbRate = () =>
-  cachedRequest('hosting-extra-gb-rate', () => request('/hosting-plans/extra-gb-rate', { cache: 'no-store' }));
+// `year` es opcional — para previsualizar un año futuro (2027, 2028...) sin
+// esperar a que llegue de verdad; el backend usa el año real si no se pasa.
+export const getHostingPlans = (year) =>
+  cachedRequest(`hosting-plans:${year || ''}`, () => request(buildPath('/hosting-plans', year ? { year } : {}), { cache: 'no-store' }));
+export const getHostingExtraGbRate = (year) =>
+  cachedRequest(`hosting-extra-gb-rate:${year || ''}`, () =>
+    request(buildPath('/hosting-plans/extra-gb-rate', year ? { year } : {}), { cache: 'no-store' }),
+  );
 
 /* ─── Users (gestión, solo superadmin) ─── */
 export const getUsers = () => request('/users', { cache: 'no-store' });
