@@ -242,6 +242,23 @@ export async function getNotificationEmailDesignPreview(designKey) {
   return res.text();
 }
 
+// Igual que la anterior (HTML crudo, no JSON) pero para la vista previa en
+// vivo del editor de plantillas: manda el asunto/cuerpo que se está
+// escribiendo ahora mismo (sin guardar todavía).
+export async function previewNotificationTemplate({ subject, bodyHtml, designKey }) {
+  const session = getStoredAuthSession();
+  const res = await fetch(`${BASE}/notifications/templates/preview`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+    },
+    body: JSON.stringify({ subject, bodyHtml, designKey }),
+  });
+  if (!res.ok) throw new Error(`No se pudo generar la vista previa (HTTP ${res.status}).`);
+  return res.text();
+}
+
 /* ─── SCORM (visualizador, solo superadmin) ─── */
 export const getScormPackages = () => request('/scorm/packages', { cache: 'no-store' });
 export const deleteScormPackage = (id) => request(`/scorm/packages/${id}`, { method: 'DELETE' });

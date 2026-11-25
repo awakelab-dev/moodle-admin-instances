@@ -277,6 +277,21 @@ export class NotificationsService {
     );
   }
 
+  // Igual que previewEmailDesign, pero con el asunto/cuerpo que el usuario
+  // está escribiendo ahora mismo en el editor de plantillas — así ve el
+  // email real (con el diseño elegido) en vez de solo el HTML plano.
+  async previewTemplate(dto: { subject: string; bodyHtml: string; designKey?: string }): Promise<string> {
+    const { html, images } = await renderEmailDesign(dto.designKey || DEFAULT_EMAIL_DESIGN_KEY, {
+      platformName: 'Academia de ejemplo',
+      subject: dto.subject,
+      bodyHtml: dto.bodyHtml,
+    });
+    return images.reduce(
+      (acc, img) => acc.replaceAll(`cid:${img.cid}`, `data:image/png;base64,${img.base64}`),
+      html,
+    );
+  }
+
   async getPlatformSettings(platformId: string) {
     const platform = await this.prisma.platform.findUnique({ where: { id: platformId } });
     if (!platform) throw new NotFoundException('Plataforma no encontrada.');

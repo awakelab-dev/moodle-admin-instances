@@ -5,6 +5,7 @@ import { UpdateTemplateDto } from './dto/update-template.dto';
 import { UpsertRuleDto } from './dto/upsert-rule.dto';
 import { UpsertTriggerVariantsDto } from './dto/upsert-trigger-variants.dto';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
+import { PreviewTemplateDto } from './dto/preview-template.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { PublicUser } from '../auth/auth.service';
@@ -45,6 +46,16 @@ export class NotificationsController {
   @Get('templates/:id/history')
   listTemplateHistory(@Param('id') id: string) {
     return this.notifications.listTemplateHistory(id);
+  }
+
+  // Vista previa en vivo del editor de plantillas: renderiza el diseño
+  // elegido con el asunto/cuerpo que el usuario está escribiendo ahora
+  // mismo (aún sin guardar) — ver previewEmailDesign más abajo para la
+  // versión con contenido de ejemplo fijo.
+  @Post('templates/preview')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  previewTemplate(@Body() dto: PreviewTemplateDto) {
+    return this.notifications.previewTemplate(dto);
   }
 
   @Get('rules')

@@ -28,6 +28,7 @@ import {
   getNotificationCustomFieldShortnames,
   getNotificationTemplateHistory,
   getNotificationEmailDesignPreview,
+  previewNotificationTemplate,
 } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -286,10 +287,33 @@ function TemplatesTab({ flash }) {
   const subjectSelectionRef = useRef(null);
   const [historyTarget, setHistoryTarget] = useState(null);
   const formCardRef = useRef(null);
+  const [previewDesignKey, setPreviewDesignKey] = useState('A');
+  const [previewHtml, setPreviewHtml] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     load();
   }, []);
+
+  // Vista previa en vivo: así alguien sin experiencia técnica ve el email
+  // real (con el diseño ya aplicado) mientras escribe, en vez de tener que
+  // imaginárselo a partir del HTML plano. Con debounce para no pedir una
+  // renderización al backend en cada pulsación de tecla.
+  useEffect(() => {
+    if (!showForm) return;
+    setPreviewLoading(true);
+    const timer = setTimeout(() => {
+      previewNotificationTemplate({
+        subject: form.subject || '(sin asunto)',
+        bodyHtml: form.bodyHtml || '<p>Escribe el cuerpo del email para verlo aquí…</p>',
+        designKey: previewDesignKey,
+      })
+        .then(setPreviewHtml)
+        .catch(() => setPreviewHtml(null))
+        .finally(() => setPreviewLoading(false));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [showForm, form.subject, form.bodyHtml, previewDesignKey]);
 
   function load() {
     setLoading(true);
@@ -415,47 +439,101 @@ function TemplatesTab({ flash }) {
                 </Select>
               </div>
             </div>
-            <div className="grid gap-1.5">
-              <div className="config-header" style={{ marginBottom: 0 }}>
-                <Label style={{ margin: 0 }}>Asunto</Label>
-                <PlaceholderPicker
-                  onPick={(key) =>
-                    insertAtCursor(
-                      subjectRef,
-                      subjectSelectionRef,
-                      form.subject,
-                      (v) => setForm((f) => ({ ...f, subject: v })),
-                      key,
-                    )
-                  }
-                />
+            <div className="grid grid-cols-2 gap-4 max-[960px]:grid-cols-1">
+              <div className="grid gap-3.5" style={{ alignContent: 'start' }}>
+                <div className="grid gap-1.5">
+                  <div className="config-header" style={{ marginBottom: 0 }}>
+                    <Label style={{ margin: 0 }}>Asunto</Label>
+                    <PlaceholderPicker
+                      onPick={(key) =>
+                        insertAtCursor(
+                          subjectRef,
+                          subjectSelectionRef,
+                          form.subject,
+                          (v) => setForm((f) => ({ ...f, subject: v })),
+                          key,
+                        )
+                      }
+                    />
+                  </div>
+                  <Input
+                    ref={subjectRef}
+                    type="text"
+                    placeholder="Vas al 25%, {{firstname}}!"
+                    value={form.subject}
+                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                    onSelect={trackSelection(subjectSelectionRef)}
+                    onKeyDown={(e) => {
+                      // Enter en este campo no debe enviar el formulario a
+                      // medias (visto en QA) — solo "Crear/Guardar plantilla".
+                      if (e.key === 'Enter') e.preventDefault();
+                    }}
+                    required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <div className="config-header" style={{ marginBottom: 0 }}>
+                    <Label style={{ margin: 0 }}>Cuerpo del email</Label>
+                    <PlaceholderPicker onPick={(key) => bodyEditorRef.current?.insertPlaceholder(key)} />
+                  </div>
+                  <RichTextEditor
+                    ref={bodyEditorRef}
+                    value={form.bodyHtml}
+                    onChange={(html) => setForm((f) => ({ ...f, bodyHtml: html }))}
+                    placeholder="Hola {{firstname}}, ya llevas el {{progress_percentage}}% de {{coursename}}…"
+                  />
+                </div>
               </div>
-              <Input
-                ref={subjectRef}
-                type="text"
-                placeholder="Vas al 25%, {{firstname}}!"
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                onSelect={trackSelection(subjectSelectionRef)}
-                onKeyDown={(e) => {
-                  // Enter en este campo no debe enviar el formulario a
-                  // medias (visto en QA) — solo "Crear/Guardar plantilla".
-                  if (e.key === 'Enter') e.preventDefault();
-                }}
-                required
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <div className="config-header" style={{ marginBottom: 0 }}>
-                <Label style={{ margin: 0 }}>Cuerpo del email</Label>
-                <PlaceholderPicker onPick={(key) => bodyEditorRef.current?.insertPlaceholder(key)} />
+              <div className="grid gap-1.5" style={{ alignContent: 'start' }}>
+                <div className="config-header" style={{ marginBottom: 0 }}>
+                  <Label style={{ margin: 0 }}>Vista previa</Label>
+                  <Select value={previewDesignKey} onValueChange={setPreviewDesignKey}>
+                    <SelectTrigger style={{ width: 'auto', minWidth: '11rem' }}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMAIL_DESIGN_OPTIONS.map((d) => (
+                        <SelectItem key={d.key} value={d.key}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div
+                  style={{
+                    borderRadius: '0.75rem',
+                    overflow: 'hidden',
+                    border: '1px solid var(--color-border)',
+                    minHeight: '420px',
+                    background: '#05070C',
+                    position: 'relative',
+                  }}
+                >
+                  {previewHtml ? (
+                    <iframe
+                      title="Vista previa del email"
+                      srcDoc={previewHtml}
+                      style={{ width: '100%', height: '420px', border: 'none' }}
+                    />
+                  ) : (
+                    <p className="empty" style={{ fontSize: '0.75rem', padding: '1rem' }}>
+                      Escribe el asunto o el cuerpo para ver la vista previa…
+                    </p>
+                  )}
+                  {previewLoading && (
+                    <span
+                      className="spinner spinner-sm"
+                      style={{ position: 'absolute', top: '0.6rem', right: '0.6rem' }}
+                    />
+                  )}
+                </div>
+                <p className="history-note" style={{ margin: 0 }}>
+                  Así se verá el email real, con el diseño elegido — esto no cambia qué
+                  plantilla usa cada disparador, solo te deja ver el resultado mientras
+                  escribes.
+                </p>
               </div>
-              <RichTextEditor
-                ref={bodyEditorRef}
-                value={form.bodyHtml}
-                onChange={(html) => setForm((f) => ({ ...f, bodyHtml: html }))}
-                placeholder="Hola {{firstname}}, ya llevas el {{progress_percentage}}% de {{coursename}}…"
-              />
             </div>
             <div className="flex gap-2.5">
               <Button type="submit" disabled={saving}>

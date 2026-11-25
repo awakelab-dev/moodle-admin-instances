@@ -1826,13 +1826,19 @@ input:focus-visible {
 
 .platform-list {
   display: grid;
+  /* Ancho mínimo pensado para que quepan ~5 columnas en una pantalla grande
+     (~1920px) y ~3 en una laptop típica (~1366px), sin breakpoints fijos —
+     antes era una sola columna con muchísimo scroll vertical y espacio
+     vacío a los lados (visto por el instructor en la lista de plataformas). */
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 0.75rem;
+  align-items: start;
 }
 
 .platform-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
   align-items: start;
   padding-left: 1.05rem;
@@ -1914,7 +1920,7 @@ input:focus-visible {
   display: flex;
   gap: 0.45rem;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .platform-sync-progress {
