@@ -128,7 +128,10 @@ export class UsersService {
   // un usuario "limited". Devuelve null para admin (sin restricción — ver
   // todas), o el array de ids permitidos (puede estar vacío) para limited.
   async getPermittedPlatformIds(user: PublicUser): Promise<string[] | null> {
-    if (user.role === 'admin') return null;
+    // config_viewer ve Administración completa (todas las plataformas), solo
+    // en modo lectura — no tiene restricción de UserPlatformAccess como
+    // "limited" (esa whitelist es para Dashboard/Cursos, no para esto).
+    if (user.role === 'admin' || user.role === 'config_viewer') return null;
     const access = await this.prisma.userPlatformAccess.findMany({
       where: { userId: user.id },
       select: { platformId: true },

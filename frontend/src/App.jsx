@@ -30,6 +30,7 @@ const UsersPage = lazy(() => import('./components/UsersPage'));
 const ROLE_LABELS = {
   admin: 'Acceso total',
   limited: 'Sin sincronización',
+  config_viewer: 'Solo Administración',
 };
 
 export default function App() {
@@ -159,14 +160,22 @@ export default function App() {
   }
 
   const isAdmin = currentUserRole === 'admin';
+  // config_viewer (p. ej. Alonso) es un rol de solo lectura pensado para una
+  // única sección — ve "Administración" (global/detail) y nada más: ni
+  // Moodle Insights, ni Tools, ni Configuración/Usuarios.
+  const isConfigViewer = currentUserRole === 'config_viewer';
   // Storage/Configuración/Usuarios son exclusivos de superadmin — si un
   // usuario "limited" tuviera alguna de estas vistas en su estado (p. ej.
   // quedó guardada de una sesión anterior con otro rol), se le manda al
   // Dashboard en vez de dejarle ver una pantalla a la que no debería llegar.
   const ADMIN_ONLY_VIEWS = new Set(['global', 'detail', 'config', 'users', 'notifications']);
-  const resolvedView = !isAdmin && ADMIN_ONLY_VIEWS.has(view)
-    ? 'insights'
-    : view === 'detail' && !selectedPlatform ? 'global' : view;
+  const CONFIG_VIEWER_VIEWS = new Set(['global', 'detail']);
+  let resolvedView = view === 'detail' && !selectedPlatform ? 'global' : view;
+  if (isConfigViewer) {
+    if (!CONFIG_VIEWER_VIEWS.has(resolvedView)) resolvedView = 'global';
+  } else if (!isAdmin && ADMIN_ONLY_VIEWS.has(resolvedView)) {
+    resolvedView = 'insights';
+  }
   const isGlobalView = resolvedView === 'global';
 
   function toggleTheme() {
@@ -196,6 +205,15 @@ export default function App() {
 
   const views = {
     insights: <InsightsPage lightTheme={lightTheme} />,
+    detail: (
+      <Dashboard
+        key={selectedPlatform?.id || 'detail-view'}
+        selectedPlatform={selectedPlatform}
+        lightTheme={lightTheme}
+        userRole={currentUserRole}
+        onBackToStorage={() => setView('global')}
+      />
+    ),
     global: (
       <GlobalPanel
         onSelectPlatform={openPlatformDetail}
@@ -204,15 +222,7 @@ export default function App() {
         onSearchTermChange={setSearchTerm}
         searchSubmitRef={searchSubmitRef}
         lightTheme={lightTheme}
-      />
-    ),
-    detail: (
-      <Dashboard
-        key={selectedPlatform?.id || 'detail-view'}
-        selectedPlatform={selectedPlatform}
-        lightTheme={lightTheme}
         userRole={currentUserRole}
-        onBackToStorage={() => setView('global')}
       />
     ),
     'courses-students': <CoursesStudentsPage />,
@@ -259,7 +269,7 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Secciones principales">
-          {isAdmin && (
+          {(isAdmin || isConfigViewer) && (
             <>
               <button
                 type="button"
@@ -289,6 +299,7 @@ export default function App() {
             </>
           )}
 
+          {!isConfigViewer && (
           <button
             type="button"
             className="sidebar-nav-category"
@@ -301,8 +312,9 @@ export default function App() {
               className={`sidebar-nav-chevron ${insightsNavExpanded ? '' : 'is-collapsed'}`}
             />
           </button>
+          )}
 
-          {insightsNavExpanded && (
+          {!isConfigViewer && insightsNavExpanded && (
             <div className="sidebar-nav-group">
               <button
                 type="button"

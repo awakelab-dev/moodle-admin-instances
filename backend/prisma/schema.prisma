@@ -14,6 +14,13 @@ enum Currency {
 enum AuthRole {
   admin
   limited
+  // Acceso de solo lectura, exclusivo a la sección "Administración"
+  // (listado de plataformas con CIF/cliente/plan) — pensado para alguien
+  // que necesita ver ese resumen sin tener permisos de superadmin ni
+  // acceso a Dashboard/Cursos/Notificaciones. No usa UserPlatformAccess
+  // (ve todas las plataformas, no una whitelist) — ver
+  // UsersService.getPermittedPlatformIds.
+  config_viewer
 }
 
 enum SyncStatus {
@@ -37,6 +44,20 @@ model Platform {
   // Pedido por el instructor para poder filtrar el listado por proveedor
   // segun va creciendo el numero de plataformas conectadas.
   provider      String?
+  // CIF/razon social del cliente final (empresa que contrata la
+  // plataforma) — distinto de `name` (nombre interno/display de la
+  // plataforma, puede llevar sufijos tipo " - Grupoaspasia"). Pedido para
+  // la tabla de Administracion con CIF/Cliente/Plataforma/Plan.
+  cif           String?
+  clientName    String?   @map("client_name")
+  // Clave del plan de hosting contratado (ver modelo HostingPlan) — null
+  // en plataformas historicas que todavia no tienen plan asignado. Sustituye
+  // al par monthlyCharge/costPerGb como forma principal de calcular el
+  // coste: con el plan se deriva el precio (con/sin IPC) del ano en curso
+  // en vez de teclearlo a mano por plataforma. monthlyCharge se mantiene
+  // por compatibilidad con plataformas que aun no migraron a un plan.
+  hostingPlanKey String?  @map("hosting_plan_key")
+  hostingPlan    HostingPlan? @relation(fields: [hostingPlanKey], references: [key])
   isActive      Boolean   @default(true) @map("is_active")
   lastSyncedAt  DateTime? @map("last_synced_at")
   // Sincronizacion dedicada de "Cursos y Alumnos" (matricula, accesos,
@@ -100,6 +121,40 @@ model Platform {
   securityPatterns SecuritySuspiciousPattern[]
 
   @@map("platforms")
+}
+
+// Catalogo cerrado de planes de hosting (BASIC/PROFESSIONAL/EXPERT) — GB
+// incluidos y precio base en EUR del ano de referencia (`baseYear`). El
+// precio de cualquier ano posterior se deriva encadenando las tasas de
+// HostingIpcRate ano a ano (ver HostingPlansService.computePrices), no se
+// guarda un precio fijo por ano: asi, cuando salga el IPC real de un ano
+// nuevo, solo hace falta anadir/editar una fila en HostingIpcRate y los
+// precios de todos los planes se recalculan solos.
+model HostingPlan {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  name          String
+  diskGb        Int      @map("disk_gb")
+  basePriceEur  Decimal  @map("base_price_eur") @db.Decimal(12, 2)
+  baseYear      Int      @map("base_year")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  platforms Platform[]
+
+  @@map("hosting_plans")
+}
+
+// Tasa de IPC interanual aplicada a los planes de hosting para un ano
+// concreto — editable sin tocar codigo conforme vaya saliendo el dato real
+// (ver nota en TABLA EVOLUCION IPC INTERANUAL que mando el cliente: el resto
+// de anos futuros usan el ultimo IPC conocido hasta tener el real).
+model HostingIpcRate {
+  id          String  @id @default(uuid())
+  year        Int     @unique
+  ratePercent Decimal @map("rate_percent") @db.Decimal(5, 2)
+
+  @@map("hosting_ipc_rates")
 }
 
 // Patrón de acceso sospechoso (posible cuenta compartida) detectado por el

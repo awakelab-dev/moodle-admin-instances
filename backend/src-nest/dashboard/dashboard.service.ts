@@ -97,8 +97,12 @@ export class DashboardService {
         const monthlyCharge = p.monthlyCharge === null ? null : Number(p.monthlyCharge);
         const financial = calculateFinancialMetrics(totalBytes, monthlyCharge);
         return {
+          id: p.id,
           source: p.url,
           name: p.name,
+          cif: p.cif,
+          clientName: p.clientName,
+          hostingPlanKey: p.hostingPlanKey,
           totalBytes: financial.totalBytes,
           totalGb: financial.totalGb,
           monthlyCharge: financial.monthlyCharge,

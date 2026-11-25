@@ -183,6 +183,9 @@ export const deletePlatform = (id) =>
 export const testPlatform = (id) =>
   request(`/platforms/${id}/test`, { method: 'POST' });
 
+/* ─── Planes de hosting (BASIC/PROFESSIONAL/EXPERT, con IPC) ─── */
+export const getHostingPlans = () => cachedRequest('hosting-plans', () => request('/hosting-plans', { cache: 'no-store' }));
+
 /* ─── Users (gestión, solo superadmin) ─── */
 export const getUsers = () => request('/users', { cache: 'no-store' });
 export const createUser = (data) => request('/users', { method: 'POST', body: JSON.stringify(data) });

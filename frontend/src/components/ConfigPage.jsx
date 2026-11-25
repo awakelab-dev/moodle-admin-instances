@@ -9,7 +9,9 @@ import {
   cancelSync,
   getSyncStatus,
   invalidateCache,
+  getHostingPlans,
 } from '../api';
+import { downloadXlsx } from '@/lib/excel';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +29,14 @@ const EMPTY_FORM = {
   token: '',
   monthlyCharge: '',
   provider: '',
+  cif: '',
+  clientName: '',
+  hostingPlanKey: '',
 };
+
+// Valor especial del Select de plan para "sin plan asignado" — igual razón
+// que ALL_PROVIDERS más abajo (Radix no admite value="" en un SelectItem).
+const NO_PLAN = '__none__';
 
 // Valor especial del filtro de proveedor para "todas, incluidas las que no
 // tienen proveedor asignado" — distinto de un string vacío real, que
@@ -77,6 +86,42 @@ function formatLastSync(value) {
   }
 }
 
+// Exporta la tabla de Administración (CIF/Cliente/Plataforma/Plan/Precio) a
+// un .xlsx real — misma columna que se ve en las tarjetas, para que alguien
+// pueda llevársela fuera del dashboard (p. ej. a contabilidad).
+async function exportPlatformsToExcel(platforms, hostingPlans) {
+  const planByKey = new Map(hostingPlans.map((p) => [p.key, p]));
+  await downloadXlsx({
+    filename: `plataformas-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    sheetName: 'Plataformas',
+    columns: [
+      { header: 'CIF', key: 'cif', width: 16 },
+      { header: 'Cliente', key: 'clientName', width: 36 },
+      { header: 'Plataforma', key: 'name', width: 28 },
+      { header: 'URL', key: 'url', width: 36 },
+      { header: 'Proveedor', key: 'provider', width: 14 },
+      { header: 'Plan', key: 'plan', width: 16 },
+      { header: 'GB incluidos', key: 'diskGb', width: 12 },
+      { header: 'Precio sin IPC', key: 'priceWithoutIpc', width: 16 },
+      { header: 'Precio con IPC', key: 'priceWithIpc', width: 16 },
+    ],
+    rows: platforms.map((p) => {
+      const plan = planByKey.get(p.hostingPlanKey);
+      return {
+        cif: p.cif || '',
+        clientName: p.clientName || '',
+        name: formatPlatformDisplayName(p.name),
+        url: p.url,
+        provider: p.provider || '',
+        plan: plan?.name || '',
+        diskGb: plan?.diskGb ?? '',
+        priceWithoutIpc: plan?.priceWithoutIpc ?? '',
+        priceWithIpc: plan?.priceWithIpc ?? '',
+      };
+    }),
+  });
+}
+
 function formatElapsed(ms) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -90,6 +135,7 @@ function formatElapsed(ms) {
 // sincronización en curso (propia o iniciada desde otra sesión/pestaña).
 export default function ConfigPage() {
   const [platforms, setPlatforms] = useState([]);
+  const [hostingPlans, setHostingPlans] = useState([]);
   const [providerFilter, setProviderFilter] = useState(ALL_PROVIDERS);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null); // null = adding, number = editing
@@ -144,6 +190,9 @@ export default function ConfigPage() {
 
   useEffect(() => {
     load();
+    getHostingPlans()
+      .then(setHostingPlans)
+      .catch(() => setHostingPlans([]));
   }, []);
 
   // Vigía continuo: en cualquier momento (no solo al entrar a la página) que
@@ -260,6 +309,9 @@ export default function ConfigPage() {
           ? ''
           : String(p.monthlyCharge),
       provider: p.provider || '',
+      cif: p.cif || '',
+      clientName: p.clientName || '',
+      hostingPlanKey: p.hostingPlanKey || '',
     });
     setEditingId(p.id);
     setShowForm(true);
@@ -292,6 +344,9 @@ export default function ConfigPage() {
           url: form.url,
           monthlyCharge: normalizedMonthlyCharge,
           provider: form.provider.trim(),
+          cif: form.cif.trim(),
+          clientName: form.clientName.trim(),
+          hostingPlanKey: form.hostingPlanKey || null,
         };
 
         if (form.token) payload.token = form.token;
@@ -307,6 +362,7 @@ export default function ConfigPage() {
         await addPlatform({
           ...form,
           monthlyCharge: normalizedMonthlyCharge,
+          hostingPlanKey: form.hostingPlanKey || undefined,
         });
         flash('Plataforma agregada.');
       }
@@ -486,7 +542,46 @@ export default function ConfigPage() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Monto mensual cobrado</Label>
+              <Label>CIF del cliente <span className="form-hint">(opcional)</span></Label>
+              <Input
+                type="text"
+                placeholder="Ej: B12345678"
+                autoComplete="off"
+                value={form.cif}
+                onChange={(e) => setForm({ ...form, cif: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Cliente / razón social <span className="form-hint">(opcional)</span></Label>
+              <Input
+                type="text"
+                placeholder="Ej: Formación y Desarrollo Integral S.L."
+                autoComplete="off"
+                value={form.clientName}
+                onChange={(e) => setForm({ ...form, clientName: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Plan de hosting</Label>
+              <Select
+                value={form.hostingPlanKey || NO_PLAN}
+                onValueChange={(value) => setForm({ ...form, hostingPlanKey: value === NO_PLAN ? '' : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PLAN}>Sin plan asignado</SelectItem>
+                  {hostingPlans.map((plan) => (
+                    <SelectItem key={plan.key} value={plan.key}>
+                      {plan.name} ({plan.diskGb} GB)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Monto mensual cobrado <span className="form-hint">(heredado, opcional si ya hay plan)</span></Label>
               <Input
                 type="number"
                 min="0"
@@ -498,10 +593,6 @@ export default function ConfigPage() {
                   setForm({ ...form, monthlyCharge: e.target.value })
                 }
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Costo global por GB</Label>
-              <Input type="text" value="USD 1.00" disabled />
             </div>
           </div>
           <div className="flex flex-wrap justify-end gap-2.5">
@@ -537,7 +628,12 @@ export default function ConfigPage() {
             Costo global aplicado automáticamente: <strong>USD 1 por GB</strong>.
           </p>
         </div>
-        <Button onClick={openAdd}>+ Agregar plataforma</Button>
+        <div className="flex gap-2.5">
+          <Button variant="outline" onClick={() => exportPlatformsToExcel(filteredPlatforms, hostingPlans)}>
+            Exportar a Excel
+          </Button>
+          <Button onClick={openAdd}>+ Agregar plataforma</Button>
+        </div>
       </div>
 
       {msg && (
@@ -603,27 +699,65 @@ export default function ConfigPage() {
                 <div className="platform-last-sync">
                   {formatLastSync(p.lastSyncedAt)}
                 </div>
-                <div className="platform-financial">
-                  <div className="platform-financial-grid">
-                    <span>
-                      Cobro mensual:{' '}
-                      <strong>{formatCurrency(p.monthlyCharge, p.currency)}</strong>
-                    </span>
-                    <span>
-                      Costo global por GB:{' '}
-                      <strong>{formatCurrency(p.costPerGb, p.currency)}</strong>
-                    </span>
-                    <span>
-                      Moneda: <strong>{p.currency || 'USD'}</strong>
-                    </span>
-                  </div>
-                  {!p.hasFinancialConfig && (
-                    <div className="platform-financial-pending">
-                      Configuración financiera pendiente. Completa el monto mensual
-                      para habilitar el margen.
+                {(p.cif || p.clientName) && (
+                  <div className="platform-financial">
+                    <div className="platform-financial-grid">
+                      {p.cif && (
+                        <span>
+                          CIF: <strong>{p.cif}</strong>
+                        </span>
+                      )}
+                      {p.clientName && (
+                        <span>
+                          Cliente: <strong>{p.clientName}</strong>
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+                {(() => {
+                  const plan = hostingPlans.find((hp) => hp.key === p.hostingPlanKey);
+                  if (plan) {
+                    return (
+                      <div className="platform-financial">
+                        <div className="platform-financial-grid">
+                          <span>
+                            Plan: <strong>{plan.name} ({plan.diskGb} GB)</strong>
+                          </span>
+                          <span>
+                            Precio sin IPC: <strong>{formatCurrency(plan.priceWithoutIpc, 'EUR')}</strong>
+                          </span>
+                          <span>
+                            Precio con IPC ({plan.currentYear}): <strong>{formatCurrency(plan.priceWithIpc, 'EUR')}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="platform-financial">
+                      <div className="platform-financial-grid">
+                        <span>
+                          Cobro mensual:{' '}
+                          <strong>{formatCurrency(p.monthlyCharge, p.currency)}</strong>
+                        </span>
+                        <span>
+                          Costo global por GB:{' '}
+                          <strong>{formatCurrency(p.costPerGb, p.currency)}</strong>
+                        </span>
+                        <span>
+                          Moneda: <strong>{p.currency || 'USD'}</strong>
+                        </span>
+                      </div>
+                      {!p.hasFinancialConfig && (
+                        <div className="platform-financial-pending">
+                          Configuración financiera pendiente. Completa el monto mensual
+                          o asigna un plan de hosting.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="platform-actions">
                 <Button

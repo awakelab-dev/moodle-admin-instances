@@ -30,4 +30,22 @@ export class CreatePlatformDto {
   @IsOptional()
   @IsString()
   provider?: string;
+
+  // CIF/razon social del cliente final y plan de hosting contratado — ver
+  // comentarios en el modelo Platform (schema.prisma). hostingPlanKey debe
+  // coincidir con la "key" de un HostingPlan existente (BASIC/PROFESSIONAL/
+  // EXPERT); no se valida aqui contra la lista para no acoplar el DTO a la
+  // base de datos — PlatformsService.create/update deja que la FK de
+  // Postgres rechace una key inexistente.
+  @IsOptional()
+  @IsString()
+  cif?: string;
+
+  @IsOptional()
+  @IsString()
+  clientName?: string;
+
+  @IsOptional()
+  @IsString()
+  hostingPlanKey?: string;
 }

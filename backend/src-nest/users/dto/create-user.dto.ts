@@ -16,8 +16,8 @@ export class CreateUserDto {
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
   password: string;
 
-  @IsIn(['admin', 'limited'])
-  role: 'admin' | 'limited';
+  @IsIn(['admin', 'limited', 'config_viewer'])
+  role: 'admin' | 'limited' | 'config_viewer';
 
   @IsOptional()
   @IsArray()

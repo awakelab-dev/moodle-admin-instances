@@ -18,19 +18,19 @@ export class DashboardController {
   constructor(private dashboardService: DashboardService) {}
 
   @Get('platforms/summary')
-  @Roles('admin')
+  @Roles('admin', 'config_viewer')
   summary(@Query() query: PlatformQueryDto) {
     return this.dashboardService.getPlatformSummary(query.moodleSource);
   }
 
   @Get('platforms/history')
-  @Roles('admin')
+  @Roles('admin', 'config_viewer')
   history(@Query() query: PlatformQueryDto) {
     return this.dashboardService.getPlatformHistory(query.moodleSource);
   }
 
   @Get('platforms/history/global-storage')
-  @Roles('admin')
+  @Roles('admin', 'config_viewer')
   globalStorageHistory() {
     return this.dashboardService.getGlobalStorageHistory();
   }

@@ -151,6 +151,9 @@ export class PlatformsService {
       costPerGb: Number(process.env.GLOBAL_COST_PER_GB || 1),
       currency: p.currency,
       provider: p.provider,
+      cif: p.cif,
+      clientName: p.clientName,
+      hostingPlanKey: p.hostingPlanKey,
       isActive: p.isActive,
       hasFinancialConfig: p.monthlyCharge !== null,
       hasNotificationsApiKey: !!p.notificationsApiKeyHash,
@@ -189,6 +192,9 @@ export class PlatformsService {
         currency: 'USD',
         isActive: dto.isActive ?? true,
         provider: dto.provider?.trim() || null,
+        cif: dto.cif?.trim() || null,
+        clientName: dto.clientName?.trim() || null,
+        hostingPlanKey: dto.hostingPlanKey || null,
       },
     });
     return { message: 'Plataforma agregada.', id: created.id };
@@ -236,6 +242,18 @@ export class PlatformsService {
 
     if (dto.provider !== undefined) {
       data.provider = dto.provider?.trim() || null;
+    }
+
+    if (dto.cif !== undefined) {
+      data.cif = dto.cif?.trim() || null;
+    }
+
+    if (dto.clientName !== undefined) {
+      data.clientName = dto.clientName?.trim() || null;
+    }
+
+    if (dto.hostingPlanKey !== undefined) {
+      data.hostingPlanKey = dto.hostingPlanKey || null;
     }
 
     await this.prisma.platform.update({ where: { id: platform.id }, data });

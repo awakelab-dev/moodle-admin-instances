@@ -10,9 +10,10 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Bar, Line } from 'react-chartjs-2';
 import { Settings } from 'lucide-react';
-import { getGlobalStorageHistory, getPlatformStorageSummary } from '../api';
+import { getGlobalStorageHistory, getPlatformStorageSummary, getHostingPlans } from '../api';
 import { formatPlatformDisplayName } from '@/lib/utils';
 import {
   formatGigabytes,
@@ -24,8 +25,11 @@ import {
   formatPeriodLabel,
   hasMarginData,
 } from '@/lib/formatters';
+import { downloadXlsx } from '@/lib/excel';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 ChartJS.register(
   CategoryScale,
@@ -35,8 +39,16 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  ChartDataLabels
 );
+// chartjs-plugin-datalabels se aplica a TODOS los charts de la app una vez
+// registrado aquí (el registro de Chart.js es global, no por archivo) — sin
+// este default, Dashboard/InsightsTab/CourseSizeTab/TopUsersTab empezarían a
+// mostrar etiquetas no pedidas en sus propios gráficos. Se desactiva por
+// defecto y solo se reactiva explícitamente en el gráfico de almacenamiento
+// de abajo (options.plugins.datalabels de ese <Bar>).
+ChartJS.defaults.set('plugins.datalabels', { display: false });
 
 // Vista "Storage": panel global que compara todas las plataformas Moodle configuradas
 // (almacenamiento actual, histórico de almacenamiento y margen financiero por rango de
@@ -358,6 +370,94 @@ function isHorizontalChartLabelArea(position, chart) {
   return withinHorizontalBounds && withinVerticalBounds;
 }
 
+// Tabla de Administración (CIF/Cliente/Plataforma/Plan/Precio/Ocupado) —
+// pedida para centralizar en un único sitio lo que antes solo vivía
+// disperso entre el menú de Plataformas y la cabeza de cada admin. Mismos
+// datos que las tarjetas de Configuración → Plataformas (p.cif, p.clientName,
+// p.hostingPlanKey ya vienen en el resumen de /dashboard/platforms/summary),
+// pero en formato tabla para poder escanear muchas plataformas de un vistazo
+// y exportarlas a Excel.
+function AdminClientsTable({ currentPlatforms, hostingPlans }) {
+  const planByKey = new Map(hostingPlans.map((p) => [p.key, p]));
+
+  async function handleExport() {
+    await downloadXlsx({
+      filename: `administracion-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheetName: 'Administración',
+      columns: [
+        { header: 'CIF', key: 'cif', width: 16 },
+        { header: 'Cliente', key: 'clientName', width: 36 },
+        { header: 'Plataforma', key: 'name', width: 28 },
+        { header: 'Plan', key: 'plan', width: 16 },
+        { header: 'GB ocupados', key: 'usedGb', width: 14 },
+        { header: 'Precio sin IPC', key: 'priceWithoutIpc', width: 16 },
+        { header: 'Precio con IPC', key: 'priceWithIpc', width: 16 },
+      ],
+      rows: currentPlatforms.map((p) => {
+        const plan = planByKey.get(p.hostingPlanKey);
+        return {
+          cif: p.cif || '',
+          clientName: p.clientName || '',
+          name: formatPlatformDisplayName(p.name),
+          plan: plan?.name || '',
+          usedGb: Math.round(p.currentStorageGb * 100) / 100,
+          priceWithoutIpc: plan?.priceWithoutIpc ?? '',
+          priceWithIpc: plan?.priceWithIpc ?? '',
+        };
+      }),
+    });
+  }
+
+  return (
+    <div className="card">
+      <div className="panel-header panel-header-compact panel-header-split">
+        <div>
+          <p className="eyebrow">Administración</p>
+          <h3 className="card-title">CIF, cliente y plan por plataforma</h3>
+          <p className="panel-description">
+            Resumen exportable con el CIF/cliente de cada contrato, el plan de hosting
+            contratado y el precio del año en curso (con y sin IPC).
+          </p>
+        </div>
+        <Button variant="outline" onClick={handleExport}>
+          Exportar a Excel
+        </Button>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>CIF</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Plataforma</TableHead>
+              <TableHead>Plan</TableHead>
+              <TableHead>GB ocupados</TableHead>
+              <TableHead>Precio sin IPC</TableHead>
+              <TableHead>Precio con IPC</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {currentPlatforms.map((p) => {
+              const plan = planByKey.get(p.hostingPlanKey);
+              return (
+                <TableRow key={p.id}>
+                  <TableCell>{p.cif || '—'}</TableCell>
+                  <TableCell>{p.clientName || '—'}</TableCell>
+                  <TableCell>{formatPlatformDisplayName(p.name)}</TableCell>
+                  <TableCell>{plan ? `${plan.name} (${plan.diskGb} GB)` : '—'}</TableCell>
+                  <TableCell>{formatGigabytes(p.currentStorageGb)}</TableCell>
+                  <TableCell>{plan ? formatCurrency(plan.priceWithoutIpc, 'EUR') : '—'}</TableCell>
+                  <TableCell>{plan ? formatCurrency(plan.priceWithIpc, 'EUR') : '—'}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 function getPlatformColor(index) {
   return PLATFORM_COLORS[index % PLATFORM_COLORS.length];
 }
@@ -374,7 +474,16 @@ export default function GlobalPanel({
   onSearchTermChange,
   searchSubmitRef,
   lightTheme = false,
+  userRole,
 }) {
+  const isConfigViewer = userRole === 'config_viewer';
+  const [hostingPlans, setHostingPlans] = useState([]);
+
+  useEffect(() => {
+    getHostingPlans()
+      .then(setHostingPlans)
+      .catch(() => setHostingPlans([]));
+  }, []);
   // Mismo motivo que en InsightsTab.jsx: Chart.js no lee variables CSS, así
   // que hace falta este set aparte para que los 3 gráficos sigan siendo
   // legibles con el tema claro. Los colores POR PLATAFORMA (PLATFORM_COLORS,
@@ -868,7 +977,7 @@ export default function GlobalPanel({
     <div className="section-stack">
       <div className="global-panel-last-sync">
         <span>{lastSyncLabel}</span>
-        {onNavigateToConfig && (
+        {onNavigateToConfig && !isConfigViewer && (
           <button
             type="button"
             className="global-panel-sync-gear"
@@ -958,10 +1067,25 @@ export default function GlobalPanel({
                     label: (context) => formatGigabytes(context.raw),
                   },
                 },
+                // Pedido explícitamente: el valor ocupado debe verse a
+                // simple vista en la barra, sin tener que pasar el ratón
+                // por encima (antes solo se veía en el tooltip de arriba).
+                datalabels: {
+                  display: true,
+                  color: chartTextColor,
+                  anchor: 'end',
+                  align: 'end',
+                  font: { size: 11, family: CHART_FONT_FAMILY, weight: '600' },
+                  formatter: (value) => formatGigabytes(Number(value)),
+                },
               },
               scales: {
                 x: {
                   beginAtZero: true,
+                  // Margen extra para que la etiqueta del valor (fuera de la
+                  // barra, ver datalabels arriba) no se corte en las barras
+                  // más largas.
+                  grace: '12%',
                   ticks: {
                     color: chartTextColor,
                     font: { size: 11, family: CHART_FONT_FAMILY },
@@ -995,6 +1119,8 @@ export default function GlobalPanel({
           Haz clic en una barra o en el nombre de la empresa para abrir su detalle.
         </p>
       </div>
+
+      <AdminClientsTable currentPlatforms={currentPlatforms} hostingPlans={hostingPlans} />
 
       <div className="card">
         <div className="panel-header panel-header-compact panel-header-split">

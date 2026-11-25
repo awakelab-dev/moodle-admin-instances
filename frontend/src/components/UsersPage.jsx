@@ -26,6 +26,7 @@ const EMPTY_FORM = {
 const ROLE_LABELS = {
   admin: 'Superadmin',
   limited: 'Usuario',
+  config_viewer: 'Solo Administración (lectura)',
 };
 
 export default function UsersPage() {
@@ -216,6 +217,7 @@ export default function UsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="limited">Usuario (solo Moodle Insights, plataformas asignadas)</SelectItem>
+                    <SelectItem value="config_viewer">Solo Administración (lectura, sin editar)</SelectItem>
                     <SelectItem value="admin">Superadmin (acceso total)</SelectItem>
                   </SelectContent>
                 </Select>

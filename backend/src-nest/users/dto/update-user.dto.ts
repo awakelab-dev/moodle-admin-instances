@@ -20,8 +20,8 @@ export class UpdateUserDto {
   password?: string;
 
   @IsOptional()
-  @IsIn(['admin', 'limited'])
-  role?: 'admin' | 'limited';
+  @IsIn(['admin', 'limited', 'config_viewer'])
+  role?: 'admin' | 'limited' | 'config_viewer';
 
   @IsOptional()
   @IsArray()
