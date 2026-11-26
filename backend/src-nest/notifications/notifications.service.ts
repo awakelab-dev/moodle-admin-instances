@@ -30,6 +30,14 @@ const DEFAULT_PLATFORM_SETTINGS = {
   notificationsEnabled: false,
   enabledCategoryIds: [] as number[],
   emailDesignKey: DEFAULT_EMAIL_DESIGN_KEY,
+  // Qué disparadores concretos se envían para un curso puntual de esta
+  // plataforma — reemplaza al antiguo campo personalizado de Moodle con un
+  // CSV/casillas por disparador (visto en QA: un instructor sin conocimientos
+  // técnicos no sabía configurarlo). Ahora se elige desde aquí, y el plugin
+  // solo necesita la casilla maestra en Moodle. Forma:
+  // { [courseId: string]: { [trigger: string]: boolean } } — un curso sin
+  // entrada aquí, o un disparador sin esa clave, recibe todo por defecto.
+  courseTriggerOverrides: {} as Record<string, Record<string, boolean>>,
 };
 
 // Módulo "Gestión de Notificaciones": centraliza en Moodle Insights lo que
@@ -313,6 +321,36 @@ export class NotificationsService {
       data: { notificationSettings: next as Prisma.InputJsonValue },
     });
     return next;
+  }
+
+  // Qué disparadores recibe un curso puntual — siempre devuelve las 12
+  // claves conocidas (NOTIFICATION_TRIGGERS), con `true` por defecto para
+  // cualquiera que el curso no tenga guardado explícitamente.
+  async getCourseTriggerOverrides(platformId: string, courseId: number): Promise<Record<string, boolean>> {
+    const settings = await this.getPlatformSettings(platformId);
+    const stored = settings.courseTriggerOverrides?.[String(courseId)] ?? {};
+    const result: Record<string, boolean> = {};
+    for (const trigger of NOTIFICATION_TRIGGERS) {
+      result[trigger.key] = stored[trigger.key] ?? true;
+    }
+    return result;
+  }
+
+  async setCourseTriggerOverrides(platformId: string, courseId: number, triggers: Record<string, boolean>) {
+    const validKeys = new Set<string>(NOTIFICATION_TRIGGERS.map((t) => t.key));
+    const sanitized: Record<string, boolean> = {};
+    for (const [key, value] of Object.entries(triggers)) {
+      if (validKeys.has(key)) sanitized[key] = Boolean(value);
+    }
+
+    const current = await this.getPlatformSettings(platformId);
+    const nextOverrides = { ...current.courseTriggerOverrides, [String(courseId)]: sanitized };
+    const next = { ...current, courseTriggerOverrides: nextOverrides };
+    await this.prisma.platform.update({
+      where: { id: platformId },
+      data: { notificationSettings: next as Prisma.InputJsonValue },
+    });
+    return this.getCourseTriggerOverrides(platformId, courseId);
   }
 
   // Nombres cortos de campo personalizado ya usados en OTRAS plataformas —

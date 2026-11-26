@@ -237,6 +237,13 @@ export const getNotificationPlatformCourses = (platformId) =>
   request(`/notifications/platforms/${platformId}/courses`, { cache: 'no-store' });
 export const getNotificationPlatformCategories = (platformId) =>
   request(`/notifications/platforms/${platformId}/categories`, { cache: 'no-store' });
+export const getCourseTriggerOverrides = (platformId, courseId) =>
+  request(`/notifications/platforms/${platformId}/courses/${courseId}/trigger-overrides`, { cache: 'no-store' });
+export const updateCourseTriggerOverrides = (platformId, courseId, triggers) =>
+  request(`/notifications/platforms/${platformId}/courses/${courseId}/trigger-overrides`, {
+    method: 'PUT',
+    body: JSON.stringify({ triggers }),
+  });
 export const getNotificationTemplateHistory = (templateId) =>
   request(`/notifications/templates/${templateId}/history`, { cache: 'no-store' });
 

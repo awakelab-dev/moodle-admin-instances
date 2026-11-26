@@ -25,6 +25,8 @@ import {
   updateNotificationPlatformSettings,
   getNotificationPlatformCourses,
   getNotificationPlatformCategories,
+  getCourseTriggerOverrides,
+  updateCourseTriggerOverrides,
   getNotificationCustomFieldShortnames,
   getNotificationTemplateHistory,
   getNotificationEmailDesignPreview,
@@ -1376,6 +1378,11 @@ function PlatformSettingsTab({ flash }) {
   const [courseFilter, setCourseFilter] = useState('');
   const [customFieldOptions, setCustomFieldOptions] = useState([]);
   const [designPreviews, setDesignPreviews] = useState({});
+  const [triggerCatalog, setTriggerCatalog] = useState([]);
+  const [overridesCourse, setOverridesCourse] = useState(null);
+  const [overridesState, setOverridesState] = useState({});
+  const [overridesLoading, setOverridesLoading] = useState(false);
+  const [overridesSaving, setOverridesSaving] = useState(false);
 
   // Las 4 vistas previas no dependen de la plataforma (es contenido de
   // ejemplo) — se cargan una sola vez, no en cada cambio de plataforma.
@@ -1387,7 +1394,32 @@ function PlatformSettingsTab({ flash }) {
           .catch(() => [d.key, null]),
       ),
     ).then((pairs) => setDesignPreviews(Object.fromEntries(pairs)));
+    getNotificationTriggers()
+      .then(setTriggerCatalog)
+      .catch(() => setTriggerCatalog([]));
   }, []);
+
+  function openCourseOverrides(course) {
+    setOverridesCourse(course);
+    setOverridesLoading(true);
+    getCourseTriggerOverrides(platformId, course.courseId)
+      .then(setOverridesState)
+      .catch((err) => flash(err.message, 'error'))
+      .finally(() => setOverridesLoading(false));
+  }
+
+  async function handleSaveCourseOverrides() {
+    setOverridesSaving(true);
+    try {
+      await updateCourseTriggerOverrides(platformId, overridesCourse.courseId, overridesState);
+      flash(`Emails de "${overridesCourse.courseName}" actualizados.`);
+      setOverridesCourse(null);
+    } catch (err) {
+      flash(err.message, 'error');
+    } finally {
+      setOverridesSaving(false);
+    }
+  }
 
   useEffect(() => {
     getPlatforms()
@@ -1709,6 +1741,88 @@ function PlatformSettingsTab({ flash }) {
               </div>
             )}
           </Card>
+
+          <Card className="p-4">
+            <div className="panel-header panel-header-compact">
+              <div>
+                <p className="eyebrow">Emails por curso</p>
+                <h3 className="card-title">Qué se envía en cada curso</h3>
+                <p className="panel-description" style={{ margin: '0.25rem 0 0' }}>
+                  Por defecto cada curso recibe todos los disparadores activos. Si quieres que
+                  un curso concreto reciba solo algunos (por ejemplo, un curso de pruebas donde
+                  solo quieres la encuesta de calidad), elígelo aquí — no hace falta tocar nada
+                  en Moodle, solo la casilla maestra de "Habilitar notificaciones por correo".
+                </p>
+              </div>
+            </div>
+            <Input
+              type="text"
+              placeholder="Buscar curso…"
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              style={{ marginBottom: '0.75rem' }}
+            />
+            {!courses.length ? (
+              <p className="empty">
+                Esta plataforma todavía no tiene cursos sincronizados (ver "Cursos y Alumnos").
+              </p>
+            ) : (
+              <div style={{ maxHeight: 320, overflowY: 'auto', display: 'grid', gap: '0.4rem' }}>
+                {filteredCourses.map((course) => (
+                  <div
+                    key={course.courseId}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' }}
+                  >
+                    <span style={{ fontSize: '0.875rem' }}>{course.courseName}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => openCourseOverrides(course)}>
+                      Emails…
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {overridesCourse && (
+            <div className="confirm-dialog-overlay" onClick={() => !overridesSaving && setOverridesCourse(null)}>
+              <Card className="confirm-dialog-card p-4" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+                <h3 className="card-title">Emails de "{overridesCourse.courseName}"</h3>
+                <p className="panel-description">
+                  Desmarca los que NO quieras que se envíen en este curso. Todo lo demás sigue
+                  como hasta ahora.
+                </p>
+                {overridesLoading ? (
+                  <p className="empty">Cargando…</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '0.5rem', margin: '0.75rem 0' }}>
+                    {triggerCatalog.map((trigger) => (
+                      <label
+                        key={trigger.key}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.875rem', cursor: 'pointer' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={overridesState[trigger.key] ?? true}
+                          onChange={(e) =>
+                            setOverridesState((prev) => ({ ...prev, [trigger.key]: e.target.checked }))
+                          }
+                        />
+                        {trigger.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <div className="confirm-dialog-actions">
+                  <Button type="button" variant="outline" onClick={() => setOverridesCourse(null)} disabled={overridesSaving}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" onClick={handleSaveCourseOverrides} disabled={overridesLoading || overridesSaving}>
+                    {overridesSaving ? 'Guardando…' : 'Guardar'}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
 
           <Card className="p-4">
             <div className="panel-header panel-header-compact">

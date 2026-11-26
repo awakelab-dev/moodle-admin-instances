@@ -5,6 +5,7 @@ import { UpdateTemplateDto } from './dto/update-template.dto';
 import { UpsertRuleDto } from './dto/upsert-rule.dto';
 import { UpsertTriggerVariantsDto } from './dto/upsert-trigger-variants.dto';
 import { UpdatePlatformSettingsDto } from './dto/update-platform-settings.dto';
+import { CourseTriggerOverridesDto } from './dto/course-trigger-overrides.dto';
 import { PreviewTemplateDto } from './dto/preview-template.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -141,5 +142,19 @@ export class NotificationsController {
   @Get('platforms/:platformId/categories')
   listPlatformCategories(@Param('platformId') platformId: string) {
     return this.notifications.listPlatformCategories(platformId);
+  }
+
+  @Get('platforms/:platformId/courses/:courseId/trigger-overrides')
+  getCourseTriggerOverrides(@Param('platformId') platformId: string, @Param('courseId') courseId: string) {
+    return this.notifications.getCourseTriggerOverrides(platformId, Number(courseId));
+  }
+
+  @Put('platforms/:platformId/courses/:courseId/trigger-overrides')
+  setCourseTriggerOverrides(
+    @Param('platformId') platformId: string,
+    @Param('courseId') courseId: string,
+    @Body() dto: CourseTriggerOverridesDto,
+  ) {
+    return this.notifications.setCourseTriggerOverrides(platformId, Number(courseId), dto.triggers);
   }
 }

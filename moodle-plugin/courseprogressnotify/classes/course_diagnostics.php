@@ -26,16 +26,19 @@ defined('MOODLE_INTERNAL') || die();
  */
 class course_diagnostics {
 
-    /** Campo opcional de texto con los triggers permitidos para el curso,
-     * separados por coma (p. ej. "quality_survey" o "first_day,second_day").
-     * Si no existe o está vacío, se permiten todos (comportamiento previo a
-     * esta restricción, para no romper cursos ya configurados). */
-    const TRIGGER_ALLOWLIST_FIELD_SHORTNAME = 'courseemailnotifications_triggers';
-
     /**
-     * Comprueba si un disparador concreto debe enviarse para un curso: el
-     * campo maestro debe estar activado Y (si existe la lista de triggers
-     * permitidos) el trigger debe estar en esa lista.
+     * Comprueba si un disparador concreto debe enviarse para un curso: la
+     * casilla maestra de Moodle debe estar activada Y (si Moodle Insights
+     * tiene una excepción guardada para ESTE curso y disparador concreto)
+     * esa excepción debe permitirlo.
+     *
+     * Qué disparadores recibe cada curso se elige ENTERAMENTE desde el
+     * dashboard (Gestión de Notificaciones → Ajustes por plataforma → "Emails
+     * por curso") — en Moodle solo hace falta la casilla maestra. Antes esto
+     * se intentó resolver con un campo personalizado de Moodle por
+     * disparador, pero un instructor sin conocimientos técnicos no sabía
+     * configurarlo; ahora es un checklist en el dashboard, igual que el
+     * resto de ajustes de la plataforma.
      *
      * @param int $courseid
      * @param string $masterfieldshortname Shortname del campo maestro on/off.
@@ -61,20 +64,12 @@ class course_diagnostics {
             return false;
         }
 
-        $allowfield = $DB->get_record('customfield_field', ['shortname' => self::TRIGGER_ALLOWLIST_FIELD_SHORTNAME]);
-        if (!$allowfield) {
-            return true;
+        $overrides = \local_courseprogressnotify\insights_client::get_settings()['courseTriggerOverrides'] ?? [];
+        $courseoverrides = $overrides[(string)$courseid] ?? $overrides[$courseid] ?? [];
+        if (array_key_exists($triggerkey, $courseoverrides)) {
+            return (bool)$courseoverrides[$triggerkey];
         }
-        $allowdata = $DB->get_record('customfield_data', [
-            'fieldid' => $allowfield->id,
-            'instanceid' => $courseid,
-        ]);
-        $raw = trim((string)($allowdata->value ?? ''));
-        if ($raw === '') {
-            return true;
-        }
-        $allowed = array_map('trim', explode(',', $raw));
-        return in_array($triggerkey, $allowed, true);
+        return true;
     }
 
     /**
