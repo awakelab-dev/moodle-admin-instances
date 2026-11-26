@@ -46,7 +46,13 @@ export class DashboardController {
     @Param('courseId') courseId: string,
     @Query() query: CourseBreakdownQueryDto,
   ) {
-    return this.dashboardService.getCourseBreakdown(currentUser, Number(courseId), query.moodleSource, query.refresh);
+    return this.dashboardService.getCourseBreakdown(
+      currentUser,
+      Number(courseId),
+      query.moodleSource,
+      query.refresh,
+      query.cacheOnly,
+    );
   }
 
   @Get('courses/:courseId/access-report')

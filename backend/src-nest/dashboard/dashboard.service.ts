@@ -303,7 +303,13 @@ export class DashboardService {
   // recalcular. El flag `refresh` (query param) permite forzar el
   // recálculo en vivo cuando el admin quiere datos actualizados. Devuelve
   // `source: 'cache'` o `source: 'live'` según de dónde vino el resultado.
-  async getCourseBreakdown(currentUser: PublicUser, courseId: number, moodleSource: string, refreshFlag?: string) {
+  async getCourseBreakdown(
+    currentUser: PublicUser,
+    courseId: number,
+    moodleSource: string,
+    refreshFlag?: string,
+    cacheOnlyFlag?: string,
+  ) {
     if (!moodleSource) throw new BadRequestException('moodleSource es requerido para consultar el detalle del curso.');
     if (!Number.isFinite(courseId) || courseId <= 0) throw new BadRequestException('courseId inválido.');
 
@@ -351,6 +357,28 @@ export class DashboardService {
         },
         totalRows: cachedRows.length,
         rows: cachedRows,
+      };
+    }
+
+    if (parseBooleanFlag(cacheOnlyFlag)) {
+      return {
+        moodleSource: platform.url,
+        platformName: course.moodleName || null,
+        source: 'none',
+        calculatedAt: null,
+        course: {
+          course_id: course.courseId,
+          course_name: course.courseName,
+          shortname: course.shortname || '',
+          category_name: course.categoryName || 'Sin categoría',
+          size_bytes: 0,
+          backup_size_bytes: 0,
+          assignment_size_bytes: 0,
+          forum_size_bytes: 0,
+          total_bytes: 0,
+        },
+        totalRows: 0,
+        rows: [],
       };
     }
 

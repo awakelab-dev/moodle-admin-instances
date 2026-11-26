@@ -12,4 +12,12 @@ export class CourseBreakdownQueryDto {
   @IsOptional()
   @IsString()
   refresh?: string;
+
+  // Cuando viene presente, el servicio NUNCA recalcula en vivo contra
+  // Moodle: si no hay caché guardada, devuelve source:'none' en vez de
+  // disparar un crawl lento — lo usa la UI para mostrar el detalle ya
+  // sincronizado sin que el usuario tenga que pulsar nada.
+  @IsOptional()
+  @IsString()
+  cacheOnly?: string;
 }

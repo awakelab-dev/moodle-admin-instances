@@ -168,10 +168,13 @@ export default function CourseSizeTab({ moodleSource, platformName, lightTheme =
   }, [allCourses, selectedCourseId]);
 
   // Carga el desglose de almacenamiento (por componente/filearea) del curso
-  // seleccionado. `refresh: true` fuerza un recálculo en vivo contra Moodle;
-  // sin refresh, el backend puede devolver el resultado ya guardado ("de
-  // caché") si existe. `breakdownData.source` indica cuál de los dos ocurrió
-  // (ver breakdownSourceLabel más abajo).
+  // seleccionado. Por defecto solo pide la versión ya guardada (cacheOnly) —
+  // nunca dispara un recálculo en vivo contra Moodle por sí sola, para poder
+  // llamarse automáticamente al seleccionar un curso sin que eso implique
+  // esperar varios minutos. `refresh: true` es la única forma de forzar el
+  // recálculo en vivo (botón explícito "Recalcular en vivo"). `source` en la
+  // respuesta indica de dónde vino: 'cache', 'live' o 'none' (todavía no
+  // sincronizado).
   async function handleLoadBreakdown({ refresh = false } = {}) {
     if (!moodleSource || !selectedCourseId) return;
 
@@ -187,7 +190,7 @@ export default function CourseSizeTab({ moodleSource, platformName, lightTheme =
     try {
       const response = await getCourseBreakdown(courseId, {
         moodleSource,
-        ...(refresh ? { refresh: 1 } : {}),
+        ...(refresh ? { refresh: 1 } : { cacheOnly: 1 }),
       });
       if (latestBreakdownRequestRef.current !== requestId) return;
       setBreakdownData(response);
@@ -202,15 +205,21 @@ export default function CourseSizeTab({ moodleSource, platformName, lightTheme =
     }
   }
 
+  // El detalle del curso seleccionado se muestra solo (los datos ya
+  // sincronizados), sin que el usuario tenga que pulsar nada — persisten
+  // ahí hasta la próxima sincronización de la plataforma.
+  useEffect(() => {
+    if (selectedCourseId) {
+      handleLoadBreakdown();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCourseId, moodleSource]);
+
   const selectedCourse = useMemo(
     () => allCourses.find((course) => course.course_id === selectedCourseId) || null,
     [allCourses, selectedCourseId]
   );
   const breakdownCourse = breakdownData?.course || selectedCourse;
-  const hasLoadedBreakdownForSelectedCourse =
-    selectedCourseId !== null &&
-    breakdownRequestedCourseId === selectedCourseId &&
-    Boolean(breakdownData);
   const breakdownSourceLabel =
     breakdownData?.source === 'cache' ? 'Detalle cargado desde caché' : 'Detalle recalculado en vivo';
 
@@ -628,40 +637,41 @@ export default function CourseSizeTab({ moodleSource, platformName, lightTheme =
             </div>
           )}
 
-          {selectedCourse && (
+          {selectedCourse && breakdownData?.source && breakdownData.source !== 'none' && (
+            <p className={`course-breakdown-meta course-breakdown-meta-${breakdownData.source}`}>
+              {breakdownSourceLabel} · Calculado: {formatDateTime(breakdownData?.calculatedAt)}
+            </p>
+          )}
+
+          {selectedCourse && !breakdownLoading && (
             <div className="course-breakdown-actions">
               <p className="course-breakdown-warning">
-                Advertencia: este detalle se sincroniza solo para el curso seleccionado y puede demorar algunos minutos en generarse.
+                El detalle se recalcula para todos los cursos en cada sincronización de la
+                plataforma. Si necesitas datos más recientes solo para este curso, puedes
+                forzar un recálculo en vivo (puede demorar algunos minutos).
               </p>
               <Button
                 type="button"
+                variant="outline"
                 className="course-breakdown-sync-btn"
-                onClick={() => handleLoadBreakdown({ refresh: hasLoadedBreakdownForSelectedCourse })}
-                disabled={breakdownLoading}
+                onClick={() => handleLoadBreakdown({ refresh: true })}
               >
-                {breakdownLoading
-                  ? 'Sincronizando detalle…'
-                  : hasLoadedBreakdownForSelectedCourse
-                    ? 'Actualizar detalle del curso'
-                    : 'Cargar detalle del curso'}
+                Recalcular en vivo
               </Button>
             </div>
-          )}
-          {hasLoadedBreakdownForSelectedCourse && (
-            <p className={`course-breakdown-meta course-breakdown-meta-${breakdownData?.source || 'live'}`}>
-              {breakdownSourceLabel} · Calculado: {formatDateTime(breakdownData?.calculatedAt)}
-            </p>
           )}
 
           {!selectedCourse ? (
             <p className="empty">Selecciona un curso para ver su desglose detallado.</p>
           ) : breakdownLoading ? (
-            <p className="empty">Calculando desglose detallado en vivo…</p>
+            <p className="empty">Cargando desglose detallado…</p>
           ) : breakdownError ? (
             <ErrorRetry message={breakdownError} onRetry={() => handleLoadBreakdown()} />
-          ) : breakdownRequestedCourseId !== selectedCourseId ? (
+          ) : breakdownRequestedCourseId !== selectedCourseId ? null : breakdownData?.source === 'none' ? (
             <p className="empty">
-              Presiona “Cargar detalle del curso” para ver el detalle guardado o calcularlo por primera vez.
+              Este curso todavía no tiene detalle sincronizado. Se generará en la próxima
+              sincronización completa de la plataforma, o pulsa "Recalcular en vivo" para
+              generarlo ahora.
             </p>
           ) : !breakdownData?.rows?.length ? (
             <p className="empty">
