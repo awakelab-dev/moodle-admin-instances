@@ -51,6 +51,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import ConfirmDialog from './ConfirmDialog';
 import RichTextEditor from './RichTextEditor';
+import { PLACEHOLDER_GROUPS } from '@/lib/placeholders';
 
 const LANGUAGE_LABELS = { es: 'Español', ca: 'Català', en: 'English' };
 
@@ -62,78 +63,6 @@ function stripHtml(html) {
 }
 
 const EMPTY_TEMPLATE_FORM = { name: '', language: 'es', subject: '', bodyHtml: '' };
-
-// Catálogo completo de placeholders que el plugin sabe rellenar, agrupado
-// por disparador (ver classes/task/*.php de local_courseprogressnotify).
-// firstname/lastname/coursename los rellena email_builder para CUALQUIER
-// disparador; el resto solo existe si la plantilla se asocia al disparador
-// correspondiente — un placeholder de otro grupo se queda sin sustituir
-// (se envía el email con el texto "{{...}}" literal).
-const PLACEHOLDER_GROUPS = [
-  {
-    label: 'Común (cualquier disparador)',
-    items: [
-      { key: 'firstname', desc: 'Nombre del alumno' },
-      { key: 'lastname', desc: 'Apellidos del alumno' },
-      { key: 'coursename', desc: 'Nombre del curso' },
-    ],
-  },
-  {
-    label: 'Progreso 25% / 50% / 75%',
-    items: [
-      { key: 'progress_percentage', desc: '% de progreso alcanzado' },
-      { key: 'courseenddate', desc: 'Fecha de fin del curso' },
-      { key: 'progress_table', desc: 'Tabla HTML con el detalle por actividad' },
-    ],
-  },
-  {
-    label: 'Fin de curso próximo / último día',
-    items: [{ key: 'courseenddate', desc: 'Fecha de fin del curso' }],
-  },
-  {
-    label: 'Recordatorio Zoom',
-    items: [
-      { key: 'zoom_name', desc: 'Nombre de la sesión' },
-      { key: 'zoom_date', desc: 'Fecha de la sesión' },
-      { key: 'zoom_start', desc: 'Hora de inicio' },
-      { key: 'zoom_end', desc: 'Hora de fin' },
-      { key: 'zoom_time', desc: 'Rango horario (inicio - fin)' },
-      { key: 'zoom_link', desc: 'Enlace a la sesión' },
-    ],
-  },
-  {
-    label: 'Examen presencial',
-    items: [
-      { key: 'exam_location', desc: 'Ubicación del examen' },
-      { key: 'exam_date', desc: 'Fecha del examen' },
-      { key: 'exam_start', desc: 'Hora de inicio' },
-      { key: 'exam_end', desc: 'Hora de fin' },
-    ],
-  },
-  {
-    label: 'Tutoría presencial',
-    items: [
-      { key: 'tutoring_location', desc: 'Ubicación de la tutoría' },
-      { key: 'tutoring_date', desc: 'Fecha de la tutoría' },
-      { key: 'tutoring_start', desc: 'Hora de inicio' },
-      { key: 'tutoring_end', desc: 'Hora de fin' },
-    ],
-  },
-  {
-    label: 'Diploma disponible',
-    items: [{ key: 'campus_url', desc: 'Enlace al curso en el campus' }],
-  },
-  {
-    label: 'Encuesta de calidad de curso',
-    items: [
-      { key: 'survey_link', desc: 'Enlace a la encuesta ya listo como texto subrayado (sin botón)' },
-      {
-        key: 'survey_link_url',
-        desc: 'Solo la URL — úsalo como destino de tu propio enlace para poder marcarlo como botón y centrarlo',
-      },
-    ],
-  },
-];
 
 // Inserta {{key}} en la última posición de cursor conocida de un
 // <input>/<textarea> controlado. El desplegable de Radix se lleva el foco
@@ -184,8 +113,8 @@ function PlaceholderPicker({ onPick }) {
   const [resetKey, setResetKey] = useState(0);
   return (
     <Select key={resetKey} value="" onValueChange={(value) => { onPick(value); setResetKey((k) => k + 1); }}>
-      <SelectTrigger style={{ width: 200 }}>
-        <SelectValue placeholder="Insertar placeholder…" />
+      <SelectTrigger style={{ width: 220 }}>
+        <SelectValue placeholder="+ Insertar variable…" />
       </SelectTrigger>
       <SelectContent>
         {PLACEHOLDER_GROUPS.map((group) => {
@@ -200,7 +129,7 @@ function PlaceholderPicker({ onPick }) {
               <SelectLabel>{group.label}</SelectLabel>
               {items.map((item) => (
                 <SelectItem key={item.key} value={item.key}>
-                  <span className="mono">{`{{${item.key}}}`}</span> — {item.desc}
+                  {item.label}
                 </SelectItem>
               ))}
             </SelectGroup>

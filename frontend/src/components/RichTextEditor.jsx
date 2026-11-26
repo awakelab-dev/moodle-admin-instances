@@ -1,13 +1,107 @@
 // Editor WYSIWYG para el cuerpo de las plantillas de email — sustituye al
 // textarea de HTML plano. Expone un método imperativo `insertPlaceholder`
-// para que PlaceholderPicker pueda insertar {{key}} en la posición del
+// para que PlaceholderPicker pueda insertar una variable en la posición del
 // cursor sin que el padre tenga que conocer el estado interno de TipTap.
 import { forwardRef, useEffect, useImperativeHandle } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { Node, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
 import { Button } from '@/components/ui/button';
+import { placeholderLabel } from '@/lib/placeholders';
+
+// Pensado para alguien que no sabe programar: una variable como
+// {{firstname}} no se muestra como texto en bruto, sino como una "pastilla"
+// con su nombre en castellano y una × para quitarla con un clic — nada de
+// tener que seleccionar y borrar llaves a mano. Es un nodo ATÓMICO (no se
+// puede escribir dentro ni partir en dos): Backspace/Supr también la borra
+// entera de una vez.
+//
+// El texto que de verdad se guarda (lo que ve el backend/plugin de Moodle
+// para sustituir la variable) sigue siendo literalmente "{{key}}" dentro del
+// <span> — ver renderHTML. La pastilla con el nombre bonito y el botón × son
+// SOLO la vista de edición (ver addNodeView); el email final no carga el CSS
+// de esta app, así que al destinatario le llega el texto sustituido normal,
+// sin ninguna pastilla.
+const PLACEHOLDER_TOKEN_RE = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+const PLACEHOLDER_SPAN_RE = /<span[^>]*data-placeholder-key="([a-zA-Z0-9_]+)"[^>]*>\s*\{\{\1\}\}\s*<\/span>/g;
+
+// Deshace primero cualquier pastilla ya guardada (idempotencia: si no se
+// desarma antes, re-envolver el HTML en cada edición anidaría spans sin
+// parar) y luego envuelve cada "{{key}}" en el span que PlaceholderToken
+// reconoce vía parseHTML.
+function wrapPlaceholdersAsChips(html) {
+  if (!html) return html;
+  const plain = html.replace(PLACEHOLDER_SPAN_RE, '{{$1}}');
+  return plain.replace(
+    PLACEHOLDER_TOKEN_RE,
+    (match, key) => `<span data-placeholder-key="${key}">${match}</span>`,
+  );
+}
+
+const PlaceholderToken = Node.create({
+  name: 'placeholderToken',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  draggable: false,
+
+  addAttributes() {
+    return { key: { default: '' } };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-placeholder-key]',
+        getAttrs: (el) => ({ key: el.getAttribute('data-placeholder-key') || '' }),
+      },
+    ];
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      'span',
+      mergeAttributes(HTMLAttributes, { 'data-placeholder-key': node.attrs.key }),
+      `{{${node.attrs.key}}}`,
+    ];
+  },
+
+  addNodeView() {
+    return ({ node, editor, getPos }) => {
+      const dom = document.createElement('span');
+      dom.className = 'placeholder-chip';
+      dom.contentEditable = 'false';
+
+      const label = document.createElement('span');
+      label.className = 'placeholder-chip-label';
+      label.textContent = placeholderLabel(node.attrs.key);
+      dom.appendChild(label);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'placeholder-chip-remove';
+      removeBtn.textContent = '×';
+      removeBtn.setAttribute('aria-label', `Quitar variable "${placeholderLabel(node.attrs.key)}"`);
+      removeBtn.title = 'Quitar esta variable';
+      // mousedown con preventDefault: evita que el editor pierda/mueva el
+      // foco antes de que llegue el click (si no, a veces el clic caía
+      // sobre otra posición del texto, visto en pruebas).
+      removeBtn.addEventListener('mousedown', (e) => e.preventDefault());
+      removeBtn.addEventListener('click', () => {
+        if (typeof getPos !== 'function') return;
+        const pos = getPos();
+        if (typeof pos !== 'number') return;
+        editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run();
+      });
+      dom.appendChild(removeBtn);
+
+      return { dom };
+    };
+  },
+});
 
 // Extiende el Link estándar con un atributo `class` propio del enlace (no
 // global) — así un enlace concreto puede marcarse como "botón" (class=
@@ -53,8 +147,9 @@ const RichTextEditor = forwardRef(function RichTextEditor({ value, onChange, pla
       StarterKit.configure({ link: false }),
       ButtonLink.configure({ openOnClick: false, autolink: true }),
       TextAlign.configure({ types: ['paragraph'] }),
+      PlaceholderToken,
     ],
-    content: value || '',
+    content: wrapPlaceholdersAsChips(value || ''),
     editorProps: {
       attributes: {
         class: 'rte-content',
@@ -68,8 +163,9 @@ const RichTextEditor = forwardRef(function RichTextEditor({ value, onChange, pla
   // plantilla reutilizando el mismo editor) — TipTap no re-sincroniza solo.
   useEffect(() => {
     if (!editor) return;
-    if (value !== editor.getHTML()) {
-      editor.commands.setContent(value || '', { emitUpdate: false });
+    const nextContent = wrapPlaceholdersAsChips(value || '');
+    if (nextContent !== editor.getHTML()) {
+      editor.commands.setContent(nextContent, { emitUpdate: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, value]);
@@ -77,7 +173,7 @@ const RichTextEditor = forwardRef(function RichTextEditor({ value, onChange, pla
   useImperativeHandle(ref, () => ({
     insertPlaceholder(key) {
       if (!editor) return;
-      editor.chain().focus().insertContent(`{{${key}}}`).run();
+      editor.chain().focus().insertContent({ type: 'placeholderToken', attrs: { key } }).run();
     },
   }));
 

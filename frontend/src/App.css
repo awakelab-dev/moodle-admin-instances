@@ -2350,3 +2350,47 @@ input:focus-visible {
   float: left;
   height: 0;
 }
+
+/* "Pastilla" de variable dentro del editor (ver RichTextEditor.jsx,
+   PlaceholderToken) — vista de edición únicamente: el email final no carga
+   este CSS, así que al destinatario solo le llega el texto ya sustituido. */
+.placeholder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0.1em;
+  padding: 0.05em 0.3em 0.05em 0.6em;
+  border-radius: 999px;
+  background: var(--color-accent, #11eaea);
+  color: #011932;
+  font-size: 0.82em;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+  vertical-align: baseline;
+  user-select: none;
+}
+
+.placeholder-chip-label {
+  pointer-events: none;
+}
+
+.placeholder-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  border: none;
+  border-radius: 999px;
+  background: rgba(1, 25, 50, 0.18);
+  color: inherit;
+  font-size: 1em;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.placeholder-chip-remove:hover {
+  background: rgba(1, 25, 50, 0.35);
+}
