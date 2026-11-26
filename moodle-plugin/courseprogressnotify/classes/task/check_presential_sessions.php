@@ -142,6 +142,17 @@ class check_presential_sessions extends scheduled_task {
                     continue;
                 }
 
+                // Este task cubre DOS triggers desde un solo curso-filtro
+                // (is_course_enabled, más abajo, solo comprueba el campo
+                // maestro) — aquí se aplica además la lista de triggers
+                // permitidos por curso, específica para exam/tutoring.
+                if (!\local_courseprogressnotify\course_diagnostics::is_trigger_enabled_for_course(
+                    $course->id, $customfieldshortname, $notiftype
+                )) {
+                    mtrace("      ✗ Disparador '{$notiftype}' no está en la lista de triggers permitidos del curso; se omite.");
+                    continue;
+                }
+
                 foreach ($students as $user) {
                     // Check if already notified (use event ID as entity)
                     if (notification_log::has_sent($user->id, $course->id, $notiftype, $event['id'])) {

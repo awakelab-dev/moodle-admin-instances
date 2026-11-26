@@ -169,18 +169,8 @@ class check_second_day_tasks extends scheduled_task {
      * @return bool True if notifications should be sent for this course
      */
     private function is_course_enabled($courseid, $customfieldshortname) {
-        global $DB;
-        
-        $field = $DB->get_record('customfield_field', ['shortname' => $customfieldshortname]);
-        if (!$field) {
-            return false;
-        }
-        
-        $data = $DB->get_record('customfield_data', [
-            'fieldid' => $field->id,
-            'instanceid' => $courseid
-        ]);
-        
-        return $data && $data->value == 1;
+        return \local_courseprogressnotify\course_diagnostics::is_trigger_enabled_for_course(
+            $courseid, $customfieldshortname, 'second_day'
+        );
     }
 }

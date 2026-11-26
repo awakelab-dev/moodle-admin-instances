@@ -26,6 +26,57 @@ defined('MOODLE_INTERNAL') || die();
  */
 class course_diagnostics {
 
+    /** Campo opcional de texto con los triggers permitidos para el curso,
+     * separados por coma (p. ej. "quality_survey" o "first_day,second_day").
+     * Si no existe o está vacío, se permiten todos (comportamiento previo a
+     * esta restricción, para no romper cursos ya configurados). */
+    const TRIGGER_ALLOWLIST_FIELD_SHORTNAME = 'courseemailnotifications_triggers';
+
+    /**
+     * Comprueba si un disparador concreto debe enviarse para un curso: el
+     * campo maestro debe estar activado Y (si existe la lista de triggers
+     * permitidos) el trigger debe estar en esa lista.
+     *
+     * @param int $courseid
+     * @param string $masterfieldshortname Shortname del campo maestro on/off.
+     * @param string $triggerkey Uno de NOTIFICATION_TRIGGER_KEYS (dashboard).
+     * @return bool
+     */
+    public static function is_trigger_enabled_for_course(
+        int $courseid,
+        string $masterfieldshortname,
+        string $triggerkey
+    ): bool {
+        global $DB;
+
+        $masterfield = $DB->get_record('customfield_field', ['shortname' => $masterfieldshortname]);
+        if (!$masterfield) {
+            return false;
+        }
+        $masterdata = $DB->get_record('customfield_data', [
+            'fieldid' => $masterfield->id,
+            'instanceid' => $courseid,
+        ]);
+        if (!$masterdata || $masterdata->value != 1) {
+            return false;
+        }
+
+        $allowfield = $DB->get_record('customfield_field', ['shortname' => self::TRIGGER_ALLOWLIST_FIELD_SHORTNAME]);
+        if (!$allowfield) {
+            return true;
+        }
+        $allowdata = $DB->get_record('customfield_data', [
+            'fieldid' => $allowfield->id,
+            'instanceid' => $courseid,
+        ]);
+        $raw = trim((string)($allowdata->value ?? ''));
+        if ($raw === '') {
+            return true;
+        }
+        $allowed = array_map('trim', explode(',', $raw));
+        return in_array($triggerkey, $allowed, true);
+    }
+
     /**
      * Return all courses that have the notification custom field set to 1 (enabled).
      *

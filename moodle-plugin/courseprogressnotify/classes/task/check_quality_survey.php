@@ -183,18 +183,8 @@ class check_quality_survey extends scheduled_task {
     }
 
     private function is_course_enabled($courseid, $customfieldshortname) {
-        global $DB;
-
-        $field = $DB->get_record('customfield_field', ['shortname' => $customfieldshortname]);
-        if (!$field) {
-            return false;
-        }
-
-        $data = $DB->get_record('customfield_data', [
-            'fieldid' => $field->id,
-            'instanceid' => $courseid,
-        ]);
-
-        return $data && $data->value == 1;
+        return \local_courseprogressnotify\course_diagnostics::is_trigger_enabled_for_course(
+            $courseid, $customfieldshortname, 'quality_survey'
+        );
     }
 }

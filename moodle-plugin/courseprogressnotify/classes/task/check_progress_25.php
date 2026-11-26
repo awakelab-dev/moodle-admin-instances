@@ -193,19 +193,8 @@ class check_progress_25 extends scheduled_task {
      * @return bool True if notifications should be sent for this course
      */
     private function is_course_enabled($courseid, $customfieldshortname) {
-        global $DB;
-        
-        $field = $DB->get_record('customfield_field', ['shortname' => $customfieldshortname]);
-        if (!$field) {
-            return false;
-        }
-        
-        $data = $DB->get_record('customfield_data', [
-            'fieldid' => $field->id,
-            'instanceid' => $courseid
-        ]);
-        
-        // Return true only if the custom field is explicitly set to 1 (checked).
-        return $data && $data->value == 1;
+        return \local_courseprogressnotify\course_diagnostics::is_trigger_enabled_for_course(
+            $courseid, $customfieldshortname, 'progress_25'
+        );
     }
 }

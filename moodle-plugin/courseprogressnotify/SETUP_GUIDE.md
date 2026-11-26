@@ -40,6 +40,25 @@ Este plugin envía automáticamente notificaciones por correo electrónico a los
 4. **Marca la casilla** para habilitar notificaciones para este curso
 5. Haz clic en **"Guardar cambios y mostrar"**
 
+### (Opcional) Elegir qué correos concretos se envían en un curso
+
+Por defecto, un curso con la casilla marcada recibe **todos** los disparadores que
+tengan plantilla activa en Moodle Insights. Si quieres que un curso reciba solo
+algunos (por ejemplo, un curso de pruebas donde solo quieres la encuesta de
+calidad), crea un segundo campo personalizado de texto:
+
+1. **Administración del sitio** → **Cursos** → **Campos personalizados del curso**
+   → **"Agregar un nuevo campo personalizado"** → **Texto**
+2. **Nombre**: `Disparadores de email permitidos` (o similar)
+3. **Nombre corto**: `courseemailnotifications_triggers` (exactamente así)
+4. En el curso que quieras restringir, rellena este campo con los disparadores
+   separados por coma, usando las claves del dashboard, por ejemplo:
+   - `quality_survey` (solo la encuesta de calidad)
+   - `first_day,second_day,quality_survey` (varios)
+5. Si este campo está **vacío o no existe**, el curso sigue recibiendo todos los
+   disparadores como hasta ahora — es totalmente opcional y no rompe cursos ya
+   configurados.
+
 ## Cómo Usar
 
 ### Modo Automático
