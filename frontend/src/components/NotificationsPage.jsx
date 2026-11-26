@@ -450,6 +450,24 @@ function TemplatesTab({ flash }) {
                       title="Vista previa del email"
                       srcDoc={previewHtml}
                       style={{ width: '100%', height: '420px', border: 'none' }}
+                      onLoad={(e) => {
+                        // Es solo una vista previa, no se debe poder
+                        // interactuar con ella — solo scrolear hacia abajo
+                        // para verla entera. Un enlace con un placeholder sin
+                        // sustituir (ej. {{survey_link_url}}) es una URL
+                        // relativa rota, y el navegador llegó a cargar la app
+                        // entera dentro del iframe al hacer clic (visto en
+                        // QA). Se bloquea cualquier clic dentro del documento
+                        // previsualizado, sin tocar el scroll (rueda/touch).
+                        try {
+                          const doc = e.currentTarget.contentDocument;
+                          doc?.addEventListener('click', (ev) => ev.preventDefault(), true);
+                        } catch {
+                          // Si el navegador no deja acceder al documento del
+                          // iframe por algún motivo, se pierde el bloqueo de
+                          // clics pero la vista previa en sí sigue funcionando.
+                        }
+                      }}
                     />
                   ) : (
                     <p className="empty" style={{ fontSize: '0.75rem', padding: '1rem' }}>
@@ -825,7 +843,7 @@ function RulesTab({ flash }) {
       {!templates.length && (
         <p className="empty">Crea al menos una plantilla en la pestaña "Plantillas" antes de configurar disparadores.</p>
       )}
-      <div className="platform-list">
+      <div className="trigger-list">
         {triggers.map((trigger) => {
           const rule = ruleFor(trigger.key);
           const paramKeys = Object.keys(trigger.paramsSchema || {});
@@ -977,7 +995,10 @@ function TriggerVariantCard({ trigger, templates, form, hasSavedVariants, onChan
   const positiveLabel = paramDef.higherIsBetter ? '≥ umbral' : '≤ umbral';
   const negativeLabel = paramDef.higherIsBetter ? '< umbral' : '> umbral';
   return (
-    <Card className="platform-card p-4" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
+    <Card
+      className="platform-card p-4"
+      style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}
+    >
       <div>
         <p className="eyebrow">Variante por parámetro — {trigger.label}</p>
         <p className="panel-description" style={{ margin: '0.25rem 0 0' }}>

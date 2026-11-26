@@ -1857,6 +1857,19 @@ input:focus-visible {
   min-width: 0;
 }
 
+/* Pestaña Reglas (lista de disparadores): la altura de cada tarjeta varía
+   mucho según tenga o no formulario de parámetros/variante — en un grid
+   multi-columna (como .platform-list) eso deja huecos enormes bajo las
+   tarjetas cortas de la misma fila (visto por el usuario en varios sitios
+   de esta pestaña). Aquí se mantiene como antes del cambio a grid: una sola
+   columna con scroll de página si hace falta — ese grid multi-columna era
+   para la lista de plataformas, no para esta pestaña. */
+.trigger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .platform-name {
   font-weight: 700;
   font-size: 0.92rem;

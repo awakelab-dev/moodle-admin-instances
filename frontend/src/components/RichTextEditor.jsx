@@ -31,13 +31,49 @@ const PLACEHOLDER_SPAN_RE = /<span[^>]*data-placeholder-key="([a-zA-Z0-9_]+)"[^>
 // desarma antes, re-envolver el HTML en cada edición anidaría spans sin
 // parar) y luego envuelve cada "{{key}}" en el span que PlaceholderToken
 // reconoce vía parseHTML.
+//
+// IMPORTANTE: tiene que tocar solo nodos de TEXTO, nunca el HTML en bruto
+// con un regex de string — un placeholder puede usarse como destino de un
+// enlace (ej. <a href="{{survey_link_url}}">), y reemplazar ese texto a
+// ciegas metía un <span> DENTRO del atributo href, rompiendo el HTML (visto
+// en QA: el enlace se abría como texto suelto y roto). Por eso se recorre
+// el DOM con un TreeWalker de solo texto, que nunca entra en atributos.
 function wrapPlaceholdersAsChips(html) {
   if (!html) return html;
   const plain = html.replace(PLACEHOLDER_SPAN_RE, '{{$1}}');
-  return plain.replace(
-    PLACEHOLDER_TOKEN_RE,
-    (match, key) => `<span data-placeholder-key="${key}">${match}</span>`,
-  );
+
+  const container = document.createElement('div');
+  container.innerHTML = plain;
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  let node = walker.nextNode();
+  while (node) {
+    PLACEHOLDER_TOKEN_RE.lastIndex = 0;
+    if (PLACEHOLDER_TOKEN_RE.test(node.nodeValue)) textNodes.push(node);
+    node = walker.nextNode();
+  }
+
+  for (const textNode of textNodes) {
+    PLACEHOLDER_TOKEN_RE.lastIndex = 0;
+    const parts = textNode.nodeValue.split(PLACEHOLDER_TOKEN_RE);
+    // String.split con un regex de un solo grupo de captura intercala:
+    // [textoAntes, key1, textoEntre, key2, ..., textoDespués].
+    const fragment = document.createDocumentFragment();
+    parts.forEach((part, i) => {
+      if (i % 2 === 0) {
+        if (part) fragment.appendChild(document.createTextNode(part));
+      } else {
+        const span = document.createElement('span');
+        span.setAttribute('data-placeholder-key', part);
+        span.textContent = `{{${part}}}`;
+        fragment.appendChild(span);
+      }
+    });
+    textNode.replaceWith(fragment);
+  }
+
+  return container.innerHTML;
 }
 
 const PlaceholderToken = Node.create({
