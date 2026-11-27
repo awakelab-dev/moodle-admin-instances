@@ -85,7 +85,11 @@ const PlaceholderToken = Node.create({
   draggable: false,
 
   addAttributes() {
-    return { key: { default: '' } };
+    // rendered:false — si no, TipTap también volcaría esto como atributo
+    // HTML key="..." además del data-placeholder-key de abajo (visto en
+    // una plantilla guardada: <span key="firstname" data-placeholder-key=
+    // "firstname">). Solo debe existir el segundo.
+    return { key: { default: '', rendered: false } };
   },
 
   parseHTML() {
